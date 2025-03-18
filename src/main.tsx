@@ -4,9 +4,9 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import { ThemeProvider } from './components/theme-provider'
 import { Layout } from './components/layout'
-import HomePage from './pages/home'
-import TokenInspectorPage from './pages/token-inspector'
-import MermaidEditorPage from './pages/mermaid-editor'
+import HomePage from './features/home'
+import TokenInspectorPage from './features/tokenInspector'
+import MermaidEditorPage from './features/mermaidEditor'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
