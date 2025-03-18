@@ -5,7 +5,7 @@ import './index.css'
 import { ThemeProvider } from './components/theme-provider'
 import { Layout } from './components/layout'
 import HomePage from './features/home'
-import TokenInspectorPage from './features/tokenInspector'
+import TokenInspectorPage from './pages/token-inspector'
 import MermaidEditorPage from './features/mermaidEditor'
 
 createRoot(document.getElementById('root')!).render(
