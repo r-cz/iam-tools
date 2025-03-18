@@ -24,6 +24,11 @@ bun run build
 
 # Preview production build
 bun run preview
+
+# Clean the project
+bun run clean       # Standard clean (node_modules, dist)
+bun run clean:dry   # Preview what will be cleaned
+bun run clean:deep  # Deep clean (includes lock files)
 ```
 
 ## Adding shadcn Components
@@ -44,11 +49,19 @@ The components are added to `src/components/ui` and can be imported and used thr
 
 ## Application Structure
 
-- `src/components` - Reusable UI components
-- `src/components/ui` - shadcn UI components
-- `src/pages` - Route-based page components
+We use a feature-based organization pattern that groups code by functionality:
+
+- `src/features` - Each tool is a separate feature module
+  - `src/features/tokenInspector` - Token inspection tool
+  - `src/features/mermaidEditor` - Mermaid diagram editor
+- `src/components` - Shared components
+  - `src/components/layout` - Layout components (sidebar, navigation)
+  - `src/components/common` - Common UI components
+  - `src/components/ui` - shadcn UI components
 - `src/lib` - Utility functions and shared libraries
 - `src/hooks` - Custom React hooks
+
+See [docs/file-structure.md](docs/file-structure.md) for more details.
 
 ## Available Tools
 
@@ -59,6 +72,14 @@ Analyze and debug JWT tokens with detailed information about:
 - Signature validation
 - Token expiration timelines
 - Standard claim validation
+
+### Mermaid Editor
+
+Create and visualize diagrams using Mermaid syntax:
+- Flowcharts
+- Sequence diagrams
+- State diagrams
+- Entity relationship diagrams
 
 ## Deployment
 
