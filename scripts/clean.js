@@ -12,10 +12,6 @@ const rootDir = resolve(__dirname, '..');
 const pathsToClean = [
   'node_modules',
   'dist',
-  '.turbo',
-  '.cache',
-  '.bunfig.local',
-  'bun.lockb'
 ];
 
 // Extra paths to clean if using --deep flag
