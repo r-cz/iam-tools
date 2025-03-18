@@ -1,54 +1,65 @@
-# React + TypeScript + Vite
+# IAM Tools
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A collection of specialized tools for Identity and Access Management (IAM) development and debugging.
 
-Currently, two official plugins are available:
+## Technologies
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Frontend**: Vite + React + TypeScript
+- **UI Framework**: Tailwind CSS v4
+- **Components**: shadcn/ui
+- **Package Manager**: Bun
+- **Routing**: React Router
 
-## Expanding the ESLint configuration
+## Development
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Install dependencies
+bun install
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+# Start development server
+bun run dev
+
+# Build for production
+bun run build
+
+# Preview production build
+bun run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Adding shadcn Components
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+This project uses [shadcn/ui](https://ui.shadcn.com/) for component styling. To add new components:
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+# Add a component
+bunx --bun shadcn@latest add [component-name]
+
+# Examples
+bunx --bun shadcn@latest add button
+bunx --bun shadcn@latest add card
+bunx --bun shadcn@latest add tabs
 ```
+
+The components are added to `src/components/ui` and can be imported and used throughout the application.
+
+## Application Structure
+
+- `src/components` - Reusable UI components
+- `src/components/ui` - shadcn UI components
+- `src/pages` - Route-based page components
+- `src/lib` - Utility functions and shared libraries
+- `src/hooks` - Custom React hooks
+
+## Available Tools
+
+### Token Inspector
+
+Analyze and debug JWT tokens with detailed information about:
+- Header and payload contents
+- Signature validation
+- Token expiration timelines
+- Standard claim validation
+
+## Deployment
+
+The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch.
