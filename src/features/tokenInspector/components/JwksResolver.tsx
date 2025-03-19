@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface JwksResolverProps {
   issuerUrl: string;
@@ -124,7 +124,26 @@ export function JwksResolver({
         
         <TabsContent value="automatic" className="space-y-4 mt-4">
           <div className="space-y-2">
-            <label htmlFor="issuer-url" className="block text-sm font-medium pb-2">Issuer URL:</label>
+            <div className="flex items-center gap-2 pb-2">
+              <label htmlFor="issuer-url" className="block text-sm font-medium">Issuer URL:</label>
+              <Popover>
+                <PopoverTrigger>
+                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help" aria-label="Issuer URL info">?</span>
+                </PopoverTrigger>
+                <PopoverContent>
+                  <div className="max-w-xs">
+                    <p className="font-medium">What is an Issuer URL?</p>
+                    <p className="mt-1">The base URL of the identity provider that issues the JWT tokens. The app will append <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch JWKS info.</p>
+                    <p className="mt-2 text-xs">Examples:</p>
+                    <ul className="text-xs mt-1 space-y-1">
+                      <li><code className="bg-muted px-1">https://auth.example.com</code></li>
+                      <li><code className="bg-muted px-1">https://example.auth0.com</code></li>
+                      <li><code className="bg-muted px-1">https://cognito-idp.region.amazonaws.com/userPoolId</code></li>
+                    </ul>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
             <input
               id="issuer-url"
               type="text"
@@ -163,17 +182,22 @@ export function JwksResolver({
         <TabsContent value="manual" className="space-y-4 mt-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 pb-2">
-              <label htmlFor="manual-jwks" className="block text-sm font-medium">Paste JWKS JSON:</label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help" aria-label="JWKS format info">?</span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="max-w-xs">
-                      <p>JWKS should be a JSON object with a "keys" array containing JWK objects.</p>
-                      <p className="mt-2 text-xs">Example format:</p>
-                      <pre className="bg-muted p-2 rounded mt-1 overflow-x-auto text-xs">
+              <label htmlFor="manual-jwks" className="block text-sm font-medium">Paste JWKS here:</label>
+              <Popover>
+                <PopoverTrigger>
+                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help" aria-label="JWKS format info">?</span>
+                </PopoverTrigger>
+                <PopoverContent>
+                  <div className="max-w-xs">
+                    <p className="font-medium">What is a JWKS?</p>
+                    <p className="mt-1">A JSON Web Key Set (JWKS) contains the cryptographic keys used to verify JWT signatures. It should be a JSON object with a "keys" array containing JWK objects.</p>
+                    <p className="mt-2 text-xs">How to get it:</p>
+                    <ol className="text-xs mt-1 space-y-1">
+                      <li>1. From your identity provider's dashboard</li>
+                      <li>2. By accessing the <code className="bg-muted px-1">jwks_uri</code>located at <code className="bg-muted px-1">[issuer-url]/.well-known/openid-configuration</code> in a browser or using a tool like cURL</li>
+                    </ol>
+                    <p className="mt-2 text-xs">Example format:</p>
+                    <pre className="bg-muted p-2 rounded mt-1 overflow-x-auto text-xs">
 {`{
   "keys": [
     {
@@ -185,11 +209,10 @@ export function JwksResolver({
     }
   ]
 }`}
-                      </pre>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                    </pre>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <textarea
               id="manual-jwks"
