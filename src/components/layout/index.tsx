@@ -2,6 +2,7 @@
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { ThemeMeta } from '@/components/common/ThemeMeta';
 import {
   SidebarInset,
   SidebarProvider,
@@ -56,6 +57,7 @@ export function Layout() {
 
   return (
     <SidebarProvider>
+      <ThemeMeta />
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2">
