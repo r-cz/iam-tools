@@ -34,20 +34,17 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = window.document.documentElement
-
-    root.classList.remove("light", "dark")
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light"
-
-      root.classList.add(systemTheme)
-      return
+    const isDark = theme === "dark" || 
+      (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    
+    // Only update classes if necessary
+    if (isDark && !root.classList.contains("dark")) {
+      root.classList.remove("light")
+      root.classList.add("dark")
+    } else if (!isDark && !root.classList.contains("light")) {
+      root.classList.remove("dark")
+      root.classList.add("light")
     }
-
-    root.classList.add(theme)
   }, [theme])
 
   const value = {
