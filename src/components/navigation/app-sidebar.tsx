@@ -1,13 +1,9 @@
 import * as React from "react"
 import {
-  BookOpen,
   LifeBuoy,
   KeyRound,
   Send,
-  Settings2,
-  GitBranch,
   Fingerprint,
-  Terminal,
 } from "lucide-react"
 
 import { NavMain } from "@/components/navigation/nav-main"
@@ -38,78 +34,6 @@ const data = {
         {
           title: "Token Inspector",
           url: "/token-inspector",
-        },
-        {
-          title: "JWKS Resolver",
-          url: "#",
-        },
-        {
-          title: "JWT Validator",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Diagram Tools",
-      url: "#",
-      icon: GitBranch,
-      items: [
-        {
-          title: "Mermaid Editor",
-          url: "/mermaid-editor",
-        },
-        {
-          title: "Sequence Diagrams",
-          url: "#",
-        },
-        {
-          title: "Flow Charts",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Development",
-      url: "#",
-      icon: Terminal,
-      items: [
-        {
-          title: "Code Playground",
-          url: "#",
-        },
-        {
-          title: "HTTP Client",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Getting Started",
-          url: "#",
-        },
-        {
-          title: "API References",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "Preferences",
-          url: "#",
-        },
-        {
-          title: "Theme",
-          url: "#",
         },
       ],
     },

@@ -57,9 +57,6 @@ We use a feature-based organization pattern that groups code by functionality:
     - `utils/` - Feature-specific utilities
     - `data/` - Feature-specific data
     - `pages/` - Feature pages (routes)
-  - `src/features/mermaidEditor` - Mermaid diagram editor
-    - `components/` - Feature-specific components
-    - `pages/` - Feature pages (routes)
   - `src/features/home` - Homepage components
 - `src/components` - Shared components
   - `src/components/layout` - Layout components
@@ -80,14 +77,6 @@ Analyze and debug JWT tokens with detailed information about:
 - Signature validation
 - Token expiration timelines
 - Standard claim validation
-
-### Mermaid Editor
-
-Create and visualize diagrams using Mermaid syntax:
-- Flowcharts
-- Sequence diagrams
-- State diagrams
-- Entity relationship diagrams
 
 ## Deployment
 
