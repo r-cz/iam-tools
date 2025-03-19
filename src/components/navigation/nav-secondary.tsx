@@ -1,5 +1,5 @@
 import * as React from "react"
-import { type LucideIcon, ChevronRight } from "lucide-react"
+import { type LucideIcon, ChevronRight, Github, Mail, ExternalLink } from "lucide-react"
 
 import {
   DropdownMenu,
@@ -53,7 +53,19 @@ export function NavSecondary({
                   >
                     {item.items.map((subItem) => (
                       <DropdownMenuItem key={subItem.title} asChild>
-                        <a href={subItem.url}>{subItem.title}</a>
+                        <a 
+                          href={subItem.url} 
+                          target={subItem.url.startsWith('http') || subItem.url.startsWith('mailto') ? "_blank" : undefined} 
+                          rel={subItem.url.startsWith('http') ? "noopener noreferrer" : undefined}
+                          className="flex items-center gap-2"
+                        >
+                          {/* GitHub icon for GitHub Issues */}
+                          {subItem.url.includes('github') && <Github className="h-4 w-4" />}
+                          {/* Mail icon for Email */}
+                          {subItem.url.includes('mailto') && <Mail className="h-4 w-4" />}
+                          <span>{subItem.title}</span>
+                          <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground" />
+                        </a>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
