@@ -3,8 +3,8 @@ import { useTheme } from "@/components/theme-provider";
 
 // Define theme colors that match your application's palette
 const themeColors = {
-  light: "#3b82f6", // Blue from your current manifest
-  dark: "#0f172a"   // Dark background that matches your dark theme
+  light: "#ffffff", // White for light mode
+  dark: "#000000"   // Black for dark mode
 };
 
 export function ThemeMeta() {
