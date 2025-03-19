@@ -1,0 +1,5 @@
+# IAM Tools robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://iam.tools/sitemap.xml
