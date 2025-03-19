@@ -1,7 +1,8 @@
 import * as React from "react"
 import {
-  KeyRound,
+  Coins,
   Fingerprint,
+  Search,
 } from "lucide-react"
 
 import { NavMain } from "@/components/navigation/nav-main"
@@ -21,11 +22,12 @@ const data = {
     {
       title: "Token Tools",
       url: "#",
-      icon: KeyRound,
+      icon: Coins,
       items: [
         {
           title: "Token Inspector",
           url: "/token-inspector",
+          icon: Search,
         },
       ],
     },
