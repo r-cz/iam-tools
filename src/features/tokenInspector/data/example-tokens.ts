@@ -1,3 +1,7 @@
+/**
+ * This file is deprecated and only kept for backward compatibility.
+ * Example tokens are now generated dynamically in generate-token.ts
+ */
 export const exampleTokens = {
-  standard: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MTYyMzkwMjIsImF1ZCI6ImV4YW1wbGUuY29tIiwiaXNzIjoiaHR0cHM6Ly9hdXRoLmV4YW1wbGUuY29tIn0.XCopO5RSxCARj0BoTPaHQXPFMjQ4inuX1TnuNKRdCrQ",
+  standard: "", // Empty since we now generate tokens dynamically
 };
