@@ -7,13 +7,10 @@ import {
   Settings2,
   GitBranch,
   Fingerprint,
-  ShieldCheck,
   Terminal,
-  Lock,
 } from "lucide-react"
 
 import { NavMain } from "@/components/navigation/nav-main"
-import { NavProjects } from "@/components/navigation/nav-projects"
 import { NavSecondary } from "@/components/navigation/nav-secondary"
 import { NavUser } from "@/components/navigation/nav-user"
 import {
@@ -122,30 +119,26 @@ const data = {
       title: "Support",
       url: "#",
       icon: LifeBuoy,
+      items: [
+        {
+          title: "GitHub Issues",
+          url: "https://github.com/r-cz/iam-tools/issues/new",
+        }
+      ]
     },
     {
       title: "Feedback",
       url: "#",
       icon: Send,
+      items: [
+        {
+          title: "Email",
+          url: "mailto:mail@ryancruz.com",
+        }
+      ]
     },
   ],
-  projects: [
-    {
-      name: "Authentication",
-      url: "#",
-      icon: Lock,
-    },
-    {
-      name: "Identity",
-      url: "#",
-      icon: Fingerprint,
-    },
-    {
-      name: "Security",
-      url: "#",
-      icon: ShieldCheck,
-    },
-  ],
+
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -170,7 +163,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
