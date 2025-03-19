@@ -1,5 +1,6 @@
 
 import { JSONWebKeySet } from "jose";
+import { JwksResolver } from "./JwksResolver";
 
 interface TokenSignatureProps {
   token: string;
@@ -7,6 +8,9 @@ interface TokenSignatureProps {
   signatureValid: boolean;
   signatureError?: string;
   jwks: JSONWebKeySet | null;
+  issuerUrl: string;
+  setIssuerUrl: (url: string) => void;
+  onJwksResolved: (jwks: JSONWebKeySet) => void;
 }
 
 export function TokenSignature({ 
@@ -14,7 +18,10 @@ export function TokenSignature({
   header, 
   signatureValid, 
   signatureError, 
-  jwks 
+  jwks,
+  issuerUrl,
+  setIssuerUrl,
+  onJwksResolved
 }: TokenSignatureProps) {
   const parts = token.split('.');
   // Extract the signature part for display
@@ -24,6 +31,20 @@ export function TokenSignature({
   
   return (
     <div className="space-y-4">
+      {/* JWKS Configuration */}
+      <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div className="pb-2 p-4 border-b">
+          <h3 className="text-md font-medium leading-none tracking-tight">JWKS Configuration</h3>
+        </div>
+        <div className="p-4">
+          <JwksResolver 
+            issuerUrl={issuerUrl}
+            setIssuerUrl={setIssuerUrl}
+            onJwksResolved={onJwksResolved} 
+          />
+        </div>
+      </div>
+
       <div className="flex items-center space-x-3">
         <span className={`ml-2 inline-flex items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold ${signatureValid ? 'bg-green-500 text-white' : 'bg-amber-500 text-white'}`}>
           {signatureValid 

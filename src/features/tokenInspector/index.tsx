@@ -7,7 +7,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { TokenInput } from "./components/TokenInput";
-import { JwksResolver } from "./components/JwksResolver";
+
 import { TokenHeader } from "./components/TokenHeader";
 import { TokenPayload } from "./components/TokenPayload";
 import { TokenSignature } from "./components/TokenSignature";
@@ -138,16 +138,7 @@ export function TokenInspector() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-6">
-          <h3 className="text-lg font-medium mb-4">JWKS Configuration</h3>
-          <JwksResolver 
-            issuerUrl={issuerUrl}
-            setIssuerUrl={setIssuerUrl}
-            onJwksResolved={handleJwksResolved} 
-          />
-        </CardContent>
-      </Card>
+
 
       {decodedToken && (
         <Card>
@@ -227,6 +218,9 @@ export function TokenInspector() {
                   signatureValid={decodedToken.signature.valid}
                   signatureError={decodedToken.signature.error}
                   jwks={jwks}
+                  issuerUrl={issuerUrl}
+                  setIssuerUrl={setIssuerUrl}
+                  onJwksResolved={handleJwksResolved}
                 />
               </TabsContent>
               

@@ -1,4 +1,10 @@
 import { useState } from "react";
+import { 
+  Collapsible, 
+  CollapsibleContent, 
+  CollapsibleTrigger 
+} from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface TokenSizeProps {
@@ -6,7 +12,7 @@ interface TokenSizeProps {
 }
 
 export function TokenSize({ token }: TokenSizeProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   
   // Split token into parts
   const parts = token.split('.');
@@ -48,19 +54,18 @@ export function TokenSize({ token }: TokenSizeProps) {
   const decodedPayloadSize = new Blob([JSON.stringify(decodedPayload)]).size;
   
   return (
-    <div className="flex flex-col">
-      <div 
-        className="flex items-center justify-between p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="w-full"
+    >
+      <CollapsibleTrigger className="flex w-full items-center justify-between p-2 rounded-md border hover:bg-muted/50 transition-colors">
         <span className="text-sm font-medium">Token Size: {totalSize} bytes</span>
-        <span className={`text-xs transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>
-          ▼
-        </span>
-      </div>
+        <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </CollapsibleTrigger>
       
-      {expanded && (
-        <Card className="mt-2">
+      <CollapsibleContent className="mt-2">
+        <Card>
           <CardContent className="p-3 text-sm">
             <div className="mb-2 font-medium border-b pb-1">Encoded Size (JWT Format)</div>
             <div className="grid grid-cols-2 gap-2 mb-4">
@@ -88,7 +93,7 @@ export function TokenSize({ token }: TokenSizeProps) {
             </div>
           </CardContent>
         </Card>
-      )}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
