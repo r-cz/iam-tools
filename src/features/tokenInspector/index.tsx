@@ -127,118 +127,116 @@ export function TokenInspector() {
   };
 
   return (
-    <div className="container mx-auto py-6 max-w-5xl">
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="p-6">
+          <TokenInput 
+            token={token} 
+            setToken={setToken} 
+            onDecode={decodeToken} 
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-lg font-medium mb-4">JWKS Configuration</h3>
+          <JwksResolver 
+            issuerUrl={issuerUrl}
+            setIssuerUrl={setIssuerUrl}
+            onJwksResolved={handleJwksResolved} 
+          />
+        </CardContent>
+      </Card>
+
+      {decodedToken && (
         <Card>
           <CardContent className="p-6">
-            <TokenInput 
-              token={token} 
-              setToken={setToken} 
-              onDecode={decodeToken} 
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="text-lg font-medium mb-4">JWKS Configuration</h3>
-            <JwksResolver 
-              issuerUrl={issuerUrl}
-              setIssuerUrl={setIssuerUrl}
-              onJwksResolved={handleJwksResolved} 
-            />
-          </CardContent>
-        </Card>
-
-        {decodedToken && (
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex flex-col space-y-4 mb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center">
-                    <div 
-                      className={`w-4 h-4 rounded-full mr-2 ${
-                        decodedToken.signature.valid ? 'bg-green-500' : 'bg-yellow-500'
-                      }`}
-                    ></div>
-                    <span>
-                      {decodedToken.signature.valid 
-                        ? 'Signature Valid' 
-                        : jwks 
-                          ? 'Signature Invalid' 
-                          : 'Signature Not Verified'
-                      }
-                    </span>
-                  </div>
-                  <div className="text-sm font-medium">
-                  Detected: {tokenType === "id_token" 
-                  ? "OIDC ID Token" 
-                  : tokenType === "access_token" 
-                  ? decodedToken.header.typ === "at+jwt" || decodedToken.header.typ === "application/at+jwt"
-                    ? "OAuth JWT Access Token (RFC9068)" 
-                        : "OAuth Access Token"
-                      : <span className="text-amber-500 font-medium">Unknown Token Type</span>
-                  }
-                  {tokenType === "unknown" && (
-                  <span className="block text-xs text-gray-500 mt-1">
-                      Missing standard claims. Check browser console for details.
-                      </span>
-                    )}
-                  </div>
+            <div className="flex flex-col space-y-4 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center">
+                  <div 
+                    className={`w-4 h-4 rounded-full mr-2 ${
+                      decodedToken.signature.valid ? 'bg-green-500' : 'bg-yellow-500'
+                    }`}
+                  ></div>
+                  <span>
+                    {decodedToken.signature.valid 
+                      ? 'Signature Valid' 
+                      : jwks 
+                        ? 'Signature Invalid' 
+                        : 'Signature Not Verified'
+                    }
+                  </span>
                 </div>
-                
-                <div className="border-t pt-3">
-                  <TokenSize token={decodedToken.raw} />
+                <div className="text-sm font-medium">
+                Detected: {tokenType === "id_token" 
+                ? "OIDC ID Token" 
+                : tokenType === "access_token" 
+                ? decodedToken.header.typ === "at+jwt" || decodedToken.header.typ === "application/at+jwt"
+                  ? "OAuth JWT Access Token (RFC9068)" 
+                      : "OAuth Access Token"
+                    : <span className="text-amber-500 font-medium">Unknown Token Type</span>
+                }
+                {tokenType === "unknown" && (
+                <span className="block text-xs text-gray-500 mt-1">
+                    Missing standard claims. Check browser console for details.
+                    </span>
+                  )}
                 </div>
               </div>
               
-              {decodedToken.signature.error && (
-                <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md">
-                  {decodedToken.signature.error}
-                </div>
-              )}
+              <div className="border-t pt-3">
+                <TokenSize token={decodedToken.raw} />
+              </div>
+            </div>
+            
+            {decodedToken.signature.error && (
+              <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md">
+                {decodedToken.signature.error}
+              </div>
+            )}
 
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">
-                  <TabsTrigger value="header" className="flex-1 min-w-fit">Header</TabsTrigger>
-                  <TabsTrigger value="payload" className="flex-1 min-w-fit">Payload</TabsTrigger>
-                  <TabsTrigger value="signature" className="flex-1 min-w-fit">Signature</TabsTrigger>
-                  <TabsTrigger value="timeline" className="flex-1 min-w-fit">Timeline</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="header">
-                  <TokenHeader 
-                    header={decodedToken.header} 
-                    validationResults={validationResults.filter(r => r.claim.startsWith('header.'))}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="payload">
-                  <TokenPayload 
-                    payload={decodedToken.payload} 
-                    tokenType={tokenType}
-                    validationResults={validationResults.filter(r => !r.claim.startsWith('header.'))}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="signature">
-                  <TokenSignature 
-                    token={decodedToken.raw}
-                    header={decodedToken.header}
-                    signatureValid={decodedToken.signature.valid}
-                    signatureError={decodedToken.signature.error}
-                    jwks={jwks}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="timeline">
-                  <TokenTimeline payload={decodedToken.payload} />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">
+                <TabsTrigger value="header" className="flex-1 min-w-fit">Header</TabsTrigger>
+                <TabsTrigger value="payload" className="flex-1 min-w-fit">Payload</TabsTrigger>
+                <TabsTrigger value="signature" className="flex-1 min-w-fit">Signature</TabsTrigger>
+                <TabsTrigger value="timeline" className="flex-1 min-w-fit">Timeline</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="header">
+                <TokenHeader 
+                  header={decodedToken.header} 
+                  validationResults={validationResults.filter(r => r.claim.startsWith('header.'))}
+                />
+              </TabsContent>
+              
+              <TabsContent value="payload">
+                <TokenPayload 
+                  payload={decodedToken.payload} 
+                  tokenType={tokenType}
+                  validationResults={validationResults.filter(r => !r.claim.startsWith('header.'))}
+                />
+              </TabsContent>
+              
+              <TabsContent value="signature">
+                <TokenSignature 
+                  token={decodedToken.raw}
+                  header={decodedToken.header}
+                  signatureValid={decodedToken.signature.valid}
+                  signatureError={decodedToken.signature.error}
+                  jwks={jwks}
+                />
+              </TabsContent>
+              
+              <TabsContent value="timeline">
+                <TokenTimeline payload={decodedToken.payload} />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
