@@ -7,6 +7,15 @@
   "background_color": "#f8f9fa",
   "theme_color": "#3b82f6",
   "orientation": "portrait",
+  "screenshots": [
+    {
+      "src": "/icons/social-preview.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "IAM Tools - Identity and Access Management Tools"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-72x72.png",

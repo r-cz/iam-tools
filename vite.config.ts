@@ -41,6 +41,15 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        screenshots: [
+          {
+            src: '/icons/social-preview.png',
+            sizes: '1200x630',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'IAM Tools - Identity and Access Management Tools'
+          }
+        ],
         icons: [
           {
             src: '/icons/icon-72x72.png',
