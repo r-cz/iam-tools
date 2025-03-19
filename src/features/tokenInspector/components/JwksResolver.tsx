@@ -101,6 +101,8 @@ export function JwksResolver({
         keyIds: parsedJwks.keys.map((k: {kid?: string}) => k.kid)
       });
       
+      // Directly pass the parsed JWKS to the callback
+      // No setTimeout - we want immediate verification
       onJwksResolved(parsedJwks);
       setError(null);
     } catch (err: any) {

@@ -24,7 +24,7 @@ export function Layout() {
   // Generate page title based on route
   const getPageTitle = () => {
     const path = location.pathname;
-    if (path === '/') return 'Dashboard';
+    if (path === '/') return 'Home';
     return path.substring(1).split('-').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
@@ -36,7 +36,7 @@ export function Layout() {
     if (path === '/') {
       return (
         <BreadcrumbItem>
-          <BreadcrumbPage>Dashboard</BreadcrumbPage>
+          <BreadcrumbPage>Home</BreadcrumbPage>
         </BreadcrumbItem>
       );
     }
@@ -44,7 +44,7 @@ export function Layout() {
     return (
       <>
         <BreadcrumbItem className="hidden md:block">
-          <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+          <BreadcrumbLink href="/">Home</BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator className="hidden md:block" />
         <BreadcrumbItem>

@@ -67,18 +67,24 @@ export function TokenInspector() {
       // Verify signature if JWKS is provided
       if (jwks) {
         try {
-          const keystore = jose.createRemoteJWKSet(
-            new URL(`data:application/json;base64,${btoa(JSON.stringify(jwks))}`)
-          );
+          // Find the matching key by kid
+          const matchingKey = jwks.keys.find(k => k.kid === header.kid);
           
           // Add logging to help with debugging
           console.log('Verifying token signature with JWKS:', { 
             tokenKid: header.kid,
             jwksKeyCount: jwks.keys.length,
-            jwksKeys: jwks.keys.map((k: {kid?: string}) => k.kid)
+            jwksKeys: jwks.keys.map((k: {kid?: string}) => k.kid),
+            foundMatchingKey: !!matchingKey
           });
           
-          await jose.jwtVerify(token, keystore);
+          if (!matchingKey) {
+            throw new Error(`No key with matching kid ${header.kid} found in JWKS`);
+          }
+          
+          // Create a key object and verify
+          const key = await jose.importJWK(matchingKey, header.alg);
+          await jose.jwtVerify(token, key);
           signatureValid = true;
         } catch (e: any) {
           console.error('Signature verification error:', e);
@@ -118,11 +124,76 @@ export function TokenInspector() {
   };
 
   const handleJwksResolved = async (resolvedJwks: jose.JSONWebKeySet) => {
+    console.log('JWKS resolved:', { 
+      keyCount: resolvedJwks.keys.length,
+      keyIds: resolvedJwks.keys.map((k: {kid?: string}) => k.kid) 
+    });
+    
+    // Store the JWKS first
     setJwks(resolvedJwks);
     
-    // Re-decode token with new JWKS if token is already decoded
-    if (decodedToken && token) {
-      decodeToken();
+    // If we have a token, directly verify it without relying on state updates
+    if (token) {
+      try {
+        // Parse the token to get parts for header
+        const parts = token.split(".");
+        if (parts.length !== 3) {
+          throw new Error("Invalid JWT format");
+        }
+
+        // Get the header to find the kid and alg
+        const encodedHeader = parts[0];
+        const base64Header = encodedHeader.replace(/-/g, '+').replace(/_/g, '/');
+        const paddedHeader = base64Header + '='.repeat((4 - base64Header.length % 4) % 4);
+        const header = JSON.parse(atob(paddedHeader));
+        
+        // Find the matching key by kid
+        const matchingKey = resolvedJwks.keys.find(k => k.kid === header.kid);
+        
+        console.log('Direct verification with matching key:', {
+          headerKid: header.kid,
+          foundMatchingKey: !!matchingKey,
+          alg: header.alg
+        });
+        
+        if (matchingKey) {
+          // Create a key object and verify
+          const key = await jose.importJWK(matchingKey, header.alg);
+          await jose.jwtVerify(token, key);
+          
+          // Force update the decoded token with valid signature
+          if (decodedToken) {
+            setDecodedToken({
+              ...decodedToken,
+              signature: {
+                valid: true,
+                error: undefined
+              }
+            });
+          } else {
+            // If no decoded token yet, do a full decode
+            console.log('No decoded token yet, performing full decode');
+            decodeToken();
+          }
+        } else {
+          throw new Error(`No key with matching kid ${header.kid} found`);
+        }
+      } catch (err: any) {
+        console.error('Direct verification error:', err);
+        if (decodedToken) {
+          // Update with error
+          setDecodedToken({
+            ...decodedToken,
+            signature: {
+              valid: false,
+              error: err.message
+            }
+          });
+        } else {
+          // If no decoded token yet, do a full decode
+          decodeToken();
+        }
+      }
     }
   };
 
