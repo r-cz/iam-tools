@@ -35,13 +35,6 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "/",
-      icon: Command,
-      isActive: true,
-      items: [],
-    },
-    {
       title: "Token Tools",
       url: "#",
       icon: KeyRound,
