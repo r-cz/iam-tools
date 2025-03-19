@@ -5,8 +5,8 @@ import './index.css'
 import { ThemeProvider } from './components/theme-provider'
 import { Layout } from './components/layout'
 import HomePage from './features/home'
-import TokenInspectorPage from './pages/token-inspector'
-import MermaidEditorPage from './features/mermaidEditor'
+import TokenInspectorPage from './features/tokenInspector/pages'
+import MermaidEditorPage from './features/mermaidEditor/pages'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
