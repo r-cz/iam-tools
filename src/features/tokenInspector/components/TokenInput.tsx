@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { exampleTokens } from "../data/example-tokens";
+import { generateFreshToken } from "../utils/generate-token";
 
 interface TokenInputProps {
   token: string;
@@ -24,7 +24,9 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
   };
 
   const loadExampleToken = () => {
-    setToken(exampleTokens.standard);
+    // Generate a fresh token with current timestamps
+    const freshToken = generateFreshToken();
+    setToken(freshToken);
   };
 
   return (
