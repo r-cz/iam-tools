@@ -1,14 +1,11 @@
 import * as React from "react"
 import {
-  LifeBuoy,
   KeyRound,
-  Send,
   Fingerprint,
 } from "lucide-react"
 
 import { NavMain } from "@/components/navigation/nav-main"
-import { NavSecondary } from "@/components/navigation/nav-secondary"
-import { NavUser } from "@/components/navigation/nav-user"
+import { NavHelp } from "@/components/navigation/nav-help"
 import {
   Sidebar,
   SidebarContent,
@@ -20,11 +17,6 @@ import {
 } from "@/components/ui/sidebar"
 
 const data = {
-  user: {
-    name: "Ryan Cruz",
-    email: "tools@ryancruz.com",
-    avatar: "/avatars/ryan.jpg",
-  },
   navMain: [
     {
       title: "Token Tools",
@@ -38,31 +30,6 @@ const data = {
       ],
     },
   ],
-  navSecondary: [
-    {
-      title: "Support",
-      url: "#",
-      icon: LifeBuoy,
-      items: [
-        {
-          title: "GitHub Issues",
-          url: "https://github.com/r-cz/iam-tools/issues/new",
-        }
-      ]
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: Send,
-      items: [
-        {
-          title: "Email",
-          url: "mailto:mail@ryancruz.com",
-        }
-      ]
-    },
-  ],
-
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -87,10 +54,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavHelp />
       </SidebarFooter>
     </Sidebar>
   )
