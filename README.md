@@ -53,9 +53,17 @@ We use a feature-based organization pattern that groups code by functionality:
 
 - `src/features` - Each tool is a separate feature module
   - `src/features/tokenInspector` - Token inspection tool
+    - `components/` - Feature-specific components
+    - `utils/` - Feature-specific utilities
+    - `data/` - Feature-specific data
+    - `pages/` - Feature pages (routes)
   - `src/features/mermaidEditor` - Mermaid diagram editor
+    - `components/` - Feature-specific components
+    - `pages/` - Feature pages (routes)
+  - `src/features/home` - Homepage components
 - `src/components` - Shared components
-  - `src/components/layout` - Layout components (sidebar, navigation)
+  - `src/components/layout` - Layout components
+  - `src/components/navigation` - Navigation components (sidebar, menus)
   - `src/components/common` - Common UI components
   - `src/components/ui` - shadcn UI components
 - `src/lib` - Utility functions and shared libraries
