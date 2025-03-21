@@ -8,21 +8,20 @@ This project uses a feature-based architecture to organize code. Each feature is
 ├── src/
 │   ├── features/           # Feature modules (main functionality)
 │   │   ├── home/           # Home page feature
-│   │   ├── tokenInspector/ # Token inspection tool
-│   │   │   ├── components/ # Feature-specific components
-│   │   │   ├── data/       # Data files (examples, schemas)
-│   │   │   ├── pages/      # Page components (routes)
-│   │   │   ├── utils/      # Feature-specific utilities
-│   │   │   └── index.tsx   # Feature entry point
-│   │   └── mermaidEditor/  # Mermaid diagram editor
+│   │   └── tokenInspector/ # Token inspection tool
 │   │       ├── components/ # Feature-specific components
+│   │       ├── data/       # Data files (examples, schemas)
 │   │       ├── pages/      # Page components (routes)
+│   │       ├── utils/      # Feature-specific utilities
 │   │       └── index.tsx   # Feature entry point
 │   ├── components/         # Shared components
 │   │   ├── layout/         # Layout components
 │   │   ├── navigation/     # Navigation components
 │   │   ├── common/         # Common UI components
+│   │   ├── theme/          # Theme-related components
+│   │   ├── page/           # Page layout components
 │   │   └── ui/             # shadcn UI components
+│   ├── types/              # Shared TypeScript type definitions
 │   ├── hooks/              # Custom React hooks
 │   ├── lib/                # Utility functions and shared libraries
 │   └── main.tsx            # Application entry point
@@ -57,6 +56,20 @@ To add a new feature:
 The navigation system is organized in:
 - `src/components/navigation/app-sidebar.tsx`: Main sidebar component
 - `src/components/navigation/nav-main.tsx`: Primary navigation items
-- `src/components/navigation/nav-projects.tsx`: Project-specific navigation
-- `src/components/navigation/nav-secondary.tsx`: Secondary navigation items
-- `src/components/navigation/nav-user.tsx`: User-related navigation
+- `src/components/navigation/nav-help.tsx`: Help and support navigation
+
+## Hook Utilities
+
+The project includes several useful custom React hooks:
+
+- `useIsMobile`: Detect mobile viewport size
+- `useLocalStorage`: Persist state in localStorage
+- `useDebounce`: Debounce rapidly changing values
+- `useClipboard`: Copy text to clipboard with status feedback
+
+## Types
+
+Shared TypeScript type definitions are located in the `src/types` directory:
+
+- `token.ts`: Token-related types (TokenType, DecodedToken, ValidationResult, etc.)
+- Additional type files can be added here as the application grows

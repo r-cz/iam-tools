@@ -63,8 +63,11 @@ We use a feature-based organization pattern that groups code by functionality:
   - `src/components/navigation` - Navigation components (sidebar, menus)
   - `src/components/common` - Common UI components
   - `src/components/ui` - shadcn UI components
+  - `src/components/theme` - Theme components
+  - `src/components/page` - Page layout components
+- `src/types` - Shared TypeScript type definitions
 - `src/lib` - Utility functions and shared libraries
-- `src/hooks` - Custom React hooks
+- `src/hooks` - Custom React hooks (useIsMobile, useLocalStorage, useDebounce, useClipboard)
 
 See [docs/file-structure.md](docs/file-structure.md) for more details.
 
@@ -74,7 +77,7 @@ See [docs/file-structure.md](docs/file-structure.md) for more details.
 
 Analyze and debug JWT tokens with detailed information about:
 - Header and payload contents
-- Signature validation
+- Signature validation using JWKS
 - Token expiration timelines
 - Standard claim validation
 
