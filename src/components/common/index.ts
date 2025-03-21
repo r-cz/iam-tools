@@ -1,2 +1,1 @@
-export { ThemeToggle } from './ThemeToggle';
-export { ThemeMeta } from './ThemeMeta';
+// Export common components here

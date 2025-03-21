@@ -1,8 +1,8 @@
 
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { ThemeMeta } from '@/components/common/ThemeMeta';
+import { ThemeToggle } from '@/components/theme';
+import { ThemeMeta } from '@/components/theme';
 import {
   SidebarInset,
   SidebarProvider,
