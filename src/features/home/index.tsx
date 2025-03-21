@@ -11,12 +11,9 @@ export default function HomePage() {
         icon={HomeIcon}
       />
       
-      <div className="grid auto-rows-min gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+      <div className="grid auto-rows-min gap-4 md:grid-cols-1 mb-6">
         <Link to="/token-inspector" className="aspect-video rounded-xl bg-muted/50 flex items-center justify-center hover:bg-muted/70 transition-colors">
           <h3 className="text-xl font-medium">Token Inspector</h3>
-        </Link>
-        <Link to="/mermaid-editor" className="aspect-video rounded-xl bg-muted/50 flex items-center justify-center hover:bg-muted/70 transition-colors">
-          <h3 className="text-xl font-medium">Mermaid Editor</h3>
         </Link>
       </div>
     </PageContainer>
