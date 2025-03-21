@@ -27,6 +27,12 @@ jobs:
     - name: Build application
       run: bun run build
       
+    - name: Start server in background
+      run: bun run preview &
+      
+    - name: Wait for server to start
+      run: sleep 10
+      
     - name: Run Playwright tests
       run: bunx playwright test
       
