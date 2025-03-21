@@ -3,17 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-interface JwksResolverProps {
+interface TokenJwksResolverProps {
   issuerUrl: string;
   setIssuerUrl: (url: string) => void;
   onJwksResolved: (jwks: any) => void;
 }
 
-export function JwksResolver({ 
+export function TokenJwksResolver({ 
   issuerUrl, 
   setIssuerUrl, 
   onJwksResolved 
-}: JwksResolverProps) {
+}: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<"automatic" | "manual">("automatic");
   const [manualJwks, setManualJwks] = useState("");
   const [isLoading, setIsLoading] = useState(false);

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "./theme-provider";
 
 // Define theme colors that match your application's palette
 const themeColors = {

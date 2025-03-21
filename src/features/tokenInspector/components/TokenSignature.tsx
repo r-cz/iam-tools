@@ -1,6 +1,6 @@
 
 import { JSONWebKeySet } from "jose";
-import { JwksResolver } from "./JwksResolver";
+import { TokenJwksResolver } from "./TokenJwksResolver";
 
 interface TokenSignatureProps {
   token: string;
@@ -37,7 +37,7 @@ export function TokenSignature({
           <h3 className="text-md font-medium leading-none tracking-tight">JWKS Configuration</h3>
         </div>
         <div className="p-4">
-          <JwksResolver 
+          <TokenJwksResolver 
             issuerUrl={issuerUrl}
             setIssuerUrl={setIssuerUrl}
             onJwksResolved={onJwksResolved} 
