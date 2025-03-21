@@ -7,7 +7,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   reporter: [['html'], ['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    // Use the environment variable or default to localhost
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -18,10 +19,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  // Only use webServer in development, not in CI
-  webServer: process.env.CI ? undefined : {
-    command: 'bun run preview',
-    port: 5173,
-    reuseExistingServer: true,
-  },
+  // Don't use the built-in webServer option; we're managing server separately
+  // This ensures we can handle server startup errors more gracefully
 });

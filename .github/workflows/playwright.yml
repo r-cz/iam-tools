@@ -24,43 +24,22 @@ jobs:
     - name: Install Playwright browsers
       run: bunx playwright install --with-deps
       
-    - name: Create static test config for CI
+    - name: Build application
+      run: bun run build
+    
+    - name: Add executable permissions to server script
+      run: chmod +x scripts/start-server.js
+    
+    - name: Start server with verification
+      timeout-minutes: 2
       run: |
-        cat > playwright.ci.config.ts << 'EOL'
-        import { defineConfig, devices } from '@playwright/test';
-
-        export default defineConfig({
-          testDir: './tests',
-          timeout: 30000,
-          forbidOnly: true,
-          retries: 0,
-          reporter: [['html'], ['list']],
-          use: {
-            baseURL: 'http://example.com', // Non-functional URL for static tests
-          },
-          projects: [
-            {
-              name: 'chromium',
-              use: { ...devices['Desktop Chrome'] },
-            },
-          ],
-        });
-        EOL
-
-    - name: Create CI-specific test file
-      run: |
-        mkdir -p tests/ci
-        cat > tests/ci/smoke.spec.ts << 'EOL'
-        import { test, expect } from '@playwright/test';
-
-        test('Verify test environment is set up correctly', async () => {
-          // This is a simple test that always passes
-          expect(true).toBeTruthy();
-        });
-        EOL
-      
-    - name: Run static test
-      run: bunx playwright test --config=playwright.ci.config.ts tests/ci/
+        bun scripts/start-server.js &
+        echo "Server start script is running in background"
+    
+    - name: Run Playwright tests
+      env:
+        PLAYWRIGHT_TEST_BASE_URL: http://localhost:5173
+      run: bunx playwright test
       
     - name: Upload test reports
       if: always()
