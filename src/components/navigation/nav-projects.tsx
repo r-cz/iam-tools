@@ -1,3 +1,4 @@
+// Currently unused - kept for future implementation
 import {
   Folder,
   MoreHorizontal,
