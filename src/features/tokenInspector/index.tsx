@@ -57,6 +57,21 @@ export function TokenInspector() {
       console.log('Detected token type:', detectedTokenType);
       
       setTokenType(detectedTokenType);
+      
+      // Extract issuer URL from payload if present and auto-fetch JWKS
+      if (payload.iss) {
+        const newIssuerUrl = payload.iss;
+        console.log('Extracted issuer URL from token:', newIssuerUrl);
+        
+        // Only update if it's different to avoid unnecessary re-renders
+        if (newIssuerUrl !== issuerUrl) {
+          setIssuerUrl(newIssuerUrl);
+          
+          // Note: We don't auto-fetch here because the issuerUrl state won't be updated yet
+          // The fetchJwks function in TokenJwksResolver will be triggered automatically
+          // through the "Fetch JWKS automatically" button that appears
+        }
+      }
 
       // Perform validation using the validation function
       const validationResults = validateToken(header, payload, detectedTokenType);
