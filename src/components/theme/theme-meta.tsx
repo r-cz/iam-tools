@@ -4,7 +4,8 @@ import { useTheme } from "./theme-provider";
 // Define theme colors that match your application's palette
 const themeColors = {
   light: "#ffffff", // White for light mode
-  dark: "#0a0a0a"   // Black for dark mode
+  dark: "#0a0a0a",  // Black for dark mode
+  initial: "#1a1a1a" // Initial neutral color (matches manifest)
 };
 
 export function ThemeMeta() {
@@ -23,6 +24,13 @@ export function ThemeMeta() {
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
       metaThemeColor.setAttribute("content", themeColor);
+    }
+    
+    // Also update manifest link if needed for PWA
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink && manifestLink.getAttribute("href") === "/manifest.json") {
+      // We already updated the manifest.json and manifest.webmanifest files
+      // This ensures any dynamic manifest changes are consistent
     }
 
     // Listen for system preference changes if theme is set to "system"

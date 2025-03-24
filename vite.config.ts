@@ -36,7 +36,7 @@ export default defineConfig({
         name: 'IAM Tools',
         short_name: 'iam.tools',
         description: 'A collection of specialized tools for Identity and Access Management (IAM) development and debugging',
-        theme_color: '#3b82f6',
+        theme_color: '#1a1a1a',
         background_color: '#f8f9fa',
         display: 'standalone',
         orientation: 'portrait',
