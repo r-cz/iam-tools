@@ -4,7 +4,7 @@ import { useTheme } from "./theme-provider";
 // Define theme colors that match your application's palette
 const themeColors = {
   light: "#ffffff", // White for light mode
-  dark: "#000000"   // Black for dark mode
+  dark: "#0a0a0a"   // Black for dark mode
 };
 
 export function ThemeMeta() {
