@@ -12,11 +12,16 @@ const rootDir = resolve(__dirname, '..');
 const pathsToClean = [
   'node_modules',
   'dist',
+  '.wrangler', // Wrangler local development directory
+  'playwright-report', // Playwright test reports
+  'test-results', // Test results
 ];
 
 // Extra paths to clean if using --deep flag
 const deepCleanPaths = [
   'bun.lock',
+  '.dev.vars',     // Wrangler development variables
+  '.env',          // Environment variables
 ];
 
 // Check if deep clean flag is passed

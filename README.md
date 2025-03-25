@@ -19,6 +19,9 @@ bun install
 # Start development server
 bun run dev
 
+# Start development server with CORS proxy
+bun run dev:all
+
 # Build for production
 bun run build
 
@@ -29,6 +32,31 @@ bun run preview
 bun run clean       # Standard clean (node_modules, dist)
 bun run clean:dry   # Preview what will be cleaned
 bun run clean:deep  # Deep clean (includes lock files)
+```
+
+## CORS Proxy
+
+The application includes a CORS proxy for accessing external APIs that don't have CORS headers configured to allow requests from our domain. This is particularly useful for fetching `.well-known` endpoints and JWKS URIs from identity providers.
+
+The proxy works by:
+
+1. Receiving requests from our frontend at `/api/cors-proxy/{url}`
+2. Forwarding the request to the target URL
+3. Adding the necessary CORS headers to the response
+4. Returning the modified response to our frontend
+
+### Local Development
+
+For local development, the CORS proxy runs on port 8788. You can start both the Vite development server and the CORS proxy simultaneously with:
+
+```bash
+bun run dev:all
+```
+
+To start only the CORS proxy:
+
+```bash
+bun run dev:proxy
 ```
 
 ## Adding shadcn Components

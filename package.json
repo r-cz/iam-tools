@@ -19,7 +19,9 @@
     "test:e2e": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
-    "test:debug": "playwright test --debug"
+    "test:debug": "playwright test --debug",
+    "dev:proxy": "wrangler pages dev --port 8788 ./functions",
+    "dev:all": "concurrently \"bun run dev\" \"bun run dev:proxy\""
   },
   "dependencies": {
     "jose": "^6.0.10",
@@ -47,17 +49,19 @@
   "devDependencies": {
     "@eslint/js": "^9.23.0",
     "@playwright/test": "^1.51.1",
-    "@types/node": "^22.13.11",
+    "@types/node": "^22.13.13",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
     "eslint": "^9.23.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
     "typescript": "~5.8.2",
-    "typescript-eslint": "^8.27.0",
-    "vite": "^6.2.2",
-    "vite-plugin-pwa": "^0.21.2"
+    "typescript-eslint": "^8.28.0",
+    "vite": "^6.2.3",
+    "vite-plugin-pwa": "^0.21.2",
+    "wrangler": "^4.4.0"
   }
 }
