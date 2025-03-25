@@ -6,7 +6,6 @@ const originalFetch = global.fetch;
 
 describe('JWKS Fetching Logic', () => {
   // Our test issuer URL - Using a fixed domain for testing purposes
-  // The dots in this URL need to be escaped when used in regular expressions
   const testIssuerUrl = 'https://login.my.chick-fil-a.com';
   
   // Track all fetch calls
@@ -85,11 +84,9 @@ describe('JWKS Fetching Logic', () => {
     // Verify the fetch was called with the right URL
     expect(fetchCalls.length).toBe(1);
     
-    // When using URLs in RegExp patterns, explicitly escape all special characters
-    // This creates a pattern that matches the exact URL, not treating dots as wildcards
-    const safePattern = configUrl.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const urlRegex = new RegExp(safePattern);
-    expect(fetchCalls[0]).toMatch(urlRegex);
+    // Instead of using a regex, use strict string equality
+    // This is the most secure approach as it requires an exact match
+    expect(fetchCalls[0]).toBe(configUrl);
   });
 
   test('should fetch and parse JWKS from URI', async () => {
@@ -111,13 +108,39 @@ describe('JWKS Fetching Logic', () => {
     // Verify the fetch calls
     expect(fetchCalls.length).toBe(2);
     
-    // Create properly escaped regex patterns for URL matching
-    const configUrlPattern = configUrl.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const jwksUrlPattern = config.jwks_uri.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    // Use strict equality instead of regex matching
+    expect(fetchCalls[0]).toBe(configUrl);
+    expect(fetchCalls[1]).toBe(config.jwks_uri);
+  });
+
+  test('should handle complete OIDC discovery and JWKS resolution flow', async () => {
+    // Step 1: Get the OpenID configuration
+    const configUrl = `${testIssuerUrl}/.well-known/openid-configuration`;
+    const configResponse = await proxyFetch(configUrl);
+    expect(configResponse.ok).toBe(true);
     
-    // Check that both URLs were called correctly
-    expect(fetchCalls[0]).toMatch(new RegExp(configUrlPattern));
-    expect(fetchCalls[1]).toMatch(new RegExp(jwksUrlPattern));
+    const config = await configResponse.json();
+    expect(config.jwks_uri).toBeDefined();
+    
+    // Step 2: Get the JWKS
+    const jwksResponse = await proxyFetch(config.jwks_uri);
+    expect(jwksResponse.ok).toBe(true);
+    
+    const jwks = await jwksResponse.json();
+    expect(jwks.keys).toBeDefined();
+    expect(jwks.keys.length).toBeGreaterThan(0);
+    
+    // Verify the JWKS key structure
+    const key = jwks.keys[0];
+    expect(key.kty).toBeDefined();
+    expect(key.kid).toBeDefined();
+    expect(key.n).toBeDefined();
+    expect(key.e).toBeDefined();
+    
+    // Verify all requests went through with exact URL matching
+    expect(fetchCalls.length).toBe(2);
+    expect(fetchCalls[0]).toBe(configUrl);
+    expect(fetchCalls[1]).toBe(config.jwks_uri);
   });
 
   test('should handle invalid configuration response', async () => {
