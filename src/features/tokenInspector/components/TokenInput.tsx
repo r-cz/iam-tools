@@ -1,5 +1,6 @@
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { generateFreshToken } from "../utils/generate-token";
 
 interface TokenInputProps {
@@ -30,7 +31,7 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <label htmlFor="token-input" className="block text-sm font-medium">
           OAuth/OIDC Token
@@ -68,19 +69,17 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
         placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       />
       
-      {token && (
-        <div className="flex justify-end mt-1">
-          <div className="text-xs text-muted-foreground">
+      <div className="flex justify-between items-center">
+        {token && (
+          <Badge variant="secondary" className="font-mono">
             Characters: {token.length}
-          </div>
-        </div>
-      )}
-      
-      <div className="flex justify-end">
+          </Badge>
+        )}
+        {!token && <div />}
         <Button 
           onClick={onDecode}
           disabled={!token}
-          className="w-full sm:w-auto"
+          className="w-auto"
         >
           Inspect Token
         </Button>

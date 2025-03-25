@@ -5,9 +5,10 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { TokenInput } from "./components/TokenInput";
-
 import { TokenHeader } from "./components/TokenHeader";
 import { TokenPayload } from "./components/TokenPayload";
 import { TokenSignature } from "./components/TokenSignature";
@@ -212,10 +213,38 @@ export function TokenInspector() {
     }
   };
 
+  // Helper to get token type badge
+  const getTokenTypeBadge = () => {
+    if (tokenType === "id_token") {
+      return <Badge variant="outline" className="bg-blue-500/20 text-blue-700 hover:bg-blue-500/20">OIDC ID Token</Badge>;
+    } else if (tokenType === "access_token") {
+      if (decodedToken?.header.typ === "at+jwt" || decodedToken?.header.typ === "application/at+jwt") {
+        return <Badge variant="outline" className="bg-purple-500/20 text-purple-700 hover:bg-purple-500/20">OAuth JWT Access Token (RFC9068)</Badge>;
+      } else {
+        return <Badge variant="outline" className="bg-green-500/20 text-green-700 hover:bg-green-500/20">OAuth Access Token</Badge>;
+      }
+    } else {
+      return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">Unknown Token Type</Badge>;
+    }
+  };
+
+  // Helper to get signature status badge
+  const getSignatureStatusBadge = () => {
+    if (!decodedToken) return null;
+    
+    if (decodedToken.signature.valid) {
+      return <Badge variant="outline" className="bg-green-500/20 text-green-700 hover:bg-green-500/20">Signature Valid</Badge>;
+    } else if (jwks) {
+      return <Badge variant="outline" className="bg-red-500/20 text-red-700 hover:bg-red-500/20">Signature Invalid</Badge>;
+    } else {
+      return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">Signature Not Verified</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-5">
           <TokenInput 
             token={token} 
             setToken={setToken} 
@@ -224,55 +253,32 @@ export function TokenInspector() {
         </CardContent>
       </Card>
 
-
-
       {decodedToken && (
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col space-y-4 mb-4">
+          <CardContent className="p-5">
+            <div className="flex flex-col space-y-3 mb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center">
-                  <div 
-                    className={`w-4 h-4 rounded-full mr-2 ${
-                      decodedToken.signature.valid ? 'bg-green-500' : 'bg-yellow-500'
-                    }`}
-                  ></div>
-                  <span>
-                    {decodedToken.signature.valid 
-                      ? 'Signature Valid' 
-                      : jwks 
-                        ? 'Signature Invalid' 
-                        : 'Signature Not Verified'
-                    }
-                  </span>
+                <div className="flex items-center gap-2">
+                  {getSignatureStatusBadge()}
                 </div>
-                <div className="text-sm font-medium">
-                Detected: {tokenType === "id_token" 
-                ? "OIDC ID Token" 
-                : tokenType === "access_token" 
-                ? decodedToken.header.typ === "at+jwt" || decodedToken.header.typ === "application/at+jwt"
-                  ? "OAuth JWT Access Token (RFC9068)" 
-                      : "OAuth Access Token"
-                    : <span className="text-amber-500 font-medium">Unknown Token Type</span>
-                }
-                {tokenType === "unknown" && (
-                <span className="block text-xs text-gray-500 mt-1">
-                    Missing standard claims. Check browser console for details.
-                    </span>
-                  )}
+                <div className="flex items-center">
+                  <span className="mr-2 text-sm">Detected:</span>
+                  {getTokenTypeBadge()}
                 </div>
               </div>
+              
+              {tokenType === "unknown" && (
+                <Alert className="mt-2 bg-amber-500/10 border-amber-500/20 text-amber-700">
+                  <AlertDescription>
+                    Missing standard claims. Check browser console for details.
+                  </AlertDescription>
+                </Alert>
+              )}
               
               <div className="border-t pt-3">
                 <TokenSize token={decodedToken.raw} />
               </div>
             </div>
-            
-            {decodedToken.signature.error && (
-              <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md">
-                {decodedToken.signature.error}
-              </div>
-            )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">
@@ -301,7 +307,6 @@ export function TokenInspector() {
                 <TokenSignature 
                   token={decodedToken.raw}
                   header={decodedToken.header}
-                  signatureValid={decodedToken.signature.valid}
                   signatureError={decodedToken.signature.error}
                   jwks={jwks}
                   issuerUrl={issuerUrl}

@@ -1,22 +1,23 @@
 
 import { JSONWebKeySet } from "jose";
 import { TokenJwksResolver } from "./TokenJwksResolver";
+import { CodeBlock } from "@/components/ui/code-block";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface TokenSignatureProps {
   token: string;
   header: any;
-  signatureValid: boolean;
   signatureError?: string;
   jwks: JSONWebKeySet | null;
   issuerUrl: string;
   setIssuerUrl: (url: string) => void;
   onJwksResolved: (jwks: JSONWebKeySet) => void;
+  // signatureValid parameter removed as it's no longer used
 }
 
 export function TokenSignature({ 
   token, 
   header, 
-  signatureValid, 
   signatureError, 
   jwks,
   issuerUrl,
@@ -33,7 +34,7 @@ export function TokenSignature({
     <div className="space-y-4">
       {/* JWKS Configuration */}
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div className="pb-2 p-4 border-b">
+        <div className="px-4 py-3 border-b">
           <h3 className="text-md font-medium leading-none tracking-tight">JWKS Configuration</h3>
         </div>
         <div className="p-4">
@@ -44,26 +45,16 @@ export function TokenSignature({
           />
         </div>
       </div>
-
-      <div className="flex items-center space-x-3">
-        <span className={`ml-2 inline-flex items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold ${signatureValid ? 'bg-green-500 text-white' : 'bg-amber-500 text-white'}`}>
-          {signatureValid 
-            ? 'Signature Valid' 
-            : jwks 
-              ? 'Signature Invalid' 
-              : 'Signature Not Verified'
-          }
-        </span>
-      </div>
       
       {signatureError && (
-        <div className="bg-destructive/10 text-destructive p-3 rounded-md">
-          {signatureError}
-        </div>
+        <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-destructive">
+          <AlertTitle>Signature Verification Error</AlertTitle>
+          <AlertDescription>{signatureError}</AlertDescription>
+        </Alert>
       )}
       
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div className="pb-2 p-4 border-b">
+        <div className="px-4 py-3 border-b">
           <h3 className="text-md font-medium leading-none tracking-tight">Signature Information</h3>
         </div>
         <div className="p-4 space-y-3">
@@ -74,7 +65,7 @@ export function TokenSignature({
             </p>
           </div>
           
-          <hr className="h-px my-4 bg-border" />
+          <hr className="h-px my-3 bg-border" />
           
           <div>
             <h4 className="text-sm font-medium mb-1">Key ID (kid):</h4>
@@ -83,20 +74,18 @@ export function TokenSignature({
             </p>
           </div>
           
-          <hr className="h-px my-4 bg-border" />
+          <hr className="h-px my-3 bg-border" />
           
           <div>
             <h4 className="text-sm font-medium mb-1">Raw Signature:</h4>
-            <pre className="p-2 block overflow-x-auto text-xs bg-muted rounded-md font-mono">
-              {signaturePart}
-            </pre>
+            <CodeBlock code={signaturePart} language="text" className="p-2 text-xs" />
           </div>
         </div>
       </div>
       
       {jwks && (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-          <div className="pb-2 p-4 border-b">
+          <div className="px-4 py-3 border-b">
             <h3 className="text-md font-medium leading-none tracking-tight">JWKS Information</h3>
           </div>
           <div className="p-4 space-y-3">
@@ -107,25 +96,29 @@ export function TokenSignature({
               </p>
             </div>
             
-            <hr className="h-px my-4 bg-border" />
+            <hr className="h-px my-3 bg-border" />
             
             {matchingKey ? (
               <div>
                 <h4 className="text-sm font-medium mb-1">Matching Key Found:</h4>
-                <pre className="p-2 block overflow-x-auto text-xs bg-muted rounded-md font-mono">
-                  {JSON.stringify(matchingKey, null, 2)}
-                </pre>
+                <CodeBlock code={JSON.stringify(matchingKey, null, 2)} language="json" className="p-2 text-xs" />
               </div>
             ) : header.kid ? (
-              <div className="bg-amber-500/10 text-amber-700 p-3 rounded-md">
-                No key with matching key ID "{header.kid}" found in the JWKS.
-                This could indicate a key rotation issue or an incorrect JWKS.
-              </div>
+              <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700">
+                <AlertTitle>No matching key found</AlertTitle>
+                <AlertDescription>
+                  No key with matching key ID "{header.kid}" found in the JWKS.
+                  This could indicate a key rotation issue or an incorrect JWKS.
+                </AlertDescription>
+              </Alert>
             ) : (
-              <div className="bg-amber-500/10 text-amber-700 p-3 rounded-md">
-                Token header does not contain a key ID (kid),
-                making it difficult to identify the correct key for validation.
-              </div>
+              <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700">
+                <AlertTitle>Missing key ID</AlertTitle>
+                <AlertDescription>
+                  Token header does not contain a key ID (kid),
+                  making it difficult to identify the correct key for validation.
+                </AlertDescription>
+              </Alert>
             )}
           </div>
         </div>
