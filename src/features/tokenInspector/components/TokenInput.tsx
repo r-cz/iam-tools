@@ -69,20 +69,16 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
       />
       
       <div className="flex justify-between items-center">
-        {token && (
-          <div className="text-xs text-muted-foreground">
-            Characters: {token.length}
-          </div>
-        )}
-        <div className={token ? "flex-1 flex justify-end" : "w-full"}>
-          <Button 
-            onClick={onDecode}
-            disabled={!token}
-            className={token ? "w-auto" : "w-full"}
-          >
-            Inspect Token
-          </Button>
+        <div className="text-xs text-muted-foreground">
+          {token ? `Characters: ${token.length}` : '\u00A0'}
         </div>
+        <Button 
+          onClick={onDecode}
+          disabled={!token}
+          className="w-auto"
+        >
+          Inspect Token
+        </Button>
       </div>
     </div>
   );
