@@ -1,0 +1,40 @@
+name: Bun Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+    
+    - name: Install dependencies
+      run: bun install
+      
+    - name: Build application
+      run: bun run build
+    
+    - name: Run Bun tests
+      run: bun test --preload ./src/tests/preload.ts
+      
+    - name: Run coverage tests
+      run: bun test --coverage --preload ./src/tests/preload.ts
+    
+    - name: Upload test coverage
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage/
+        retention-days: 30

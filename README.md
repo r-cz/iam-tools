@@ -9,6 +9,7 @@ A collection of specialized tools for Identity and Access Management (IAM) devel
 - **Components**: shadcn/ui
 - **Package Manager**: Bun
 - **Routing**: React Router
+- **Testing**: Bun Test + React Testing Library
 
 ## Development
 
@@ -33,6 +34,26 @@ bun run clean       # Standard clean (node_modules, dist)
 bun run clean:dry   # Preview what will be cleaned
 bun run clean:deep  # Deep clean (includes lock files)
 ```
+
+## Testing
+
+The project uses Bun's built-in test runner for fast and efficient tests:
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in watch mode
+bun test:watch
+
+# Run tests with coverage
+bun test:coverage
+
+# Update snapshots
+bun test:update
+```
+
+Tests are located in `src/tests` and follow a structure mirroring the main application.
 
 ## CORS Proxy
 
@@ -96,6 +117,7 @@ We use a feature-based organization pattern that groups code by functionality:
 - `src/types` - Shared TypeScript type definitions
 - `src/lib` - Utility functions and shared libraries
 - `src/hooks` - Custom React hooks (useIsMobile, useLocalStorage, useDebounce, useClipboard)
+- `src/tests` - Test files following the same structure as the application
 
 See [docs/file-structure.md](docs/file-structure.md) for more details.
 
