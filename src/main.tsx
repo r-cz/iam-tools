@@ -6,6 +6,7 @@ import { ThemeProvider } from './components/theme'
 import { Layout } from './components/layout'
 import HomePage from './features/home'
 import TokenInspectorPage from './features/tokenInspector/pages'
+import OidcExplorerPage from './features/oidcExplorer/pages'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="token-inspector" element={<TokenInspectorPage />} />
+            <Route path="oidc-explorer" element={<OidcExplorerPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

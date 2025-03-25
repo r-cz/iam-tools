@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PageContainer, PageHeader } from '@/components/page';
-import { HomeIcon } from 'lucide-react';
+import { HomeIcon, Search, FileJson, KeyRound } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -11,10 +11,42 @@ export default function HomePage() {
         icon={HomeIcon}
       />
       
-      <div className="grid auto-rows-min gap-4 md:grid-cols-1 mb-6">
-        <Link to="/token-inspector" className="aspect-video rounded-xl bg-muted/50 flex items-center justify-center hover:bg-muted/70 transition-colors">
-          <h3 className="text-xl font-medium">Token Inspector</h3>
-        </Link>
+      <div className="grid auto-rows-min gap-6 md:grid-cols-2 mb-6">
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold flex items-center gap-2">
+            <KeyRound className="h-6 w-6" />
+            OAuth/OIDC Tools
+          </h2>
+          <div className="grid grid-cols-1 gap-4">
+            <Link to="/token-inspector" className="aspect-video rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/20 flex flex-col items-center justify-center hover:from-blue-500/20 hover:to-blue-600/30 transition-colors p-6">
+              <Search className="h-12 w-12 mb-4 text-blue-600" />
+              <h3 className="text-xl font-medium">Token Inspector</h3>
+              <p className="text-muted-foreground text-center mt-2">Analyze JWT tokens, validate signatures, and inspect claims</p>
+            </Link>
+            
+            <Link to="/oidc-explorer" className="aspect-video rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-600/20 flex flex-col items-center justify-center hover:from-purple-500/20 hover:to-indigo-600/30 transition-colors p-6">
+              <FileJson className="h-12 w-12 mb-4 text-indigo-600" />
+              <h3 className="text-xl font-medium">OIDC Explorer</h3>
+              <p className="text-muted-foreground text-center mt-2">Explore OpenID Connect provider configurations and JWKS endpoints</p>
+            </Link>
+          </div>
+        </div>
+        
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold">Latest Updates</h2>
+          <div className="rounded-xl border p-6 shadow-sm">
+            <h3 className="text-lg font-medium mb-2">New Feature: OIDC Explorer</h3>
+            <p className="text-muted-foreground mb-4">
+              Explore OpenID Connect provider configurations with our new tool. Fetch and analyze OIDC metadata, inspect JWKS endpoints, and understand provider capabilities.
+            </p>
+            <Link 
+              to="/oidc-explorer" 
+              className="text-sm text-primary hover:underline"
+            >
+              Try it now →
+            </Link>
+          </div>
+        </div>
       </div>
     </PageContainer>
   );
