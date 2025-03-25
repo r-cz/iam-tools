@@ -1,6 +1,8 @@
 
 import { ValidationResult } from "../utils/types";
 import { CodeBlock } from "@/components/ui/code-block";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface TokenHeaderProps {
   header: any;
@@ -17,15 +19,15 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
     if (results.length === 0) return null;
     
     if (results.some(r => r.severity === 'error' && !r.valid)) {
-      return <span className="ml-2 inline-flex items-center rounded-full border border-transparent bg-destructive px-2.5 py-0.5 text-xs font-semibold text-destructive-foreground">Error</span>;
+      return <Badge variant="destructive" className="ml-2">Error</Badge>;
     }
     
     if (results.some(r => r.severity === 'warning' && !r.valid)) {
-      return <span className="ml-2 inline-flex items-center rounded-full border border-transparent bg-amber-500 px-2.5 py-0.5 text-xs font-semibold text-white">Warning</span>;
+      return <Badge variant="outline" className="ml-2 bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">Warning</Badge>;
     }
     
     if (results.every(r => r.valid)) {
-      return <span className="ml-2 inline-flex items-center rounded-full border border-transparent bg-green-500 px-2.5 py-0.5 text-xs font-semibold text-white">Valid</span>;
+      return <Badge variant="outline" className="ml-2 bg-green-500/20 text-green-700 hover:bg-green-500/20">Valid</Badge>;
     }
     
     return null;
@@ -79,23 +81,23 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
                   
                   {relevantResults.length > 0 && (
                     <div className="space-y-2">
-                      {relevantResults.map((result, index) => (
-                        <div
-                          key={index}
-                          className={`p-2 rounded-md text-sm ${
-                            result.severity === 'error' 
-                              ? 'bg-destructive/10 text-destructive' 
-                              : result.severity === 'warning'
-                                ? 'bg-amber-500/10 text-amber-700'
-                                : 'bg-blue-500/10 text-blue-700'
-                          }`}
-                        >
-                          {result.message}
-                          {result.details && (
-                            <p className="mt-1 text-xs opacity-80">{result.details}</p>
-                          )}
-                        </div>
-                      ))}
+                      {relevantResults.map((result, index) => {
+                        const variant = result.severity === 'error' ? 'destructive' : 'default';
+                        const className = result.severity === 'warning' 
+                          ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' 
+                          : result.severity === 'info' 
+                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-700'
+                            : '';
+                        
+                        return (
+                          <Alert key={index} variant={variant} className={className}>
+                            <AlertTitle>{result.message}</AlertTitle>
+                            {result.details && (
+                              <AlertDescription>{result.details}</AlertDescription>
+                            )}
+                          </Alert>
+                        );
+                      })}
                     </div>
                   )}
 

@@ -2,6 +2,8 @@
 import { JSONWebKeySet } from "jose";
 import { TokenJwksResolver } from "./TokenJwksResolver";
 import { CodeBlock } from "@/components/ui/code-block";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface TokenSignatureProps {
   token: string;
@@ -47,20 +49,27 @@ export function TokenSignature({
       </div>
 
       <div className="flex items-center space-x-3">
-        <span className={`inline-flex items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-semibold ${signatureValid ? 'bg-green-500 text-white' : 'bg-amber-500 text-white'}`}>
+        <Badge 
+          variant={signatureValid ? "outline" : "outline"} 
+          className={signatureValid 
+            ? "bg-green-500/20 text-green-700 hover:bg-green-500/20" 
+            : "bg-amber-500/20 text-amber-700 hover:bg-amber-500/20"
+          }
+        >
           {signatureValid 
             ? 'Signature Valid' 
             : jwks 
               ? 'Signature Invalid' 
               : 'Signature Not Verified'
           }
-        </span>
+        </Badge>
       </div>
       
       {signatureError && (
-        <div className="bg-destructive/10 text-destructive p-3 rounded-md">
-          {signatureError}
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Signature Verification Error</AlertTitle>
+          <AlertDescription>{signatureError}</AlertDescription>
+        </Alert>
       )}
       
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -114,15 +123,21 @@ export function TokenSignature({
                 <CodeBlock code={JSON.stringify(matchingKey, null, 2)} language="json" className="p-2 text-xs" />
               </div>
             ) : header.kid ? (
-              <div className="bg-amber-500/10 text-amber-700 p-3 rounded-md">
-                No key with matching key ID "{header.kid}" found in the JWKS.
-                This could indicate a key rotation issue or an incorrect JWKS.
-              </div>
+              <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700">
+                <AlertTitle>No matching key found</AlertTitle>
+                <AlertDescription>
+                  No key with matching key ID "{header.kid}" found in the JWKS.
+                  This could indicate a key rotation issue or an incorrect JWKS.
+                </AlertDescription>
+              </Alert>
             ) : (
-              <div className="bg-amber-500/10 text-amber-700 p-3 rounded-md">
-                Token header does not contain a key ID (kid),
-                making it difficult to identify the correct key for validation.
-              </div>
+              <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700">
+                <AlertTitle>Missing key ID</AlertTitle>
+                <AlertDescription>
+                  Token header does not contain a key ID (kid),
+                  making it difficult to identify the correct key for validation.
+                </AlertDescription>
+              </Alert>
             )}
           </div>
         </div>

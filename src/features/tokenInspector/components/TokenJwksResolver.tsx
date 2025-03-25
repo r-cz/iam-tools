@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CodeBlock } from "@/components/ui/code-block";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface TokenJwksResolverProps {
   issuerUrl: string;
@@ -196,22 +197,25 @@ export function TokenJwksResolver({
           </div>
           
           {error && (
-            <div className="relative w-full rounded-lg border p-4 bg-amber-500/10 text-amber-700">
-              <p className="font-medium break-words">{error.message}</p>
-              {error.isCors && (
-                <div className="mt-2">
-                  <p className="text-sm">Try fetching the JWKS manually with:</p>
-                  <CodeBlock 
-                    code={`curl ${issuerUrl.endsWith('/') 
-                      ? `${issuerUrl}.well-known/jwks.json` 
-                      : `${issuerUrl}/.well-known/jwks.json`}`} 
-                    language="bash" 
-                    className="mt-1 text-xs"
-                  />
-                  <p className="text-sm mt-2">Then use the "Manual Entry" option to paste the result.</p>
-                </div>
-              )}
-            </div>
+            <Alert variant={error.isCors ? 'default' : 'destructive'} className={error.isCors ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' : ''}>
+              <AlertTitle>{error.isCors ? 'CORS Error' : 'Error Fetching JWKS'}</AlertTitle>
+              <AlertDescription>
+                {error.message}
+                {error.isCors && (
+                  <div className="mt-2">
+                    <p className="text-sm">Try fetching the JWKS manually with:</p>
+                    <CodeBlock 
+                      code={`curl ${issuerUrl.endsWith('/') 
+                        ? `${issuerUrl}.well-known/jwks.json` 
+                        : `${issuerUrl}/.well-known/jwks.json`}`} 
+                      language="bash" 
+                      className="mt-1 text-xs"
+                    />
+                    <p className="text-sm mt-2">Then use the "Manual Entry" option to paste the result.</p>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
         </TabsContent>
         
