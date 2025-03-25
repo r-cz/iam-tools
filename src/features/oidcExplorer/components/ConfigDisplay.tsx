@@ -43,6 +43,28 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
   // We'll use this to track the currently copied text
   const [copiedText, setCopiedText] = useState<string>('');
   
+  /**
+   * Format a long property name to be more readable
+   * Breaking snake_case into proper spacing and handling long names
+   */
+  const formatPropertyName = (key: string): string => {
+    // Replace underscores with spaces
+    let formatted = key.replace(/_/g, ' ');
+    
+    // Handle known property patterns for better readability
+    formatted = formatted
+      .replace('alg values supported', 'algorithms')
+      .replace('auth methods supported', 'auth methods')
+      .replace('signing alg values supported', 'signing algorithms');
+    
+    // Capitalize first letter of each word
+    formatted = formatted.split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+      
+    return formatted;
+  };
+  
   // Group config properties
   const endpoints = [
     "authorization_endpoint",
@@ -214,13 +236,19 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
     const description = getEndpointDescription(key);
     const required = endpointDescriptions[key]?.required;
     
+    // Get a friendly formatted property name
+    const displayName = endpointDescriptions[key]?.name || formatPropertyName(key);
+    
+    // Determine if this is a very long property name
+    const isLongProperty = displayName.length > 30;
+    
     return (
       <div key={key} className="py-3 first:pt-0 last:pb-0">
         <div className="flex flex-wrap justify-between gap-2 mb-1">
-          <div className="flex items-center gap-2">
-            {icon}
-            <h4 className="font-medium">
-              {endpointDescriptions[key]?.name || key}
+          <div className="flex items-start gap-2">
+            {icon && <span className="mt-1">{icon}</span>}
+            <h4 className={`font-medium break-words ${isLongProperty ? 'text-sm' : ''}`}>
+              {displayName}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h4>
           </div>
@@ -282,10 +310,12 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
                     return (
                       <div key={key} className="py-3 first:pt-0 last:pb-0">
                         <div className="flex flex-wrap justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-2">
-                            <Link className="h-4 w-4 text-blue-600" />
-                            <h4 className="font-medium">
-                              {endpointDescriptions[key]?.name || key}
+                          <div className="flex items-start gap-2">
+                            <span className="mt-1">
+                              <Link className="h-4 w-4 text-blue-600" />
+                            </span>
+                            <h4 className="font-medium break-words">
+                              {endpointDescriptions[key]?.name || formatPropertyName(key)}
                               {endpointDescriptions[key]?.required && <span className="text-red-500 ml-1">*</span>}
                             </h4>
                           </div>
