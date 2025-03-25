@@ -1,15 +1,9 @@
 // This file sets up the test environment
-import { afterAll, afterEach, beforeAll, expect } from 'bun:test';
+import { afterAll, afterEach, beforeAll } from 'bun:test';
 
-// Create a simple DOM environment if testing in Node
-if (typeof window === 'undefined') {
-  globalThis.window = {} as any;
-  globalThis.document = {} as any;
-}
-
-// Clean up function for tests
+// Clean up after each test
 afterEach(() => {
-  // Add cleanup logic here
+  // Add any cleanup logic here
 });
 
 // Global setup
@@ -21,6 +15,3 @@ beforeAll(() => {
 afterAll(() => {
   // Add any global test teardown here
 });
-
-// Make expect available globally for jest-dom
-globalThis.expect = expect;
