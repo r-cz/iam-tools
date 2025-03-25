@@ -23,7 +23,7 @@ jobs:
       run: bun install
       
     - name: Build application
-      run: tsc -b tsconfig.app.json && vite build
+      run: bun run build
     
     - name: Run Bun tests
       run: bun test --preload ./src/tests/preload.ts
