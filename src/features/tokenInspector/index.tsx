@@ -280,11 +280,7 @@ export function TokenInspector() {
               </div>
             </div>
             
-            {decodedToken.signature.error && (
-              <Alert variant="destructive" className="mb-4 bg-red-500/10 border-red-500/20 text-destructive">
-                <AlertDescription>{decodedToken.signature.error}</AlertDescription>
-              </Alert>
-            )}
+            {/* Removed the redundant error alert that was here */}
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">

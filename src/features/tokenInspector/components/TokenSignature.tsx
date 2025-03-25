@@ -2,7 +2,6 @@
 import { JSONWebKeySet } from "jose";
 import { TokenJwksResolver } from "./TokenJwksResolver";
 import { CodeBlock } from "@/components/ui/code-block";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface TokenSignatureProps {
@@ -48,22 +47,7 @@ export function TokenSignature({
         </div>
       </div>
 
-      <div className="flex items-center space-x-3">
-        <Badge 
-          variant={signatureValid ? "outline" : "outline"} 
-          className={signatureValid 
-            ? "bg-green-500/20 text-green-700 hover:bg-green-500/20" 
-            : "bg-amber-500/20 text-amber-700 hover:bg-amber-500/20"
-          }
-        >
-          {signatureValid 
-            ? 'Signature Valid' 
-            : jwks 
-              ? 'Signature Invalid' 
-              : 'Signature Not Verified'
-          }
-        </Badge>
-      </div>
+      {/* Removed the redundant signature status badge that was here */}
       
       {signatureError && (
         <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-destructive">
