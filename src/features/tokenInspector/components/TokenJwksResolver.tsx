@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CodeBlock } from "@/components/ui/code-block";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 interface TokenJwksResolverProps {
   issuerUrl: string;
@@ -20,7 +20,8 @@ export function TokenJwksResolver({
   const [jwksMode, setJwksMode] = useState<"automatic" | "manual">("automatic");
   const [manualJwks, setManualJwks] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<{ message: string; isCors?: boolean } | null>(null);
+  // Using error state for internal logic but displaying through toast
+  const [_error, setError] = useState<string | null>(null);
   // Removed isAutoPopulated state
   
   // Instead of trying to auto-fetch with every URL change,
@@ -90,6 +91,17 @@ export function TokenJwksResolver({
       
       onJwksResolved(jwks);
       setError(null);
+      toast.success(
+        <div>
+          <p><strong>JWKS Fetched Successfully</strong></p>
+          <p>Found {jwks.keys.length} keys in the JWKS</p>
+        </div>,
+        {
+          id: 'jwks-fetch-success',
+          duration: 3000,
+        }
+      );
+      toast.dismiss('jwks-fetch-error');
     } catch (err: any) {
       console.error("Error fetching JWKS:", err);
       
@@ -98,12 +110,47 @@ export function TokenJwksResolver({
       const isCorsError = errorMessage.includes("CORS") || 
                          err.name === 'TypeError' && errorMessage.includes('Failed to fetch');
       
-      setError({
-        message: isCorsError 
-          ? 'CORS error: The server does not allow direct browser access.' 
-          : `Error fetching JWKS: ${errorMessage}`,
-        isCors: isCorsError
-      });
+      const errorText = isCorsError
+        ? 'CORS error: The server does not allow direct browser access.'
+        : `Error fetching JWKS: ${errorMessage}`;
+      
+      setError(errorText);
+      
+      // Show toast notification
+      if (isCorsError) {
+        const curlCommand = issuerUrl.endsWith('/') 
+          ? `${issuerUrl}.well-known/jwks.json` 
+          : `${issuerUrl}/.well-known/jwks.json`;
+
+        toast.error(
+          <div className="space-y-2">
+            <p><strong>CORS Error</strong></p>
+            <p>{errorText}</p>
+            <p className="text-sm">Try fetching the JWKS manually with:</p>
+            <CodeBlock 
+              code={`curl ${curlCommand}`} 
+              language="bash" 
+              className="mt-1 text-xs"
+            />
+            <p className="text-sm mt-2">Then use the "Manual Entry" option to paste the result.</p>
+          </div>,
+          {
+            id: 'jwks-fetch-error',
+            duration: 10000,
+          }
+        );
+      } else {
+        toast.error(
+          <div>
+            <p><strong>Error Fetching JWKS</strong></p>
+            <p>{errorText}</p>
+          </div>,
+          {
+            id: 'jwks-fetch-error',
+            duration: 5000,
+          }
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -135,12 +182,32 @@ export function TokenJwksResolver({
       // No setTimeout - we want immediate verification
       onJwksResolved(parsedJwks);
       setError(null);
+      
+      toast.success(
+        <div>
+          <p><strong>JWKS Applied Successfully</strong></p>
+          <p>Found {parsedJwks.keys.length} keys in the JWKS</p>
+        </div>,
+        {
+          id: 'jwks-manual-success',
+          duration: 3000,
+        }
+      );
     } catch (err: any) {
       console.error('Error parsing manual JWKS:', err);
-      setError({
-        message: `Invalid JWKS JSON: ${err.message}`,
-        isCors: false
-      });
+      const errorText = `Invalid JWKS JSON: ${err.message}`;
+      setError(errorText);
+      
+      toast.error(
+        <div>
+          <p><strong>Invalid JWKS Format</strong></p>
+          <p>{errorText}</p>
+        </div>,
+        {
+          id: 'jwks-parse-error',
+          duration: 5000,
+        }
+      );
     }
   };
   
@@ -198,33 +265,7 @@ export function TokenJwksResolver({
             </Button>
           </div>
           
-          {error && (
-            <Alert 
-              variant={error.isCors ? 'default' : 'destructive'} 
-              className={error.isCors 
-                ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' 
-                : 'bg-red-500/10 border-red-500/20 text-destructive'
-              }
-            >
-              <AlertTitle>{error.isCors ? 'CORS Error' : 'Error Fetching JWKS'}</AlertTitle>
-              <AlertDescription>
-                {error.message}
-                {error.isCors && (
-                  <div className="mt-2">
-                    <p className="text-sm">Try fetching the JWKS manually with:</p>
-                    <CodeBlock 
-                      code={`curl ${issuerUrl.endsWith('/') 
-                        ? `${issuerUrl}.well-known/jwks.json` 
-                        : `${issuerUrl}/.well-known/jwks.json`}`} 
-                      language="bash" 
-                      className="mt-1 text-xs"
-                    />
-                    <p className="text-sm mt-2">Then use the "Manual Entry" option to paste the result.</p>
-                  </div>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
+
         </TabsContent>
         
         <TabsContent value="manual" className="space-y-4 mt-4">

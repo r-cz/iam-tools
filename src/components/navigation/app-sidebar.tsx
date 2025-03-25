@@ -1,8 +1,10 @@
 import * as React from "react"
 import {
-  Coins,
   Fingerprint,
+  KeyRound,
   Search,
+
+  FileJson,
 } from "lucide-react"
 
 import { NavMain } from "@/components/navigation/nav-main"
@@ -20,14 +22,19 @@ import {
 const data = {
   navMain: [
     {
-      title: "Token Tools",
+      title: "OAuth/OIDC Tools",
       url: "#",
-      icon: Coins,
+      icon: KeyRound,
       items: [
         {
           title: "Token Inspector",
           url: "/token-inspector",
           icon: Search,
+        },
+        {
+          title: "OIDC Explorer",
+          url: "/oidc-explorer",
+          icon: FileJson,
         },
       ],
     },

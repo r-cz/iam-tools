@@ -4,17 +4,21 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import { ThemeProvider } from './components/theme'
 import { Layout } from './components/layout'
+import { Toaster } from './components/ui/sonner'
 import HomePage from './features/home'
 import TokenInspectorPage from './features/tokenInspector/pages'
+import OidcExplorerPage from './features/oidcExplorer/pages'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider defaultTheme="system" storageKey="iam-tools-theme">
       <BrowserRouter>
+        <Toaster position="bottom-right" closeButton richColors />
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="token-inspector" element={<TokenInspectorPage />} />
+            <Route path="oidc-explorer" element={<OidcExplorerPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
