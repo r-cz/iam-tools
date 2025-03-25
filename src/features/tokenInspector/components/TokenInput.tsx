@@ -1,5 +1,6 @@
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { generateFreshToken } from "../utils/generate-token";
 
 interface TokenInputProps {
@@ -69,9 +70,12 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
       />
       
       <div className="flex justify-between items-center">
-        <div className="text-xs text-muted-foreground">
-          {token ? `Characters: ${token.length}` : '\u00A0'}
-        </div>
+        {token && (
+          <Badge variant="secondary" className="font-mono">
+            Characters: {token.length}
+          </Badge>
+        )}
+        {!token && <div />}
         <Button 
           onClick={onDecode}
           disabled={!token}
