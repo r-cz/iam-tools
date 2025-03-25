@@ -123,7 +123,9 @@ export function TokenPayload({
                   ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' 
                   : result.severity === 'info' 
                     ? 'bg-blue-500/10 border-blue-500/20 text-blue-700'
-                    : '';
+                    : result.severity === 'error'
+                      ? 'bg-red-500/10 border-red-500/20 text-destructive'
+                      : '';
                 
                 return (
                   <Alert key={index} variant={variant} className={className}>

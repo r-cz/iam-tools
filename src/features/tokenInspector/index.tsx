@@ -281,7 +281,7 @@ export function TokenInspector() {
             </div>
             
             {decodedToken.signature.error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-4 bg-red-500/10 border-red-500/20 text-destructive">
                 <AlertDescription>{decodedToken.signature.error}</AlertDescription>
               </Alert>
             )}

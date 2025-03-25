@@ -66,7 +66,7 @@ export function TokenSignature({
       </div>
       
       {signatureError && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-destructive">
           <AlertTitle>Signature Verification Error</AlertTitle>
           <AlertDescription>{signatureError}</AlertDescription>
         </Alert>

@@ -197,7 +197,13 @@ export function TokenJwksResolver({
           </div>
           
           {error && (
-            <Alert variant={error.isCors ? 'default' : 'destructive'} className={error.isCors ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' : ''}>
+            <Alert 
+              variant={error.isCors ? 'default' : 'destructive'} 
+              className={error.isCors 
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' 
+                : 'bg-red-500/10 border-red-500/20 text-destructive'
+              }
+            >
               <AlertTitle>{error.isCors ? 'CORS Error' : 'Error Fetching JWKS'}</AlertTitle>
               <AlertDescription>
                 {error.message}
