@@ -38,10 +38,10 @@ interface ConfigDisplayProps {
 
 export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
   const [view, setView] = useState<'formatted' | 'raw'>('formatted');
-  const { copy, copied, copyTarget } = useClipboard();
+  const { copy, copied } = useClipboard();
   
-  // Check if issuer URL of the config matches the claimed issuer URL
-  const issuerValid = !!config.issuer && config.issuer.trim() !== '';
+  // We'll use this to track the currently copied text
+  const [copiedText, setCopiedText] = useState<string>('');
   
   // Group config properties
   const endpoints = [
@@ -155,10 +155,13 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
           variant="ghost" 
           size="sm" 
           className="h-6 px-2 text-xs"
-          onClick={() => copy(value)}
-          disabled={copied && copyTarget === value}
+          onClick={() => {
+                copy(value);
+                setCopiedText(value);
+              }}
+          disabled={copied && copiedText === value}
         >
-          {copied && copyTarget === value ? (
+          {copied && copiedText === value ? (
             <>
               <ClipboardCheck className="h-3 w-3 mr-1" />
               Copied
@@ -298,10 +301,13 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 px-2 text-xs"
-                                onClick={() => copy(config.jwks_uri)}
-                                disabled={copied && copyTarget === config.jwks_uri}
+                                onClick={() => {
+                                  copy(config.jwks_uri || '');
+                                  setCopiedText(config.jwks_uri || '');
+                                }}
+                                disabled={copied && copiedText === config.jwks_uri}
                               >
-                                {copied && copyTarget === config.jwks_uri ? (
+                                {copied && copiedText === config.jwks_uri ? (
                                   <>
                                     <ClipboardCheck className="h-3 w-3 mr-1" />
                                     Copied

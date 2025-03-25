@@ -313,7 +313,7 @@ function hasOktaMarkers(config: OidcConfiguration): boolean {
     config.scopes_supported?.includes('okta.users.read') ||
     config.scopes_supported?.includes('okta.apps.read');
     
-  return hasOktaEndpoints || hasOktaPrefix || hasOktaSpecificClaims || hasOktaScopes;
+  return !!(hasOktaEndpoints || hasOktaPrefix || hasOktaSpecificClaims || hasOktaScopes);
 }
 
 /**
@@ -395,7 +395,7 @@ function hasCognitoMarkers(config: OidcConfiguration): boolean {
     config.claims_supported?.includes('cognito:username') ||
     config.claims_supported?.includes('cognito:groups');
     
-  return hasCognitoEndpoints || hasCognitoClaims;
+  return !!(hasCognitoEndpoints || hasCognitoClaims);
 }
 
 /**
@@ -437,7 +437,7 @@ function hasForgeRockMarkers(config: OidcConfiguration): boolean {
     config.scopes_supported?.includes('fr:idm:*') ||
     config.scopes_supported?.includes('am-introspect');
     
-  return hasForgeRockEndpoints || hasForgeRockProperties || hasForgeRockScopes;
+  return !!(hasForgeRockEndpoints || hasForgeRockProperties || hasForgeRockScopes);
 }
 
 /**
@@ -454,5 +454,5 @@ function hasIdentityServerMarkers(config: OidcConfiguration): boolean {
     config.response_types_supported?.includes('code id_token');
   
   // Check for version information to differentiate between Duende and older IdentityServer
-  return hasIdentityServerProperties && isDuende;
+  return !!(hasIdentityServerProperties && isDuende);
 }

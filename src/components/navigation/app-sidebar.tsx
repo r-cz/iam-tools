@@ -3,7 +3,7 @@ import {
   Fingerprint,
   KeyRound,
   Search,
-  Lock,
+
   FileJson,
 } from "lucide-react"
 

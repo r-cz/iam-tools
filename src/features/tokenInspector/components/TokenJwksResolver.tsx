@@ -20,7 +20,8 @@ export function TokenJwksResolver({
   const [jwksMode, setJwksMode] = useState<"automatic" | "manual">("automatic");
   const [manualJwks, setManualJwks] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Using error state for internal logic but displaying through toast
+  const [_error, setError] = useState<string | null>(null);
   // Removed isAutoPopulated state
   
   // Instead of trying to auto-fetch with every URL change,

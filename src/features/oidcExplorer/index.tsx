@@ -5,8 +5,8 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle, Loader2 } from "lucide-react";
+// Importing components for the OIDC Explorer
 import { toast } from "sonner";
 
 import { ConfigInput } from "./components/ConfigInput";

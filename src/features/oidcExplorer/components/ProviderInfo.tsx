@@ -1,4 +1,4 @@
-import React from 'react';
+// ProviderInfo component imports
 import { 
   Card, 
   CardContent, 

@@ -1,4 +1,4 @@
-import React from 'react';
+// OIDC Explorer page component
 import { PageContainer, PageHeader } from "@/components/page";
 import { FileJson } from "lucide-react";
 import { OidcExplorer } from "..";
