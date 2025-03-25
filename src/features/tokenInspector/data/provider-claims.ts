@@ -45,12 +45,19 @@ const providerSpecificClaims: ProviderSpecificClaim[] = [
     provider: "Okta",
     example: "1.0"
   },
+
+  // PingFederate claims
   {
-    name: "groups",
-    description: "Groups that the user belongs to",
-    provider: "Okta",
-    format: "Array of strings",
-    example: "[\"Everyone\", \"Admins\"]"
+    name: "pi.atm",
+    description: "Identifies the Access Token Manager used to issue the token",
+    provider: "PingFederate",
+    example: "exampleAppTokenManager"
+  },
+  {
+    name: "pi.sri",
+    description: "A session identifier that is unique to the user and the application",
+    provider: "PingFederate",
+    example: "abc123xyz456"
   },
   
   // Google claims

@@ -1,5 +1,6 @@
 
 import { ValidationResult } from "../utils/types";
+import { getProviderSpecificClaimInfo } from "../data/provider-claims";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -118,6 +119,16 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
                     <div className="text-xs text-muted-foreground">
                       Key ID used to identify which key to use for validation
                     </div>
+                  )}
+                  
+                  {/* Provider-specific claim information */}
+                  {getProviderSpecificClaimInfo(key) && (
+                    <Alert className="mt-2 bg-blue-500/10 border-blue-500/20 text-blue-700">
+                      <AlertTitle>Provider-specific</AlertTitle>
+                      <AlertDescription>
+                        {getProviderSpecificClaimInfo(key)?.provider} - {getProviderSpecificClaimInfo(key)?.description}
+                      </AlertDescription>
+                    </Alert>
                   )}
                 </div>
               </div>

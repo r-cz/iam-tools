@@ -26,6 +26,20 @@ export function TokenInspector() {
   const [activeTab, setActiveTab] = useState("payload");
   const [issuerUrl, setIssuerUrl] = useState("");
 
+  const resetState = () => {
+    // Clear the token
+    setToken("");
+    // Reset decoded token data
+    setDecodedToken(null);
+    // Reset validation results
+    setValidationResults([]);
+    // Reset to default tab
+    setActiveTab("payload");
+    // Reset JWKS and issuer URL if needed
+    setJwks(null);
+    setIssuerUrl("");
+  };
+
   const decodeToken = async () => {
     if (!token) {
       return;
@@ -248,7 +262,8 @@ export function TokenInspector() {
           <TokenInput 
             token={token} 
             setToken={setToken} 
-            onDecode={decodeToken} 
+            onDecode={decodeToken}
+            onReset={resetState} 
           />
         </CardContent>
       </Card>

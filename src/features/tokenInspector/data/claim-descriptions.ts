@@ -62,7 +62,7 @@ const claimDescriptions: ClaimDescription[] = [
     format: "UNIX timestamp",
     example: "1311280970"
   },
-  
+
   // OIDC Core specific claims
   {
     name: "auth_time",
@@ -122,8 +122,17 @@ const claimDescriptions: ClaimDescription[] = [
     tokenTypes: ["id_token"],
     example: "LDktKdoQak3Pk0cnXxCltA"
   },
-  
+
   // OAuth 2.0 Access Token claims
+  {
+    name: "authorization_details",
+    description: "Used to carry fine-grained authorization data in OAuth messages",
+    specification: "OAuth 2.0 Rich Authorization Requests/RFC9396",
+    required: false,
+    tokenTypes: ["access_token"],
+    format: "Array of objects",
+    example: "[{\"type\":\"account_information\",\"actions\":[\"list_accounts\",\"read_transactions\"],\"locations\":[\"https://example.com/accounts\"]},{\"type\":\"payment_initiation\",\"actions\":[\"initiate\",\"cancel\"],\"locations\":[\"https://example.com/payments\"],\"instructedAmount\":{\"currency\":\"EUR\",\"amount\":\"123.50\"}}]"
+  },
   {
     name: "scope",
     description: "OAuth 2.0 scopes that the client has been granted",
@@ -158,7 +167,7 @@ const claimDescriptions: ClaimDescription[] = [
     tokenTypes: ["id_token"],
     example: "08a5019c-17e1-4977-8f42-65a12843ea02"
   },
-  
+
   // OIDC Identity Claims
   {
     name: "name",

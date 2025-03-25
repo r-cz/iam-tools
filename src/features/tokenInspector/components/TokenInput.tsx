@@ -7,9 +7,10 @@ interface TokenInputProps {
   token: string;
   setToken: (token: string) => void;
   onDecode: () => void;
+  onReset: () => void;
 }
 
-export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
+export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputProps) {
   const handlePaste = async () => {
     try {
       const clipboardText = await navigator.clipboard.readText();
@@ -20,8 +21,8 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
     }
   };
 
-  const handleClear = () => {
-    setToken("");
+  const handleReset = () => {
+    onReset();
   };
 
   const loadExampleToken = () => {
@@ -54,9 +55,9 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
           <Button 
             variant="destructive" 
             size="sm" 
-            onClick={handleClear}
+            onClick={handleReset}
           >
-            Clear
+            Reset
           </Button>
         </div>
       </div>

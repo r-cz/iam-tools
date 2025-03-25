@@ -90,7 +90,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
         <div className="relative">
           <Progress 
             value={percentElapsed} 
-            className={`${now > expiration ? 'bg-red-500' : ''}`}
+            className={now > expiration ? '[&>[role=progressbar]]:bg-destructive' : ''}
           />
 
           {/* Start label - stack on mobile, side-by-side on desktop */}
@@ -101,7 +101,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
           
           {/* End label - stack on mobile, side-by-side on desktop */}
           <div className="absolute right-0 top-[-3.5rem] md:top-[-2rem] text-xs font-mono text-right md:transform-none max-w-[150px] md:max-w-none break-words md:whitespace-nowrap">
-            <div className="font-semibold">Expires:</div>
+            <div className="font-semibold">{now > expiration ? 'Expired:' : 'Expires:'}</div>
             <div>{formatDate(expiration)}</div>
           </div>
         </div>
@@ -161,35 +161,11 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
         </div>
       </div>
       
-      {/* JWT ID Information */}
-      {payload.jti && (
-        <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-700">
-          <AlertTitle>JWT ID: <span className="font-mono break-all">{payload.jti}</span></AlertTitle>
-          <AlertDescription>
-            This token has a unique identifier. JWT IDs are particularly important for OAuth access tokens.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* JWT ID Information - Removed as redundant */}
       
-      {/* Session ID Information */}
-      {payload.sid && (
-        <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-700">
-          <AlertTitle>Session ID: <span className="font-mono break-all">{payload.sid}</span></AlertTitle>
-          <AlertDescription>
-            This token is associated with a specific authentication session.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Session ID Information - Removed as redundant */}
       
-      {/* OAuth 2.0 Access Token Information */}
-      {(payload.scope || payload.scp || payload.client_id) && !payload.nonce && !payload.at_hash && (
-        <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-700">
-          <AlertTitle>OAuth 2.0 Access Token</AlertTitle>
-          <AlertDescription>
-            This token contains typical OAuth 2.0 access token claims. It can be used to access protected resources.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* OAuth 2.0 Access Token Information - Removed as redundant */}
     </div>
   );
 }
