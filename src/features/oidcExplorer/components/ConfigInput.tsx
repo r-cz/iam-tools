@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { ShuffleIcon } from "lucide-react";
 import { fetchOidcConfig } from '../utils/config-helpers';
 import { OidcConfiguration } from '../utils/types';
 
@@ -43,8 +45,31 @@ export function ConfigInput({ onConfigFetched, onError, isLoading, setIsLoading 
     { name: 'AWS Cognito', url: 'https://cognito-idp.region.amazonaws.com/userPoolId' },
   ];
 
+  // Real-world public issuers for the random button
+  const realWorldIssuers = [
+    { name: 'Chick-fil-A', url: 'https://login.my.chick-fil-a.com' },
+    { name: 'Southwest', url: 'https://secure.southwest.com' },
+    { name: 'FedEx', url: 'https://auth.fedex.com' },
+    { name: 'Delta Airlines', url: 'https://signin.delta.com' },
+  ];
+
   const handleExampleClick = (url: string) => {
     setIssuerUrl(url);
+  };
+
+  const handleRandomExample = () => {
+    const randomIndex = Math.floor(Math.random() * realWorldIssuers.length);
+    const selectedIssuer = realWorldIssuers[randomIndex];
+    setIssuerUrl(selectedIssuer.url);
+    toast.info(
+      <div>
+        <p><strong>Random Issuer Selected</strong></p>
+        <p>{selectedIssuer.name}: {selectedIssuer.url}</p>
+      </div>,
+      {
+        duration: 3000,
+      }
+    );
   };
 
   return (
@@ -88,19 +113,32 @@ export function ConfigInput({ onConfigFetched, onError, isLoading, setIsLoading 
           </Popover>
         </div>
         
-        <div className="flex gap-2">
-          <Input
-            id="issuer-url"
-            type="text"
-            value={issuerUrl}
-            onChange={(e) => setIssuerUrl(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="https://example.com/identity"
-            className="flex-1"
-          />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Input
+              id="issuer-url"
+              type="text"
+              value={issuerUrl}
+              onChange={(e) => setIssuerUrl(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="https://example.com/identity"
+              className="pr-10"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              onClick={handleRandomExample}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+              title="Load random example"
+            >
+              <ShuffleIcon className="h-4 w-4" />
+            </Button>
+          </div>
           <Button 
             onClick={handleFetchConfig} 
             disabled={isLoading || !issuerUrl}
+            className="sm:w-auto w-full"
           >
             {isLoading ? 'Fetching...' : 'Fetch Config'}
           </Button>
