@@ -159,11 +159,17 @@ export function TokenPayload({
             {key === "scope" && typeof value === "string" && (
               <div className="mt-1">
                 <p>Scopes:</p>
-                <ul className="list-disc list-inside">
-                  {value.split(" ").map((scope, i) => (
-                    <li key={i}>{scope}</li>
-                  ))}
-                </ul>
+                {value.trim() === "" ? (
+                  <div className="bg-amber-500/10 text-amber-700 p-2 rounded-md text-sm mt-1">
+                    Empty scope value. This token has no defined permissions.
+                  </div>
+                ) : (
+                  <ul className="list-disc list-inside">
+                    {value.split(" ").map((scope, i) => (
+                      <li key={i}>{scope}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>

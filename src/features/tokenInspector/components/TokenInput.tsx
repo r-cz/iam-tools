@@ -30,7 +30,7 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <label htmlFor="token-input" className="block text-sm font-medium">
           OAuth/OIDC Token
@@ -68,22 +68,21 @@ export function TokenInput({ token, setToken, onDecode }: TokenInputProps) {
         placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       />
       
-      {token && (
-        <div className="flex justify-end mt-1">
+      <div className="flex justify-between items-center">
+        {token && (
           <div className="text-xs text-muted-foreground">
             Characters: {token.length}
           </div>
+        )}
+        <div className={token ? "flex-1 flex justify-end" : "w-full"}>
+          <Button 
+            onClick={onDecode}
+            disabled={!token}
+            className={token ? "w-auto" : "w-full"}
+          >
+            Inspect Token
+          </Button>
         </div>
-      )}
-      
-      <div className="flex justify-end">
-        <Button 
-          onClick={onDecode}
-          disabled={!token}
-          className="w-full sm:w-auto"
-        >
-          Inspect Token
-        </Button>
       </div>
     </div>
   );

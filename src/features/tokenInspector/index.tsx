@@ -215,7 +215,7 @@ export function TokenInspector() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-5">
           <TokenInput 
             token={token} 
             setToken={setToken} 
@@ -228,12 +228,12 @@ export function TokenInspector() {
 
       {decodedToken && (
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col space-y-4 mb-4">
+          <CardContent className="p-5">
+            <div className="flex flex-col space-y-3 mb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center">
                   <div 
-                    className={`w-4 h-4 rounded-full mr-2 ${
+                    className={`w-3 h-3 rounded-full mr-2 ${
                       decodedToken.signature.valid ? 'bg-green-500' : 'bg-yellow-500'
                     }`}
                   ></div>

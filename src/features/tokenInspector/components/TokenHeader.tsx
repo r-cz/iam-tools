@@ -31,6 +31,19 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
     return null;
   };
 
+  // Format display value for different claim types
+  const formatClaimValue = (value: any) => {
+    // Handle objects
+    if (typeof value === "object" && value !== null) {
+      return (
+        <CodeBlock code={JSON.stringify(value, null, 2)} language="json" className="p-1" />
+      );
+    }
+    
+    // Default string/number display
+    return <span className="font-mono">{String(value)}</span>;
+  };
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -59,9 +72,8 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
                       <span className="font-mono text-sm font-medium">{key}</span>
                       {getValidationBadge(key)}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {typeof value === 'string' && value}
-                      {typeof value !== 'string' && JSON.stringify(value)}
+                    <div className="text-sm">
+                      {formatClaimValue(value)}
                     </div>
                   </div>
                   
