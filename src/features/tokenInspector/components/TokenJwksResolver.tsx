@@ -23,25 +23,31 @@ export function TokenJwksResolver({
   const [error, setError] = useState<{ message: string; isCors?: boolean } | null>(null);
   // Removed isAutoPopulated state
   
-  // Auto-fetch JWKS when issuerUrl is updated externally (e.g., from token payload)
-  // Using a ref to avoid unnecessary re-renders
-  const previousIssuerUrlRef = React.useRef<string>('');
+  // Instead of trying to auto-fetch with every URL change,
+  // we'll add a function that parent components can call to trigger a one-time fetch
+  // This simplifies the logic and prevents unwanted fetches
   
+  // Use a ref to store the previous URL to prevent unnecessary fetches
+  const lastAutoFetchUrlRef = React.useRef<string>('');
+  
+  // This effect will run exactly ONCE when a token with an issuer is first loaded
   useEffect(() => {
-    // Only auto-fetch if the URL actually changed and is not empty
-    if (issuerUrl && issuerUrl !== previousIssuerUrlRef.current) {
-      previousIssuerUrlRef.current = issuerUrl;
+    // Only do this once when the component mounts and there's an initial URL
+    if (issuerUrl && issuerUrl !== lastAutoFetchUrlRef.current) {
+      // Record this URL to prevent duplicate fetches
+      lastAutoFetchUrlRef.current = issuerUrl;
       
-      // Auto-fetch JWKS with a small delay to ensure any other UI updates complete first
+      // Auto-fetch JWKS with a small delay to ensure UI is rendered
       const timer = setTimeout(() => {
-        console.log('Auto-fetching JWKS for issuer:', issuerUrl);
+        console.log('Initial auto-fetch for token issuer:', issuerUrl);
         fetchJwks();
       }, 300);
       
       return () => clearTimeout(timer);
     }
+  // We only want this to run ONCE on initial mount with a valid URL
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [issuerUrl]);
+  }, []);
   
   const fetchJwks = async () => {
     setIsLoading(true);
@@ -175,6 +181,8 @@ export function TokenJwksResolver({
                 value={issuerUrl}
                 onChange={(e) => {
                   setIssuerUrl(e.target.value);
+                  // No additional state changes needed here
+                  // Fetching only happens on button click
                 }}
                 placeholder="https://example.com/identity"
                 className="flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
