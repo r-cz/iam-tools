@@ -26,10 +26,10 @@ jobs:
       run: bun run build
     
     - name: Run Bun tests
-      run: bun test --preload ./src/tests/preload.ts
+      run: bun test
       
     - name: Run coverage tests
-      run: bun test --coverage --preload ./src/tests/preload.ts
+      run: bun test:coverage
     
     - name: Upload test coverage
       if: always()

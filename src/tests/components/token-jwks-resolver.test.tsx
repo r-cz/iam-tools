@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import React from 'react';
 
 describe('JWKS Resolver Logic', () => {
-  // Simple mock of the proxyFetch function for testing
-  const mockProxyFetch = (url: string) => {
+  // Default mock implementation
+  const defaultMockProxyFetch = (url: string) => {
     if (url.includes('openid-configuration')) {
       return Promise.resolve({
         ok: true,
@@ -33,14 +33,13 @@ describe('JWKS Resolver Logic', () => {
     }
     return Promise.resolve({
       ok: false,
-      status: 404,
-      statusText: 'Not Found'
+      status: 404
     });
   };
-  
+
   // Test function to simulate the resolver logic
-  async function resolveJwks(issuerUrl: string, customMock?: typeof mockProxyFetch): Promise<any> {
-    const fetchImpl = customMock || mockProxyFetch;
+  async function resolveJwks(issuerUrl: string, customMock?: typeof defaultMockProxyFetch): Promise<any> {
+    const fetchImpl = customMock || defaultMockProxyFetch;
     
     try {
       // Normalize issuer URL
@@ -86,7 +85,7 @@ describe('JWKS Resolver Logic', () => {
     const fetchedUrls: string[] = [];
     const customMock = (url: string) => {
       fetchedUrls.push(url);
-      return mockProxyFetch(url);
+      return defaultMockProxyFetch(url);
     };
     
     const issuerUrl = 'https://login.my.chick-fil-a.com';
@@ -109,7 +108,7 @@ describe('JWKS Resolver Logic', () => {
     const fetchedUrls: string[] = [];
     const customMock = (url: string) => {
       fetchedUrls.push(url);
-      return mockProxyFetch(url);
+      return defaultMockProxyFetch(url);
     };
     
     const issuerUrl = 'https://login.my.chick-fil-a.com/';
@@ -201,7 +200,7 @@ describe('JWKS Resolver Logic', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            jwks_uri: 'https://secure.southwest.com/.well-known/jwks.json'
+            jwks_uri: 'https://login.my.chick-fil-a.com/.well-known/jwks.json'
           })
         });
       } else {
