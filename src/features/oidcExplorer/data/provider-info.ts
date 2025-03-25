@@ -69,13 +69,14 @@ export const providerInfoData: { [key: string]: ProviderInfo } = {
   },
   'Ping Identity': {
     name: 'Ping Identity',
-    description: 'Ping Identity provides identity and access management solutions for enterprise customers.',
+    description: 'Ping Identity (including PingFederate and PingOne) provides robust identity and access management solutions for secure enterprise authentication and authorization.',
     documentationUrl: 'https://docs.pingidentity.com/',
     specialFeatures: [
-      'Advanced MFA options',
-      'Customer identity and access management',
-      'API security',
-      'Directory services'
+      'Session management capabilities',
+      'Back-channel and front-channel logout',
+      'PingAccess integration',
+      'Custom authorization policies',
+      'Advanced MFA options'
     ]
   },
   'OneLogin': {

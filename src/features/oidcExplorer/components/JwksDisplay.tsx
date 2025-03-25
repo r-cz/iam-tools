@@ -262,8 +262,8 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
       
       <CardContent>
         <Tabs value={view} onValueChange={(v) => setView(v as 'formatted' | 'raw')} className="w-full">
-          <div className="flex justify-end mb-4">
-            <TabsList className="grid w-[200px] grid-cols-2">
+          <div className="flex justify-start mb-4">
+            <TabsList className="grid w-full md:w-[300px] grid-cols-2">
               <TabsTrigger value="formatted">Formatted</TabsTrigger>
               <TabsTrigger value="raw">Raw JSON</TabsTrigger>
             </TabsList>

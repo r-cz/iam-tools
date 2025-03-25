@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { 
   CheckCircle2, 
   XCircle, 
-  ExternalLink, 
   Link, 
   ChevronRight,
   ChevronDown,
@@ -152,36 +151,25 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
     return (
       <div className="flex flex-wrap items-center gap-2">
         <code className="text-sm break-all">{value}</code>
-        <div className="flex items-center gap-1">
-          <a 
-            href={value} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800"
-          >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            Open
-          </a>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-6 px-2 text-xs"
-            onClick={() => copy(value)}
-            disabled={copied && copyTarget === value}
-          >
-            {copied && copyTarget === value ? (
-              <>
-                <ClipboardCheck className="h-3 w-3 mr-1" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="h-3 w-3 mr-1" />
-                Copy
-              </>
-            )}
-          </Button>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-6 px-2 text-xs"
+          onClick={() => copy(value)}
+          disabled={copied && copyTarget === value}
+        >
+          {copied && copyTarget === value ? (
+            <>
+              <ClipboardCheck className="h-3 w-3 mr-1" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3 mr-1" />
+              Copy
+            </>
+          )}
+        </Button>
       </div>
     );
   };
@@ -264,8 +252,8 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
       
       <CardContent>
         <Tabs value={view} onValueChange={(v) => setView(v as 'formatted' | 'raw')} className="w-full">
-          <div className="flex justify-end mb-4">
-            <TabsList className="grid w-[200px] grid-cols-2">
+          <div className="flex justify-start mb-4">
+            <TabsList className="grid w-full md:w-[300px] grid-cols-2">
               <TabsTrigger value="formatted">Formatted</TabsTrigger>
               <TabsTrigger value="raw">Raw JSON</TabsTrigger>
             </TabsList>
@@ -288,38 +276,55 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
                 {endpoints.filter(key => key in config).map(key => {
                   // Special treatment for jwks_uri
                   if (key === 'jwks_uri') {
-                    return renderConfigItem(
-                      key, 
-                      <Link className="h-4 w-4 text-blue-600" />,
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-7 px-2 text-xs"
-                          onClick={() => copy(config.jwks_uri)}
-                          disabled={copied && copyTarget === config.jwks_uri}
-                        >
-                          {copied && copyTarget === config.jwks_uri ? (
-                            <>
-                              <ClipboardCheck className="h-3 w-3 mr-1" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3 w-3 mr-1" />
-                              Copy
-                            </>
-                          )}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={onJwksClick}
-                          className="h-7 text-xs"
-                        >
-                          Fetch JWKS
-                          <ChevronRight className="ml-1 h-3 w-3" />
-                        </Button>
+                    return (
+                      <div key={key} className="py-3 first:pt-0 last:pb-0">
+                        <div className="flex flex-wrap justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2">
+                            <Link className="h-4 w-4 text-blue-600" />
+                            <h4 className="font-medium">
+                              {endpointDescriptions[key]?.name || key}
+                              {endpointDescriptions[key]?.required && <span className="text-red-500 ml-1">*</span>}
+                            </h4>
+                          </div>
+                        </div>
+                        
+                        {getEndpointDescription(key) && <div className="mb-2">{getEndpointDescription(key)}</div>}
+                        
+                        <div className="mt-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <code className="text-sm break-all">{config.jwks_uri}</code>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 px-2 text-xs"
+                                onClick={() => copy(config.jwks_uri)}
+                                disabled={copied && copyTarget === config.jwks_uri}
+                              >
+                                {copied && copyTarget === config.jwks_uri ? (
+                                  <>
+                                    <ClipboardCheck className="h-3 w-3 mr-1" />
+                                    Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy
+                                  </>
+                                )}
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={onJwksClick}
+                                className="h-7 text-xs"
+                              >
+                                Fetch JWKS
+                                <ChevronRight className="ml-1 h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     );
                   }

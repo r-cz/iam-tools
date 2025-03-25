@@ -5,8 +5,9 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { InfoIcon, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 import { ConfigInput } from "./components/ConfigInput";
 import { ConfigDisplay } from "./components/ConfigDisplay";
@@ -29,14 +30,26 @@ export function OidcExplorer() {
     setJwks(null); // Reset JWKS when new config is fetched
     setIssuerUrl(config.issuer);
     
-    // Try to detect the provider
-    const detectedProvider = detectProvider(config.issuer);
+    // Try to detect the provider using both URL and configuration data
+    const detectedProvider = detectProvider(config.issuer, config);
     setProviderName(detectedProvider);
+    
+    // Show success toast
+    toast.success('Successfully loaded configuration', {
+      description: `Configuration loaded from ${config.issuer}`,
+      duration: 5000, // 5 seconds
+    });
   };
 
   const handleError = (error: Error) => {
     setError(error);
     setOidcConfig(null);
+    
+    // Show error toast
+    toast.error('Error fetching configuration', {
+      description: error.message,
+      duration: 8000, // 8 seconds for error messages
+    });
   };
 
   const handleFetchJwks = async () => {
@@ -50,9 +63,21 @@ export function OidcExplorer() {
       const jwksData = await fetchJwks(oidcConfig.jwks_uri);
       setJwks(jwksData);
       setError(null);
+      
+      // Show success toast
+      toast.success('Successfully fetched JWKS', {
+        description: `Found ${jwksData.keys.length} keys in the JWKS`,
+        duration: 5000, // 5 seconds
+      });
     } catch (err) {
       setError(err as Error);
       setJwks(null);
+      
+      // Show error toast
+      toast.error('Failed to fetch JWKS', {
+        description: (err as Error).message,
+        duration: 8000, // 8 seconds for error messages
+      });
     } finally {
       setIsLoading(false);
     }
@@ -63,13 +88,6 @@ export function OidcExplorer() {
       {/* Configuration Input */}
       <Card>
         <CardContent className="p-5">
-          <div className="mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <InfoIcon className="h-5 w-5 text-blue-600 mt-1 sm:mt-0" />
-            <p className="text-sm text-muted-foreground">
-              This tool helps you explore and understand OpenID Connect providers. 
-              Enter an issuer URL below to fetch its configuration and JWKS.
-            </p>
-          </div>
           <ConfigInput 
             onConfigFetched={handleConfigFetched} 
             onError={handleError} 
@@ -98,21 +116,21 @@ export function OidcExplorer() {
         </Alert>
       )}
 
-      {/* Display the configuration and provider info side by side */}
+      {/* Display the configuration */}
       {!isLoading && oidcConfig && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3">
-            <ConfigDisplay 
-              config={oidcConfig} 
-              onJwksClick={handleFetchJwks} 
-            />
-          </div>
-          <div className="lg:col-span-1">
+        <div className="space-y-6">
+          <ConfigDisplay 
+            config={oidcConfig} 
+            onJwksClick={handleFetchJwks} 
+          />
+          
+          {/* Provider info now at the bottom */}
+          {providerName && (
             <ProviderInfo 
               providerName={providerName} 
               issuerUrl={issuerUrl} 
             />
-          </div>
+          )}
         </div>
       )}
 
@@ -124,19 +142,6 @@ export function OidcExplorer() {
             jwks={jwks} 
             jwksUri={oidcConfig.jwks_uri} 
           />
-        </div>
-      )}
-
-      {/* Success notification after fetching config */}
-      {oidcConfig && !error && (
-        <div className="fixed bottom-6 right-6 max-w-sm">
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800">Successfully loaded configuration</AlertTitle>
-            <AlertDescription className="text-green-700">
-              Configuration loaded from {oidcConfig.issuer}
-            </AlertDescription>
-          </Alert>
         </div>
       )}
     </div>
