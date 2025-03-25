@@ -1,4 +1,30 @@
-import { proxyFetch } from "@/lib/proxy-fetch";
+/**
+ * Safely checks if a URL belongs to a specific domain or subdomain
+ * @param urlString URL to check
+ * @param domain Domain to check against
+ * @returns Boolean indicating if the URL belongs to the domain
+ */
+function isUrlFromDomain(urlString: string, domain: string): boolean {
+  try {
+    // Try to parse the URL
+    const url = new URL(urlString);
+    
+    // Check if the hostname exactly matches the domain
+    if (url.hostname === domain) {
+      return true;
+    }
+    
+    // Check if it's a subdomain (ends with .domain)
+    if (url.hostname.endsWith(`.${domain}`)) {
+      return true;
+    }
+    
+    return false;
+  } catch (e) {
+    // If URL parsing fails, consider it not matching
+    return false;
+  }
+}import { proxyFetch } from "@/lib/proxy-fetch";
 import { OidcConfiguration, Jwks } from "./types";
 
 /**
@@ -129,6 +155,14 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
   if (!issuerUrl && !config) return null;
   
   const url = issuerUrl.toLowerCase();
+  let parsedUrl: URL | null = null;
+  
+  try {
+    parsedUrl = new URL(url);
+  } catch (e) {
+    // If we can't parse the URL, just use the string version
+    console.warn('Could not parse issuer URL:', url);
+  }
   
   // First try to detect provider using the configuration if available
   if (config) {
@@ -138,8 +172,8 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Look for Ping-specific fields/values in the configuration
       hasPingFederateMarkers(config) ||
       // Fallback to URL matching for Ping
-      url.includes('pingidentity.com') || 
-      url.includes('ping-eng.com') ||
+      (parsedUrl && (isUrlFromDomain(url, 'pingidentity.com') || 
+                     isUrlFromDomain(url, 'ping-eng.com'))) ||
       url.includes('pingfederate') ||
       url.includes('ping.') ||
       // PingOne detection
@@ -154,7 +188,7 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Check for Okta-specific properties
       hasOktaMarkers(config) ||
       // Fallback to URL detection
-      url.includes('okta.com') ||
+      (parsedUrl && isUrlFromDomain(url, 'okta.com')) ||
       url.includes('.okta.')
     ) {
       return 'Okta';
@@ -165,7 +199,7 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Check for Auth0-specific properties
       hasAuth0Markers(config) ||
       // Fallback to URL detection
-      url.includes('auth0.com') ||
+      (parsedUrl && isUrlFromDomain(url, 'auth0.com')) ||
       url.includes('.auth0.')
     ) {
       return 'Auth0';
@@ -176,9 +210,9 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Check for Microsoft-specific properties
       hasMicrosoftMarkers(config) ||
       // Fallback to URL detection
-      url.includes('login.microsoftonline.com') ||
-      url.includes('login.windows.net') ||
-      url.includes('sts.windows.net')
+      (parsedUrl && (isUrlFromDomain(url, 'login.microsoftonline.com') ||
+                     isUrlFromDomain(url, 'login.windows.net') ||
+                     isUrlFromDomain(url, 'sts.windows.net')))
     ) {
       return 'Microsoft Entra ID (Azure AD)';
     }
@@ -188,7 +222,7 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Check for Google-specific properties
       hasGoogleMarkers(config) ||
       // Fallback to URL detection
-      url.includes('accounts.google.com')
+      (parsedUrl && isUrlFromDomain(url, 'accounts.google.com'))
     ) {
       return 'Google';
     }
@@ -198,7 +232,7 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Check for Cognito-specific properties
       hasCognitoMarkers(config) ||
       // Fallback to URL detection
-      (url.includes('cognito-idp') && url.includes('amazonaws.com'))
+      (parsedUrl && url.includes('cognito-idp') && isUrlFromDomain(url, 'amazonaws.com'))
     ) {
       return 'AWS Cognito';
     }
@@ -218,8 +252,8 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Check for ForgeRock-specific properties
       hasForgeRockMarkers(config) ||
       // Fallback to URL detection
-      url.includes('forgerock.io') || 
-      url.includes('forgerock.com')
+      (parsedUrl && (isUrlFromDomain(url, 'forgerock.io') || 
+                     isUrlFromDomain(url, 'forgerock.com')))
     ) {
       return 'ForgeRock';
     }
@@ -229,7 +263,7 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
       // Check for IdentityServer-specific properties
       hasIdentityServerMarkers(config) ||
       // Fallback to URL detection
-      url.includes('duendesoftware.com') ||
+      (parsedUrl && isUrlFromDomain(url, 'duendesoftware.com')) ||
       url.includes('identityserver')
     ) {
       return config.server ? 'Duende IdentityServer' : 'IdentityServer';
@@ -237,30 +271,32 @@ export function detectProvider(issuerUrl: string, config?: OidcConfiguration): s
   }
   
   // Fallback to URL matching only
-  if (url.includes('auth0.com')) {
-    return 'Auth0';
-  } else if (url.includes('okta.com')) {
-    return 'Okta';
-  } else if (url.includes('login.microsoftonline.com')) {
-    return 'Microsoft Entra ID (Azure AD)';
-  } else if (url.includes('accounts.google.com')) {
-    return 'Google';
-  } else if (url.includes('cognito-idp') && url.includes('amazonaws.com')) {
-    return 'AWS Cognito';
-  } else if (url.includes('login.salesforce.com')) {
-    return 'Salesforce';
-  } else if (url.includes('pingidentity.com') || url.includes('ping-eng.com') || url.includes('pingfederate')) {
-    return 'Ping Identity';
-  } else if (url.includes('onelogin.com')) {
-    return 'OneLogin';
-  } else if (url.includes('keycloak')) {
-    return 'Keycloak';
-  } else if (url.includes('forgerock.io') || url.includes('forgerock.com')) {
-    return 'ForgeRock';
-  } else if (url.includes('duendesoftware.com')) {
-    return 'Duende IdentityServer';
-  } else if (url.includes('identityserver')) {
-    return 'IdentityServer';
+  if (parsedUrl) {
+    if (isUrlFromDomain(url, 'auth0.com')) {
+      return 'Auth0';
+    } else if (isUrlFromDomain(url, 'okta.com')) {
+      return 'Okta';
+    } else if (isUrlFromDomain(url, 'login.microsoftonline.com')) {
+      return 'Microsoft Entra ID (Azure AD)';
+    } else if (isUrlFromDomain(url, 'accounts.google.com')) {
+      return 'Google';
+    } else if (url.includes('cognito-idp') && isUrlFromDomain(url, 'amazonaws.com')) {
+      return 'AWS Cognito';
+    } else if (isUrlFromDomain(url, 'login.salesforce.com')) {
+      return 'Salesforce';
+    } else if (isUrlFromDomain(url, 'pingidentity.com') || isUrlFromDomain(url, 'ping-eng.com') || url.includes('pingfederate')) {
+      return 'Ping Identity';
+    } else if (isUrlFromDomain(url, 'onelogin.com')) {
+      return 'OneLogin';
+    } else if (url.includes('keycloak')) {
+      return 'Keycloak';
+    } else if (isUrlFromDomain(url, 'forgerock.io') || isUrlFromDomain(url, 'forgerock.com')) {
+      return 'ForgeRock';
+    } else if (isUrlFromDomain(url, 'duendesoftware.com')) {
+      return 'Duende IdentityServer';
+    } else if (url.includes('identityserver')) {
+      return 'IdentityServer';
+    }
   }
   
   return null;
@@ -297,7 +333,7 @@ function hasOktaMarkers(config: OidcConfiguration): boolean {
   // Okta has specific endpoints for its OAuth/OIDC service
   const hasOktaEndpoints = 
     (config.registration_endpoint?.includes('/oauth2/v1/clients') || false) ||
-    (config.issuer?.includes('.okta.com/oauth2') || false);
+    (config.issuer && (new URL(config.issuer)).hostname.includes('okta.com') && config.issuer.includes('/oauth2'));
   
   // Okta sometimes uses the 'okta_' prefix for custom properties
   const hasOktaPrefix = Object.keys(config).some(key => key.startsWith('okta_'));
@@ -322,7 +358,7 @@ function hasOktaMarkers(config: OidcConfiguration): boolean {
 function hasAuth0Markers(config: OidcConfiguration): boolean {
   // Auth0 has specific endpoints and patterns
   const hasAuth0Endpoints = 
-    (config.issuer?.includes('auth0.com') || false) ||
+    (config.issuer && isUrlFromDomain(config.issuer, 'auth0.com')) ||
     (config.userinfo_endpoint?.includes('userinfo') || false);
   
   // Auth0 often includes specific scopes
@@ -345,7 +381,7 @@ function hasAuth0Markers(config: OidcConfiguration): boolean {
 function hasMicrosoftMarkers(config: OidcConfiguration): boolean {
   // Microsoft Entra ID has specific endpoints
   const hasMicrosoftEndpoints = 
-    (config.issuer?.includes('login.microsoftonline.com') || false) ||
+    (config.issuer && isUrlFromDomain(config.issuer, 'login.microsoftonline.com')) ||
     (config.token_endpoint?.includes('oauth2/v2.0/token') || false);
   
   // Microsoft often includes tenant info
@@ -387,8 +423,7 @@ function hasGoogleMarkers(config: OidcConfiguration): boolean {
 function hasCognitoMarkers(config: OidcConfiguration): boolean {
   // Cognito has specific endpoints
   const hasCognitoEndpoints = 
-    (config.issuer?.includes('cognito-idp') || false) &&
-    (config.issuer?.includes('amazonaws.com') || false);
+    (config.issuer && config.issuer.includes('cognito-idp') && isUrlFromDomain(config.issuer, 'amazonaws.com'));
   
   // Cognito includes specific claims
   const hasCognitoClaims = 
@@ -424,7 +459,8 @@ function hasKeycloakMarkers(config: OidcConfiguration): boolean {
 function hasForgeRockMarkers(config: OidcConfiguration): boolean {
   // ForgeRock has specific endpoints
   const hasForgeRockEndpoints = 
-    (config.issuer?.includes('forgerock') || false) ||
+    (config.issuer && isUrlFromDomain(config.issuer, 'forgerock.com') || 
+     config.issuer && isUrlFromDomain(config.issuer, 'forgerock.io')) ||
     (config.token_endpoint?.includes('/oauth2/access_token') || false);
   
   // ForgeRock specific properties
