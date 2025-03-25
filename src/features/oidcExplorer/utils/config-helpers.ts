@@ -1,21 +1,21 @@
-/**
- * Safely checks if a URL belongs to a specific domain or subdomain
- * @param urlString URL to check
- * @param domain Domain to check against
- * @returns Boolean indicating if the URL belongs to the domain
- */
+import { proxyFetch } from "@/lib/proxy-fetch";
+import { OidcConfiguration, Jwks } from "./types";
+
+// Modify the URL validation function for greater security
 function isUrlFromDomain(urlString: string, domain: string): boolean {
   try {
     // Try to parse the URL
     const url = new URL(urlString);
+    const hostname = url.hostname.toLowerCase();
     
     // Check if the hostname exactly matches the domain
-    if (url.hostname === domain) {
+    if (hostname === domain.toLowerCase()) {
       return true;
     }
     
     // Check if it's a subdomain (ends with .domain)
-    if (url.hostname.endsWith(`.${domain}`)) {
+    // This ensures only proper subdomains match, not strings that merely contain the domain
+    if (hostname.endsWith(`.${domain.toLowerCase()}`)) {
       return true;
     }
     
@@ -24,8 +24,7 @@ function isUrlFromDomain(urlString: string, domain: string): boolean {
     // If URL parsing fails, consider it not matching
     return false;
   }
-}import { proxyFetch } from "@/lib/proxy-fetch";
-import { OidcConfiguration, Jwks } from "./types";
+}
 
 /**
  * Fetches the OpenID Connect configuration from a provider
@@ -333,7 +332,7 @@ function hasOktaMarkers(config: OidcConfiguration): boolean {
   // Okta has specific endpoints for its OAuth/OIDC service
   const hasOktaEndpoints = 
     (config.registration_endpoint?.includes('/oauth2/v1/clients') || false) ||
-    (config.issuer && (new URL(config.issuer)).hostname.includes('okta.com') && config.issuer.includes('/oauth2'));
+    (config.issuer && isUrlFromDomain(config.issuer, 'okta.com') && config.issuer.includes('/oauth2'));
   
   // Okta sometimes uses the 'okta_' prefix for custom properties
   const hasOktaPrefix = Object.keys(config).some(key => key.startsWith('okta_'));
@@ -458,9 +457,14 @@ function hasKeycloakMarkers(config: OidcConfiguration): boolean {
  */
 function hasForgeRockMarkers(config: OidcConfiguration): boolean {
   // ForgeRock has specific endpoints
-  const hasForgeRockEndpoints = 
-    (config.issuer && isUrlFromDomain(config.issuer, 'forgerock.com') || 
-     config.issuer && isUrlFromDomain(config.issuer, 'forgerock.io')) ||
+  let hasForgeRockEndpoints = false;
+  
+  if (config.issuer) {
+    hasForgeRockEndpoints = isUrlFromDomain(config.issuer, 'forgerock.com') || 
+                            isUrlFromDomain(config.issuer, 'forgerock.io');
+  }
+  
+  hasForgeRockEndpoints = hasForgeRockEndpoints || 
     (config.token_endpoint?.includes('/oauth2/access_token') || false);
   
   // ForgeRock specific properties
