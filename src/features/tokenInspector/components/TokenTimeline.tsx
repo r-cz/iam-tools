@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface TokenTimelineProps {
   payload: any;
@@ -30,11 +31,12 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
   // If we don't have both iat and exp, we can't create a useful timeline
   if (!issuedAt || !expiration) {
     return (
-      <div className="bg-amber-500/10 text-amber-700 p-3 rounded-md">
-        <p>
+      <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700">
+        <AlertTitle>Missing timestamps</AlertTitle>
+        <AlertDescription>
           Cannot display token timeline. Missing required timestamps (iat and/or exp).
-        </p>
-      </div>
+        </AlertDescription>
+      </Alert>
     );
   }
   
@@ -161,36 +163,32 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
       
       {/* JWT ID Information */}
       {payload.jti && (
-        <div className="bg-blue-500/10 text-blue-700 p-3 rounded-md">
-          <p className="text-sm font-medium mb-1">
-            JWT ID: <span className="font-mono break-all">{payload.jti}</span>
-          </p>
-          <p className="text-xs">
+        <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-700">
+          <AlertTitle>JWT ID: <span className="font-mono break-all">{payload.jti}</span></AlertTitle>
+          <AlertDescription>
             This token has a unique identifier. JWT IDs are particularly important for OAuth access tokens.
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
       
       {/* Session ID Information */}
       {payload.sid && (
-        <div className="bg-blue-500/10 text-blue-700 p-3 rounded-md">
-          <p className="text-sm font-medium mb-1">
-            Session ID: <span className="font-mono break-all">{payload.sid}</span>
-          </p>
-          <p className="text-xs">
+        <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-700">
+          <AlertTitle>Session ID: <span className="font-mono break-all">{payload.sid}</span></AlertTitle>
+          <AlertDescription>
             This token is associated with a specific authentication session.
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
       
       {/* OAuth 2.0 Access Token Information */}
       {(payload.scope || payload.scp || payload.client_id) && !payload.nonce && !payload.at_hash && (
-        <div className="bg-blue-500/10 text-blue-700 p-3 rounded-md">
-          <p className="text-sm font-medium mb-1">OAuth 2.0 Access Token</p>
-          <p className="text-xs">
+        <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-700">
+          <AlertTitle>OAuth 2.0 Access Token</AlertTitle>
+          <AlertDescription>
             This token contains typical OAuth 2.0 access token claims. It can be used to access protected resources.
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );
