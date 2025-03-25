@@ -279,8 +279,6 @@ export function TokenInspector() {
                 <TokenSize token={decodedToken.raw} />
               </div>
             </div>
-            
-            {/* Removed the redundant error alert that was here */}
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">
@@ -309,7 +307,6 @@ export function TokenInspector() {
                 <TokenSignature 
                   token={decodedToken.raw}
                   header={decodedToken.header}
-                  signatureValid={decodedToken.signature.valid}
                   signatureError={decodedToken.signature.error}
                   jwks={jwks}
                   issuerUrl={issuerUrl}

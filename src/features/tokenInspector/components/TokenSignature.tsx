@@ -7,18 +7,17 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 interface TokenSignatureProps {
   token: string;
   header: any;
-  signatureValid: boolean;
   signatureError?: string;
   jwks: JSONWebKeySet | null;
   issuerUrl: string;
   setIssuerUrl: (url: string) => void;
   onJwksResolved: (jwks: JSONWebKeySet) => void;
+  // signatureValid parameter removed as it's no longer used
 }
 
 export function TokenSignature({ 
   token, 
   header, 
-  signatureValid, 
   signatureError, 
   jwks,
   issuerUrl,
@@ -46,8 +45,6 @@ export function TokenSignature({
           />
         </div>
       </div>
-
-      {/* Removed the redundant signature status badge that was here */}
       
       {signatureError && (
         <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-destructive">
