@@ -40,24 +40,15 @@ export function TokenJwksResolver({
     }
   }, [isDemoToken, issuerUrl, setIssuerUrl]);
 
-  // This effect will run exactly ONCE when a token with an issuer is first loaded
+  // This effect will automatically fetch JWKS when a demo token is detected
   useEffect(() => {
-    // Only do this once when the component mounts and there's an initial URL
-    if (issuerUrl && issuerUrl !== lastAutoFetchUrlRef.current) {
-      // Record this URL to prevent duplicate fetches
-      lastAutoFetchUrlRef.current = issuerUrl;
-      
-      // Auto-fetch JWKS with a small delay to ensure UI is rendered
-      const timer = setTimeout(() => {
-        console.log('Initial auto-fetch for token issuer:', issuerUrl);
-        fetchJwks();
-      }, 300);
-      
-      return () => clearTimeout(timer);
+    if (isDemoToken && issuerUrl && issuerUrl.includes(window.location.host)) {
+      console.log('Auto-fetching JWKS for demo token with issuer:', issuerUrl);
+      fetchJwks();
     }
-  // We only want this to run ONCE on initial mount with a valid URL
+  // We want this to run whenever isDemoToken or issuerUrl changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isDemoToken, issuerUrl]);
   
   const fetchJwks = async () => {
     setIsLoading(true);
@@ -73,13 +64,15 @@ export function TokenJwksResolver({
       const configUrl = `${normalizedIssuerUrl}.well-known/openid-configuration`;
       console.log(`Fetching OpenID configuration from: ${configUrl}`);
       
-      // Special case for local development
+      // Special case for local development or demo tokens
       const useDirectFetch = issuerUrl.includes('localhost') || 
                              issuerUrl.includes(window.location.host) ||
                              isDemoToken;
       
+      console.log(`Using direct fetch: ${useDirectFetch}`);
+      
       const configResponse = useDirectFetch 
-        ? await fetch(configUrl) 
+        ? await fetch(configUrl, { cache: 'no-store' }) // Prevent caching
         : await proxyFetch(configUrl);
       
       if (!configResponse.ok) {
@@ -87,6 +80,7 @@ export function TokenJwksResolver({
       }
       
       const config = await configResponse.json();
+      console.log('OpenID configuration:', config);
       
       if (!config.jwks_uri) {
         throw new Error("No JWKS URI found in OpenID configuration");
@@ -95,7 +89,7 @@ export function TokenJwksResolver({
       // Then, fetch the JWKS using the jwks_uri
       console.log(`Fetching JWKS from: ${config.jwks_uri}`);
       const jwksResponse = useDirectFetch 
-        ? await fetch(config.jwks_uri) 
+        ? await fetch(config.jwks_uri, { cache: 'no-store' }) // Prevent caching
         : await proxyFetch(config.jwks_uri);
       
       if (!jwksResponse.ok) {
@@ -103,17 +97,31 @@ export function TokenJwksResolver({
       }
       
       const jwks = await jwksResponse.json();
+      console.log('JWKS data:', jwks);
       
       if (!jwks.keys || !Array.isArray(jwks.keys)) {
         throw new Error("Invalid JWKS format: missing 'keys' array");
       }
       
+      // Log details about the keys we found
+      console.log('JWKS keys found:', jwks.keys.map(k => ({
+        kid: k.kid,
+        alg: k.alg,
+        use: k.use,
+        kty: k.kty
+      })));
+      
+      // Pass the JWKS to the callback function for verification
       onJwksResolved(jwks);
       setError(null);
+      
       toast.success(
         <div>
           <p><strong>JWKS Fetched Successfully</strong></p>
           <p>Found {jwks.keys.length} keys in the JWKS</p>
+          {jwks.keys.map((key, i) => (
+            <p key={i} className="text-xs mt-1">Key ID: {key.kid}</p>
+          ))}
         </div>,
         {
           id: 'jwks-fetch-success',

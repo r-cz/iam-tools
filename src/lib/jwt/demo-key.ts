@@ -27,3 +27,19 @@ export const DEMO_PRIVATE_KEY = {
   dq: "Nj2MjLUl-NJc5c71dsVS_-GQN1I-jVSFnIPKFsNu5sYfvFcMTjiXh6GWP9PTc8R0FZMQty53eCPYDQHWK2B7JwiLYjnoGXkt4oABWLxLDKEj-lQAPJyxEMXejKIyga31B48WBXmvbzSdIJ5yl5xJQkNWBfQ_XGiYSj8KdyIZbPE",
   qi: "kA1V4HXXr8Qtv0b_QVJPIVx0xKTZiuvaDOzkrdvLCYC9SyQ5U2ZtbhtrPS4Aq8dXQVu1_ZCuVqBU71FZpXhKGJKfLRkc9LDeBo31L9jqzwjK-rmwpU71oOyFAzrPqv3TPCbYVuUl8CWgAJYw-wPkYJrZOSiJyMvqzKG5vUQKBtQ"
 };
+
+/**
+ * JWKS format of the keys, for debugging and manual entry
+ */
+export const DEMO_JWKS = {
+  keys: [
+    {
+      kty: "RSA",
+      kid: "demo-key-2025",
+      use: "sig",
+      alg: "RS256",
+      n: "tqWVYpI3HVNmJ1quaLmOVADZG9F9aP3Kgp6Tm9RCLCQsNLLa3B1mTM8jgBwWSyGOcGkNYBHGMSo0iy_FYD8H7Jl9HQEQ5oGHd5T6jUUUfvQcHkGb5aWKVkrP7Wur8NZ0w_4WR_yjZ97QklFZ9iXOV1UEwjbYPsoxo5OhJUvW3J5J_ND2sB0nhvyYfX9Vjaz9M0BbBABeqVV1h49OQWVETDnC9A7MM7rlQ14wFWpdXnbDgIgV2CA98L6z7sjm9dKF38qVlwImJWI2JFl_rELsqFVMDutj0_AO6nZ_S-wGFD-FcB0Nkd6gKVskMkO1mLnJRuW_afBWgCLbbgb2nQsYoQ",
+      e: "AQAB"
+    }
+  ]
+};

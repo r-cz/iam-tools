@@ -30,6 +30,8 @@ export async function generateSignedToken(payload?: Record<string, any>): Promis
   const currentTime = Math.floor(Date.now() / 1000);
   const issuer = getIssuerBaseUrl();
   
+  console.log('Generating token with issuer:', issuer);
+  
   // Create the default payload
   const defaultPayload = {
     // Standard claims
@@ -54,15 +56,19 @@ export async function generateSignedToken(payload?: Record<string, any>): Promis
   };
 
   try {
-    // Using jose library to properly sign the token
+    // First generate the private CryptoKey from the JWK
+    const privateKey = await importPrivateKey();
+    
+    // Now use jose's SignJWT to create a properly signed token
     const jwt = await new SignJWT(defaultPayload)
       .setProtectedHeader({ 
         alg: 'RS256', 
-        typ: 'JWT',
+        typ: 'JWT', 
         kid: DEMO_PRIVATE_KEY.kid 
       })
-      .sign(await importPrivateKey());
-      
+      .sign(privateKey);
+    
+    console.log('Successfully signed token');
     return jwt;
   } catch (error) {
     console.error('Error signing JWT:', error);
@@ -75,17 +81,22 @@ export async function generateSignedToken(payload?: Record<string, any>): Promis
  */
 async function importPrivateKey() {
   try {
+    console.log('Importing private key with kid:', DEMO_PRIVATE_KEY.kid);
+    
     // Import the JWK as a CryptoKey
-    return await crypto.subtle.importKey(
+    const cryptoKey = await crypto.subtle.importKey(
       'jwk',
       DEMO_PRIVATE_KEY,
       {
         name: 'RSASSA-PKCS1-v1_5',
-        hash: 'SHA-256',
+        hash: { name: 'SHA-256' },
       },
       false, // not extractable
       ['sign'] // can only be used for signing
     );
+    
+    console.log('Successfully imported private key');
+    return cryptoKey;
   } catch (error) {
     console.error('Error importing private key:', error);
     throw error;

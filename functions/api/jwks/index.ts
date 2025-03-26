@@ -27,13 +27,22 @@ export const onRequest: PagesFunction = async (context) => {
     ]
   };
 
-  return new Response(JSON.stringify(jwks, null, 2), {
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Cache-Control": "public, max-age=86400" // Cache for 24 hours
-    }
-  });
+  // Set the correct response headers
+  const headers = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Cache-Control": "no-cache, no-store, must-revalidate" // Prevent caching issues during development
+  };
+
+  // Add debugging headers in development mode
+  const url = new URL(context.request.url);
+  if (url.hostname.includes("localhost")) {
+    headers["X-Debug-Info"] = "JWKS endpoint called in development mode";
+    headers["X-Key-Count"] = jwks.keys.length.toString();
+    headers["X-Key-ID"] = jwks.keys[0].kid;
+  }
+
+  return new Response(JSON.stringify(jwks, null, 2), { headers });
 };

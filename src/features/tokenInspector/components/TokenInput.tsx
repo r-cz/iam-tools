@@ -6,6 +6,8 @@ import { InfoIcon } from "lucide-react";
 import { generateFreshToken } from "../utils/generate-token";
 import { useState } from "react";
 import { toast } from "sonner";
+import { testJwtVerification } from "@/lib/jwt/test-verification";
+import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 
 interface TokenInputProps {
   token: string;
@@ -17,6 +19,7 @@ interface TokenInputProps {
 export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputProps) {
   const [isLoadingExample, setIsLoadingExample] = useState(false);
   const [isExampleToken, setIsExampleToken] = useState(false);
+  const [isTestingVerification, setIsTestingVerification] = useState(false);
 
   const handlePaste = async () => {
     try {
@@ -39,9 +42,12 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
     try {
       // Generate a fresh token with current timestamps
       const freshToken = await generateFreshToken();
-      console.log("Generated example token with issuer:", JSON.parse(
+      
+      // Log token details
+      const payload = JSON.parse(
         atob(freshToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-      ).iss);
+      );
+      console.log("Generated example token with issuer:", payload.iss);
       
       setToken(freshToken);
       setIsExampleToken(true);
@@ -65,6 +71,46 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
       );
     } finally {
       setIsLoadingExample(false);
+    }
+  };
+  
+  const testVerification = async () => {
+    if (!token) return;
+    
+    setIsTestingVerification(true);
+    try {
+      // Direct verification test
+      const result = await testJwtVerification(token);
+      
+      if (result.valid) {
+        toast.success(
+          <div>
+            <p><strong>Verification Successful!</strong></p>
+            <p>Token signature is valid.</p>
+          </div>,
+          {
+            id: 'verify-success',
+            duration: 5000,
+          }
+        );
+        
+        console.log('JWKS used for verification:', DEMO_JWKS);
+      } else {
+        toast.error(
+          <div>
+            <p><strong>Verification Failed</strong></p>
+            <p>{result.error}</p>
+          </div>,
+          {
+            id: 'verify-error',
+            duration: 5000,
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Verification test error:', error);
+    } finally {
+      setIsTestingVerification(false);
     }
   };
 
@@ -97,6 +143,16 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
           >
             Reset
           </Button>
+          {isExampleToken && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={testVerification}
+              disabled={isTestingVerification || !token}
+            >
+              {isTestingVerification ? "Testing..." : "Test Verification"}
+            </Button>
+          )}
         </div>
       </div>
       
