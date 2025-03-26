@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { generateFreshToken } from "../utils/generate-token";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface TokenInputProps {
   token: string;
@@ -38,10 +39,30 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
     try {
       // Generate a fresh token with current timestamps
       const freshToken = await generateFreshToken();
+      console.log("Generated example token with issuer:", JSON.parse(
+        atob(freshToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+      ).iss);
+      
       setToken(freshToken);
       setIsExampleToken(true);
+      
+      // Success message
+      toast.success(
+        "Example token generated successfully",
+        {
+          id: 'example-token-success',
+          duration: 3000,
+        }
+      );
     } catch (error) {
       console.error("Error generating example token:", error);
+      toast.error(
+        "Error generating example token. Please try again.",
+        {
+          id: 'example-token-error',
+          duration: 5000,
+        }
+      );
     } finally {
       setIsLoadingExample(false);
     }

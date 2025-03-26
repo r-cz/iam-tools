@@ -29,11 +29,13 @@ export function TokenJwksResolver({
   // Use a ref to store the previous URL to prevent unnecessary fetches
   const lastAutoFetchUrlRef = React.useRef<string>('');
   
-  // Set the issuer URL to the current domain if it's a demo token
+  // Set the issuer URL to the current domain if it's a demo token or if the current issuer is auth.example.com
   useEffect(() => {
-    if (isDemoToken && (!issuerUrl || issuerUrl === "https://auth.example.com")) {
+    const isAuthExample = issuerUrl && (issuerUrl === "https://auth.example.com");
+    
+    if ((isDemoToken || isAuthExample) && !issuerUrl.includes(window.location.host)) {
       const localIssuerUrl = getIssuerBaseUrl();
-      console.log('Setting demo token issuer URL:', localIssuerUrl);
+      console.log('Setting issuer URL to local domain:', localIssuerUrl);
       setIssuerUrl(localIssuerUrl);
     }
   }, [isDemoToken, issuerUrl, setIssuerUrl]);

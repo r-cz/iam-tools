@@ -1,7 +1,7 @@
 /**
  * Utility to generate a fresh JWT token with current timestamps
  */
-import { generateSignedToken } from '@/lib/jwt/generate-signed-token';
+import { generateSignedToken, getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token';
 
 /**
  * Generates a fresh JWT token with current timestamps
@@ -13,7 +13,7 @@ export async function generateFreshToken(): Promise<string> {
     return await generateSignedToken();
   } catch (error) {
     console.error('Error generating signed token:', error);
-    // Fall back to the legacy method if something goes wrong
+    // Fall back to the legacy method but still use the correct issuer URL
     return generateLegacyToken();
   }
 }
@@ -21,6 +21,10 @@ export async function generateFreshToken(): Promise<string> {
 // Legacy implementation, kept for fallback
 function generateLegacyToken(): string {
   const currentTimestamp = Math.floor(Date.now() / 1000);
+  
+  // Get the issuer URL from our utility
+  // This ensures we're always using the correct domain
+  const issuerUrl = getIssuerBaseUrl();
   
   // Create a token valid for 1 hour from now
   const iat = currentTimestamp;
@@ -32,14 +36,18 @@ function generateLegacyToken(): string {
     name: "John Doe",
     iat: iat,
     exp: exp,
-    aud: "example.com",
-    iss: "https://auth.example.com"
+    aud: "example-client",
+    // Use the correct issuer URL
+    iss: issuerUrl,
+    // Mark as demo token
+    is_demo_token: true
   };
   
   // Create the header
   const header = {
-    alg: "HS256",
-    typ: "JWT"
+    alg: "RS256", // Use RS256 to match our JWKS
+    typ: "JWT",
+    kid: "demo-key-2025" // Include the key ID
   };
   
   // Encode header and payload
@@ -47,7 +55,7 @@ function generateLegacyToken(): string {
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
   
   // For the signature, we'll use a placeholder
-  // This is just for display purposes and won't be validated
+  // Note: This won't be validatable, but at least the issuer is right
   const signaturePart = "XCopO5RSxCARj0BoTPaHQXPFMjQ4inuX1TnuNKRdCrQ";
   
   // Combine parts to form the JWT

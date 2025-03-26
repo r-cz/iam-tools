@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as jose from "jose";
 import { 
   Card, 
@@ -17,6 +17,7 @@ import { TokenSize } from "./components/TokenSize";
 import { validateToken, determineTokenType } from "./utils/token-validation";
 import { TokenType, DecodedToken, ValidationResult } from "./utils/types";
 import { verifySignature } from "@/lib/jwt/verify-signature";
+import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 
 export function TokenInspector() {
   const [token, setToken] = useState("");
@@ -27,6 +28,16 @@ export function TokenInspector() {
   const [activeTab, setActiveTab] = useState("payload");
   const [issuerUrl, setIssuerUrl] = useState("");
   const [isDemoToken, setIsDemoToken] = useState(false);
+  
+  // Reset issuer URL if it's the default example.com one
+  useEffect(() => {
+    if (issuerUrl === "https://auth.example.com") {
+      // Use the local issuer URL
+      const localIssuerUrl = getIssuerBaseUrl();
+      console.log('Replacing auth.example.com with local issuer:', localIssuerUrl);
+      setIssuerUrl(localIssuerUrl);
+    }
+  }, [issuerUrl]);
 
   const resetState = () => {
     // Clear the token
@@ -72,9 +83,19 @@ export function TokenInspector() {
       const payload = JSON.parse(atob(paddedPayload));
 
       // Check if this is a demo token
-      const isDemoTokenCheck = payload.iss && 
-        (payload.iss.includes(window.location.host) || payload.is_demo_token);
+      const isDemoTokenCheck = payload.is_demo_token === true || 
+        (payload.iss && (
+          payload.iss.includes(window.location.host) || 
+          payload.iss === "http://localhost:8788/api"
+        ));
       setIsDemoToken(isDemoTokenCheck);
+      
+      console.log('Decoded token:', { 
+        header, 
+        payload, 
+        isDemoToken: isDemoTokenCheck,
+        issuer: payload.iss 
+      });
 
       // Use the determineTokenType function
       const detectedTokenType = determineTokenType(header, payload);
@@ -84,7 +105,14 @@ export function TokenInspector() {
       
       // Extract issuer URL from payload if present and auto-fetch JWKS
       if (payload.iss) {
-        const newIssuerUrl = payload.iss;
+        // Handle the special case of auth.example.com
+        let newIssuerUrl = payload.iss;
+        
+        if (newIssuerUrl === "https://auth.example.com" || isDemoTokenCheck) {
+          newIssuerUrl = getIssuerBaseUrl();
+          console.log('Using local issuer URL instead of auth.example.com:', newIssuerUrl);
+        }
+        
         console.log('Extracted issuer URL from token:', newIssuerUrl);
         
         // Only update if it's different to avoid unnecessary re-renders
