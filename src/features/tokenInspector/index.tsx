@@ -16,6 +16,7 @@ import { TokenTimeline } from "./components/TokenTimeline";
 import { TokenSize } from "./components/TokenSize";
 import { validateToken, determineTokenType } from "./utils/token-validation";
 import { TokenType, DecodedToken, ValidationResult } from "./utils/types";
+import { verifySignature } from "@/lib/jwt/verify-signature";
 
 export function TokenInspector() {
   const [token, setToken] = useState("");
@@ -25,6 +26,7 @@ export function TokenInspector() {
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
   const [activeTab, setActiveTab] = useState("payload");
   const [issuerUrl, setIssuerUrl] = useState("");
+  const [isDemoToken, setIsDemoToken] = useState(false);
 
   const resetState = () => {
     // Clear the token
@@ -35,6 +37,8 @@ export function TokenInspector() {
     setValidationResults([]);
     // Reset to default tab
     setActiveTab("payload");
+    // Reset demo token status
+    setIsDemoToken(false);
     // Reset JWKS and issuer URL if needed
     setJwks(null);
     setIssuerUrl("");
@@ -67,6 +71,11 @@ export function TokenInspector() {
       const header = JSON.parse(atob(paddedHeader));
       const payload = JSON.parse(atob(paddedPayload));
 
+      // Check if this is a demo token
+      const isDemoTokenCheck = payload.iss && 
+        (payload.iss.includes(window.location.host) || payload.is_demo_token);
+      setIsDemoToken(isDemoTokenCheck);
+
       // Use the determineTokenType function
       const detectedTokenType = determineTokenType(header, payload);
       console.log('Detected token type:', detectedTokenType);
@@ -81,10 +90,6 @@ export function TokenInspector() {
         // Only update if it's different to avoid unnecessary re-renders
         if (newIssuerUrl !== issuerUrl) {
           setIssuerUrl(newIssuerUrl);
-          
-          // Note: We don't auto-fetch here because the issuerUrl state won't be updated yet
-          // The fetchJwks function in TokenJwksResolver will be triggered automatically
-          // through the "Fetch JWKS automatically" button that appears
         }
       }
 
@@ -97,25 +102,13 @@ export function TokenInspector() {
       // Verify signature if JWKS is provided
       if (jwks) {
         try {
-          // Find the matching key by kid
-          const matchingKey = jwks.keys.find(k => k.kid === header.kid);
+          // Use our verification utility
+          const verificationResult = await verifySignature(token, jwks);
           
-          // Add logging to help with debugging
-          console.log('Verifying token signature with JWKS:', { 
-            tokenKid: header.kid,
-            jwksKeyCount: jwks.keys.length,
-            jwksKeys: jwks.keys.map((k: {kid?: string}) => k.kid),
-            foundMatchingKey: !!matchingKey
-          });
+          signatureValid = verificationResult.valid;
+          signatureError = verificationResult.error;
           
-          if (!matchingKey) {
-            throw new Error(`No key with matching kid ${header.kid} found in JWKS`);
-          }
-          
-          // Create a key object and verify
-          const key = await jose.importJWK(matchingKey, header.alg);
-          await jose.jwtVerify(token, key);
-          signatureValid = true;
+          console.log('Signature verification result:', verificationResult);
         } catch (e: any) {
           console.error('Signature verification error:', e);
           signatureError = e.message;
@@ -162,54 +155,29 @@ export function TokenInspector() {
     // Store the JWKS first
     setJwks(resolvedJwks);
     
-    // If we have a token, directly verify it without relying on state updates
+    // If we have a token, verify it
     if (token) {
       try {
-        // Parse the token to get parts for header
-        const parts = token.split(".");
-        if (parts.length !== 3) {
-          throw new Error("Invalid JWT format");
-        }
-
-        // Get the header to find the kid and alg
-        const encodedHeader = parts[0];
-        const base64Header = encodedHeader.replace(/-/g, '+').replace(/_/g, '/');
-        const paddedHeader = base64Header + '='.repeat((4 - base64Header.length % 4) % 4);
-        const header = JSON.parse(atob(paddedHeader));
+        // Use our verification utility
+        const verificationResult = await verifySignature(token, resolvedJwks);
         
-        // Find the matching key by kid
-        const matchingKey = resolvedJwks.keys.find(k => k.kid === header.kid);
+        console.log('Signature verification with new JWKS:', verificationResult);
         
-        console.log('Direct verification with matching key:', {
-          headerKid: header.kid,
-          foundMatchingKey: !!matchingKey,
-          alg: header.alg
-        });
-        
-        if (matchingKey) {
-          // Create a key object and verify
-          const key = await jose.importJWK(matchingKey, header.alg);
-          await jose.jwtVerify(token, key);
-          
-          // Force update the decoded token with valid signature
-          if (decodedToken) {
-            setDecodedToken({
-              ...decodedToken,
-              signature: {
-                valid: true,
-                error: undefined
-              }
-            });
-          } else {
-            // If no decoded token yet, do a full decode
-            console.log('No decoded token yet, performing full decode');
-            decodeToken();
-          }
+        // Update the decoded token with the verification result
+        if (decodedToken) {
+          setDecodedToken({
+            ...decodedToken,
+            signature: {
+              valid: verificationResult.valid,
+              error: verificationResult.error
+            }
+          });
         } else {
-          throw new Error(`No key with matching kid ${header.kid} found`);
+          // If no decoded token yet, do a full decode
+          decodeToken();
         }
       } catch (err: any) {
-        console.error('Direct verification error:', err);
+        console.error('Verification error:', err);
         if (decodedToken) {
           // Update with error
           setDecodedToken({
@@ -275,6 +243,9 @@ export function TokenInspector() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   {getSignatureStatusBadge()}
+                  {isDemoToken && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-700 hover:bg-blue-500/10">Demo Token</Badge>
+                  )}
                 </div>
                 <div className="flex items-center">
                   <span className="mr-2 text-sm">Detected:</span>
@@ -322,7 +293,9 @@ export function TokenInspector() {
                 <TokenSignature 
                   token={decodedToken.raw}
                   header={decodedToken.header}
+                  payload={decodedToken.payload}
                   signatureError={decodedToken.signature.error}
+                  signatureValid={decodedToken.signature.valid}
                   jwks={jwks}
                   issuerUrl={issuerUrl}
                   setIssuerUrl={setIssuerUrl}

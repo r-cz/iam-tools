@@ -5,32 +5,39 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CodeBlock } from "@/components/ui/code-block";
 import { toast } from "sonner";
+import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 
 interface TokenJwksResolverProps {
   issuerUrl: string;
   setIssuerUrl: (url: string) => void;
   onJwksResolved: (jwks: any) => void;
+  isDemoToken?: boolean;
 }
 
 export function TokenJwksResolver({ 
   issuerUrl, 
   setIssuerUrl, 
-  onJwksResolved 
+  onJwksResolved,
+  isDemoToken = false
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<"automatic" | "manual">("automatic");
   const [manualJwks, setManualJwks] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // Using error state for internal logic but displaying through toast
   const [_error, setError] = useState<string | null>(null);
-  // Removed isAutoPopulated state
-  
-  // Instead of trying to auto-fetch with every URL change,
-  // we'll add a function that parent components can call to trigger a one-time fetch
-  // This simplifies the logic and prevents unwanted fetches
   
   // Use a ref to store the previous URL to prevent unnecessary fetches
   const lastAutoFetchUrlRef = React.useRef<string>('');
   
+  // Set the issuer URL to the current domain if it's a demo token
+  useEffect(() => {
+    if (isDemoToken && (!issuerUrl || issuerUrl === "https://auth.example.com")) {
+      const localIssuerUrl = getIssuerBaseUrl();
+      console.log('Setting demo token issuer URL:', localIssuerUrl);
+      setIssuerUrl(localIssuerUrl);
+    }
+  }, [isDemoToken, issuerUrl, setIssuerUrl]);
+
   // This effect will run exactly ONCE when a token with an issuer is first loaded
   useEffect(() => {
     // Only do this once when the component mounts and there's an initial URL
@@ -64,7 +71,15 @@ export function TokenJwksResolver({
       const configUrl = `${normalizedIssuerUrl}.well-known/openid-configuration`;
       console.log(`Fetching OpenID configuration from: ${configUrl}`);
       
-      const configResponse = await proxyFetch(configUrl);
+      // Special case for local development
+      const useDirectFetch = issuerUrl.includes('localhost') || 
+                             issuerUrl.includes(window.location.host) ||
+                             isDemoToken;
+      
+      const configResponse = useDirectFetch 
+        ? await fetch(configUrl) 
+        : await proxyFetch(configUrl);
+      
       if (!configResponse.ok) {
         throw new Error(`Failed to fetch OpenID configuration: ${configResponse.status} ${configResponse.statusText}`);
       }
@@ -77,7 +92,9 @@ export function TokenJwksResolver({
       
       // Then, fetch the JWKS using the jwks_uri
       console.log(`Fetching JWKS from: ${config.jwks_uri}`);
-      const jwksResponse = await proxyFetch(config.jwks_uri);
+      const jwksResponse = useDirectFetch 
+        ? await fetch(config.jwks_uri) 
+        : await proxyFetch(config.jwks_uri);
       
       if (!jwksResponse.ok) {
         throw new Error(`Failed to fetch JWKS: ${jwksResponse.status} ${jwksResponse.statusText}`);
@@ -254,7 +271,11 @@ export function TokenJwksResolver({
                 placeholder="https://example.com/identity"
                 className="flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
-              {/* Removed auto-populated message */}
+              {isDemoToken && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  <em>This is the demo issuer URL for the example token</em>
+                </div>
+              )}
             </div>
             <Button 
               onClick={fetchJwks}

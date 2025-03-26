@@ -1,20 +1,25 @@
 /**
  * Utility to generate a fresh JWT token with current timestamps
  */
-
-// Function to encode as base64url
-function base64UrlEncode(str: string): string {
-  return btoa(str)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
+import { generateSignedToken } from '@/lib/jwt/generate-signed-token';
 
 /**
  * Generates a fresh JWT token with current timestamps
- * @returns A JWT token string with current timestamps
+ * @returns A properly signed JWT token string
  */
-export function generateFreshToken(): string {
+export async function generateFreshToken(): Promise<string> {
+  try {
+    // Use our new implementation to create a properly signed token
+    return await generateSignedToken();
+  } catch (error) {
+    console.error('Error generating signed token:', error);
+    // Fall back to the legacy method if something goes wrong
+    return generateLegacyToken();
+  }
+}
+
+// Legacy implementation, kept for fallback
+function generateLegacyToken(): string {
   const currentTimestamp = Math.floor(Date.now() / 1000);
   
   // Create a token valid for 1 hour from now
@@ -47,4 +52,12 @@ export function generateFreshToken(): string {
   
   // Combine parts to form the JWT
   return `${encodedHeader}.${encodedPayload}.${signaturePart}`;
+}
+
+// Function to encode as base64url
+function base64UrlEncode(str: string): string {
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
