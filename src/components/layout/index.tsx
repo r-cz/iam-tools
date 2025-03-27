@@ -1,4 +1,3 @@
-
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 import { ThemeToggle } from '@/components/theme';
@@ -17,16 +16,17 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom'; // <-- Import Link
 
 export function Layout() {
   const location = useLocation();
-  
+
   // Generate page title based on route
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === '/') return 'Home';
-    return path.substring(1).split('-').map(word => 
+    // Simple title generation, might need refinement for complex paths
+    return path.substring(1).split('-').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
@@ -37,18 +37,23 @@ export function Layout() {
     if (path === '/') {
       return (
         <BreadcrumbItem>
+          {/* Current page, not a link */}
           <BreadcrumbPage>Home</BreadcrumbPage>
         </BreadcrumbItem>
       );
     }
-    
+
     return (
       <>
         <BreadcrumbItem className="hidden md:block">
-          <BreadcrumbLink href="/">Home</BreadcrumbLink>
+          {/* Use asChild with Link for the "Home" breadcrumb */}
+          <BreadcrumbLink asChild>
+            <Link to="/">Home</Link>
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator className="hidden md:block" />
         <BreadcrumbItem>
+          {/* Current page in breadcrumb */}
           <BreadcrumbPage>{getPageTitle()}</BreadcrumbPage>
         </BreadcrumbItem>
       </>
@@ -74,6 +79,7 @@ export function Layout() {
             </div>
           </div>
         </header>
+        {/* Outlet renders the matched child route component */}
         <Outlet />
       </SidebarInset>
     </SidebarProvider>
