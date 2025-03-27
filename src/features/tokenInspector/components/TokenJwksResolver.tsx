@@ -48,15 +48,19 @@ export function TokenJwksResolver({
     }
   }, [isDemoToken, issuerUrl, setIssuerUrl]);
 
-  // This effect will automatically fetch JWKS when a demo token is detected
+  // Cache for resolved JWKS to prevent unnecessary fetches
+  const [hasResolvedJwks, setHasResolvedJwks] = useState(false);
+  
+  // This effect will automatically fetch JWKS when a demo token is detected, but only once
   useEffect(() => {
-    if (isDemoToken && issuerUrl && issuerUrl.includes(window.location.host)) {
+    if (isDemoToken && issuerUrl && issuerUrl.includes(window.location.host) && !hasResolvedJwks) {
       console.log('Auto-fetching JWKS for demo token with issuer:', issuerUrl);
       fetchJwks();
+      setHasResolvedJwks(true);
     }
-  // We want this to run whenever isDemoToken or issuerUrl changes
+  // We want this to run whenever isDemoToken or issuerUrl changes, but the dependency on hasResolvedJwks prevents refetching
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoToken, issuerUrl]);
+  }, [isDemoToken, issuerUrl, hasResolvedJwks]);
   
   const fetchJwks = async () => {
     setIsLoading(true);

@@ -17,16 +17,11 @@ import {
   XCircle, 
   Link, 
   ChevronRight,
-  ChevronDown,
   Copy,
   ClipboardCheck 
 } from 'lucide-react';
 import { useClipboard } from '@/hooks/use-clipboard';
-import { 
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
-} from "@/components/ui/collapsible";
+
 
 import { OidcConfiguration } from '../utils/types';
 import { endpointDescriptions } from '../data/common-endpoints';
@@ -124,45 +119,15 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
       return <span className="text-muted-foreground italic">None</span>;
     }
     
-    if (value.length <= 3) {
-      return (
-        <div className="flex flex-wrap gap-1">
-          {value.map((item, index) => (
-            <Badge key={index} variant="outline" className="bg-primary/10">
-              {item}
-            </Badge>
-          ))}
-        </div>
-      );
-    }
-    
+    // Display all values by default since that's more user-friendly
     return (
-      <Collapsible>
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap gap-1">
-            {value.slice(0, 3).map((item, index) => (
-              <Badge key={index} variant="outline" className="bg-primary/10">
-                {item}
-              </Badge>
-            ))}
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 px-2 rounded-full">
-                <span className="text-xs">+{value.length - 3} more</span>
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-          <CollapsibleContent>
-            <div className="flex flex-wrap gap-1 pt-2">
-              {value.slice(3).map((item, index) => (
-                <Badge key={index} variant="outline" className="bg-primary/10">
-                  {item}
-                </Badge>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+      <div className="flex flex-wrap gap-1">
+        {value.map((item, index) => (
+          <Badge key={index} variant="secondary" className="text-xs font-medium">
+            {item}
+          </Badge>
+        ))}
+      </div>
     );
   };
 
