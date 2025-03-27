@@ -56,7 +56,20 @@ export function TokenPayload({
       );
     }
     
-    // Handle arrays and objects
+    // Special handling for groups claim
+    if (key === "groups" && Array.isArray(value)) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {value.map((group, index) => (
+            <Badge key={index} variant="secondary" className="text-xs font-medium">
+              {group}
+            </Badge>
+          ))}
+        </div>
+      );
+    }
+    
+    // Handle other arrays and objects
     if (typeof value === "object" && value !== null) {
       return (
         <CodeBlock code={JSON.stringify(value, null, 2)} language="json" className="p-1" />
