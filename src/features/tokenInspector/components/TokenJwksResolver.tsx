@@ -21,9 +21,9 @@ interface KeyInfo {
   kty?: string;
 }
 
-export function TokenJwksResolver({ 
-  issuerUrl, 
-  setIssuerUrl, 
+export function TokenJwksResolver({
+  issuerUrl,
+  setIssuerUrl,
   onJwksResolved,
   isDemoToken = false
 }: TokenJwksResolverProps) {
@@ -32,13 +32,14 @@ export function TokenJwksResolver({
   const [isLoading, setIsLoading] = useState(false);
   // Using error state for internal logic but displaying through toast
   const [_error, setError] = useState<string | null>(null);
-  
+
   // Using a separate flag to track whether we've already set the issuer URL
   const initialSetupDoneRef = React.useRef(false);
-  
+
+  // This useEffect for initial issuerUrl setup is fine
   useEffect(() => {
     const isAuthExample = issuerUrl && (issuerUrl === "https://auth.example.com");
-    
+
     // Only auto-set the URL once, not on every render or change
     if (!initialSetupDoneRef.current && (isDemoToken || isAuthExample) && !issuerUrl.includes(window.location.host)) {
       const localIssuerUrl = getIssuerBaseUrl();
@@ -48,73 +49,61 @@ export function TokenJwksResolver({
     }
   }, [isDemoToken, issuerUrl, setIssuerUrl]);
 
-  // Cache for resolved JWKS to prevent unnecessary fetches
-  const [hasResolvedJwks, setHasResolvedJwks] = useState(false);
-  
-  // This effect will automatically fetch JWKS when a demo token is detected, but only once
-  useEffect(() => {
-    if (isDemoToken && issuerUrl && issuerUrl.includes(window.location.host) && !hasResolvedJwks) {
-      console.log('Auto-fetching JWKS for demo token with issuer:', issuerUrl);
-      fetchJwks();
-      setHasResolvedJwks(true);
-    }
-  // We want this to run whenever isDemoToken or issuerUrl changes, but the dependency on hasResolvedJwks prevents refetching
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoToken, issuerUrl, hasResolvedJwks]);
-  
+  // REMOVED THE PROBLEMATIC useEffect HOOK THAT CAUSED AUTOMATIC FETCHING
+
   const fetchJwks = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Normalize issuer URL
-      const normalizedIssuerUrl = issuerUrl.endsWith("/") 
-        ? issuerUrl 
+      const normalizedIssuerUrl = issuerUrl.endsWith("/")
+        ? issuerUrl
         : `${issuerUrl}/`;
-        
+
       // First, try to fetch the OpenID Configuration
       const configUrl = `${normalizedIssuerUrl}.well-known/openid-configuration`;
       console.log(`Fetching OpenID configuration from: ${configUrl}`);
-      
+
       // Special case for local development or demo tokens
-      const useDirectFetch = issuerUrl.includes('localhost') || 
-                             issuerUrl.includes(window.location.host) ||
-                             isDemoToken;
-      
+      const useDirectFetch = issuerUrl.includes('localhost') ||
+        issuerUrl.includes(window.location.host) ||
+        isDemoToken;
+
       console.log(`Using direct fetch: ${useDirectFetch}`);
-      
-      const configResponse = useDirectFetch 
+
+      const configResponse = useDirectFetch
         ? await fetch(configUrl, { cache: 'no-store' }) // Prevent caching
         : await proxyFetch(configUrl);
-      
+
       if (!configResponse.ok) {
         throw new Error(`Failed to fetch OpenID configuration: ${configResponse.status} ${configResponse.statusText}`);
       }
-      
+
       const config = await configResponse.json();
       console.log('OpenID configuration:', config);
-      
+
       if (!config.jwks_uri) {
         throw new Error("No JWKS URI found in OpenID configuration");
       }
-      
+
       // Then, fetch the JWKS using the jwks_uri
       console.log(`Fetching JWKS from: ${config.jwks_uri}`);
-      const jwksResponse = useDirectFetch 
+      const jwksResponse = useDirectFetch
         ? await fetch(config.jwks_uri, { cache: 'no-store' }) // Prevent caching
         : await proxyFetch(config.jwks_uri);
-      
+
       if (!jwksResponse.ok) {
         throw new Error(`Failed to fetch JWKS: ${jwksResponse.status} ${jwksResponse.statusText}`);
       }
-      
+
       const jwks = await jwksResponse.json();
       console.log('JWKS data:', jwks);
-      
+
       if (!jwks.keys || !Array.isArray(jwks.keys)) {
         throw new Error("Invalid JWKS format: missing 'keys' array");
       }
-      
+
       // Log details about the keys we found
       console.log('JWKS keys found:', jwks.keys.map((k: KeyInfo) => ({
         kid: k.kid,
@@ -122,11 +111,11 @@ export function TokenJwksResolver({
         use: k.use,
         kty: k.kty
       })));
-      
+
       // Pass the JWKS to the callback function for verification
       onJwksResolved(jwks);
       setError(null);
-      
+
       toast.success(
         <div>
           <p><strong>JWKS Fetched Successfully</strong></p>
@@ -143,22 +132,22 @@ export function TokenJwksResolver({
       toast.dismiss('jwks-fetch-error');
     } catch (err: any) {
       console.error("Error fetching JWKS:", err);
-      
+
       // Check if it's likely a CORS error
       const errorMessage = err.message || "Unknown error";
-      const isCorsError = errorMessage.includes("CORS") || 
-                         err.name === 'TypeError' && errorMessage.includes('Failed to fetch');
-      
+      const isCorsError = errorMessage.includes("CORS") ||
+        err.name === 'TypeError' && errorMessage.includes('Failed to fetch');
+
       const errorText = isCorsError
         ? 'CORS error: The server does not allow direct browser access.'
         : `Error fetching JWKS: ${errorMessage}`;
-      
+
       setError(errorText);
-      
+
       // Show toast notification
       if (isCorsError) {
-        const curlCommand = issuerUrl.endsWith('/') 
-          ? `${issuerUrl}.well-known/jwks.json` 
+        const curlCommand = issuerUrl.endsWith('/')
+          ? `${issuerUrl}.well-known/jwks.json`
           : `${issuerUrl}/.well-known/jwks.json`;
 
         toast.error(
@@ -166,9 +155,9 @@ export function TokenJwksResolver({
             <p><strong>CORS Error</strong></p>
             <p>{errorText}</p>
             <p className="text-sm">Try fetching the JWKS manually with:</p>
-            <CodeBlock 
-              code={`curl ${curlCommand}`} 
-              language="bash" 
+            <CodeBlock
+              code={`curl ${curlCommand}`}
+              language="bash"
               className="mt-1 text-xs"
             />
             <p className="text-sm mt-2">Then use the "Manual Entry" option to paste the result.</p>
@@ -194,34 +183,33 @@ export function TokenJwksResolver({
       setIsLoading(false);
     }
   };
-  
+
   const handleManualJwksSubmit = () => {
     try {
       // Trim whitespace to prevent JSON parse errors
       const trimmedJwks = manualJwks.trim();
       const parsedJwks = JSON.parse(trimmedJwks);
-      
+
       if (!parsedJwks.keys || !Array.isArray(parsedJwks.keys)) {
         throw new Error("Invalid JWKS format: missing 'keys' array");
       }
-      
+
       // Validate that all keys have mandatory JWK properties
       for (const key of parsedJwks.keys) {
         if (!key.kty) {
           throw new Error("Invalid key in JWKS: missing 'kty' property");
         }
       }
-      
+
       console.log('Manual JWKS parsed successfully:', {
         keyCount: parsedJwks.keys.length,
-        keyIds: parsedJwks.keys.map((k: {kid?: string}) => k.kid)
+        keyIds: parsedJwks.keys.map((k: { kid?: string }) => k.kid)
       });
-      
+
       // Directly pass the parsed JWKS to the callback
-      // No setTimeout - we want immediate verification
       onJwksResolved(parsedJwks);
       setError(null);
-      
+
       toast.success(
         <div>
           <p><strong>JWKS Applied Successfully</strong></p>
@@ -236,7 +224,7 @@ export function TokenJwksResolver({
       console.error('Error parsing manual JWKS:', err);
       const errorText = `Invalid JWKS JSON: ${err.message}`;
       setError(errorText);
-      
+
       toast.error(
         <div>
           <p><strong>Invalid JWKS Format</strong></p>
@@ -249,13 +237,13 @@ export function TokenJwksResolver({
       );
     }
   };
-  
+
   // Function to handle input changes - always allow editing
   const handleIssuerUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Always set the issuer URL regardless of demo token state
     setIssuerUrl(e.target.value);
   };
-  
+
   return (
     <div className="space-y-4">
       <Tabs value={jwksMode} onValueChange={(value) => setJwksMode(value as "automatic" | "manual")}>
@@ -263,7 +251,7 @@ export function TokenJwksResolver({
           <TabsTrigger value="automatic">Automatic</TabsTrigger>
           <TabsTrigger value="manual">Manual Entry</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="automatic" className="space-y-4 mt-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 pb-2">
@@ -301,18 +289,16 @@ export function TokenJwksResolver({
                 </div>
               )}
             </div>
-            <Button 
-              onClick={fetchJwks}
+            <Button
+              onClick={fetchJwks} // Button click triggers fetch
               disabled={isLoading || !issuerUrl}
               className="w-full sm:w-auto"
             >
               {isLoading ? 'Fetching...' : 'Fetch JWKS'}
             </Button>
           </div>
-          
-
         </TabsContent>
-        
+
         <TabsContent value="manual" className="space-y-4 mt-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 pb-2">
@@ -331,7 +317,7 @@ export function TokenJwksResolver({
                       <li>2. By accessing the <code className="bg-muted px-1">jwks_uri</code>located at <code className="bg-muted px-1">[issuer-url]/.well-known/openid-configuration</code> in a browser or using a tool like cURL</li>
                     </ol>
                     <p className="mt-2 text-xs">Example format:</p>
-                    <CodeBlock 
+                    <CodeBlock
                       code={`{
   "keys": [
     {
@@ -342,8 +328,8 @@ export function TokenJwksResolver({
       "e": "BASE64_EXPONENT"
     }
   ]
-}`} 
-                      language="json" 
+}`}
+                      language="json"
                       className="mt-1 text-xs"
                     />
                   </div>
@@ -357,8 +343,8 @@ export function TokenJwksResolver({
               placeholder='{"keys":[{"kty":"RSA","kid":"...",...}]}'
               className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
             />
-            <Button 
-              onClick={handleManualJwksSubmit}
+            <Button
+              onClick={handleManualJwksSubmit} // Button click triggers manual apply
               disabled={!manualJwks}
               className="w-full sm:w-auto"
             >
