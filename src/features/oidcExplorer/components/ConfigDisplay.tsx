@@ -17,16 +17,11 @@ import {
   XCircle, 
   Link, 
   ChevronRight,
-  ChevronDown,
   Copy,
   ClipboardCheck 
 } from 'lucide-react';
 import { useClipboard } from '@/hooks/use-clipboard';
-import { 
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
-} from "@/components/ui/collapsible";
+
 
 import { OidcConfiguration } from '../utils/types';
 import { endpointDescriptions } from '../data/common-endpoints';
