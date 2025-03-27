@@ -89,7 +89,7 @@ export function TokenInspector() {
 
       // Check if this is a demo token
       const isDemoTokenCheck = payload.is_demo_token === true || 
-        (payload.iss && (
+        (payload.iss && typeof payload.iss === 'string' && (
           payload.iss.includes(window.location.host) || 
           payload.iss === "http://localhost:8788/api"
         ));
@@ -233,10 +233,12 @@ export function TokenInspector() {
         });
         
         // Check if this is a demo token
-        const isDemoToken = decodedToken.payload.is_demo_token === true || 
-          (decodedToken.payload.iss && (
-            decodedToken.payload.iss.includes(window.location.host) || 
-            decodedToken.payload.iss === "http://localhost:8788/api"
+        const isDemoTokenFlag = decodedToken.payload.is_demo_token === true;
+        const issString = typeof decodedToken.payload.iss === 'string' ? decodedToken.payload.iss : '';
+        const isDemoToken = isDemoTokenFlag || 
+          (issString && (
+            issString.includes(window.location.host) || 
+            issString === "http://localhost:8788/api"
           ));
         
         // For demo tokens, we validate the key ID but not the cryptographic signature

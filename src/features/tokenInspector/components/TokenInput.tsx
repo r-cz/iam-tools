@@ -118,7 +118,7 @@ export function TokenInput({
       </div>
       
       {isExampleToken && (
-        <Alert variant="info" className="my-2 py-2">
+        <Alert className="my-2 py-2 bg-blue-500/10 border-blue-500/20 text-blue-700">
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
             This is an example token using this site's demo endpoints. The key format is verified against our JWKS.

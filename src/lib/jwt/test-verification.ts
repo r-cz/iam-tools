@@ -34,7 +34,7 @@ export async function testJwtVerification(token: string): Promise<{
     console.log('Using key:', matchingKey);
     
     // Verify the token
-    const result = await jwtVerify(token, async (jwsHeader) => {
+    const result = await jwtVerify(token, async () => {
       return await crypto.subtle.importKey(
         'jwk',
         matchingKey,

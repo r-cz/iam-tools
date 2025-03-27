@@ -14,6 +14,13 @@ interface TokenJwksResolverProps {
   isDemoToken?: boolean;
 }
 
+interface KeyInfo {
+  kid?: string;
+  alg?: string;
+  use?: string;
+  kty?: string;
+}
+
 export function TokenJwksResolver({ 
   issuerUrl, 
   setIssuerUrl, 
@@ -26,10 +33,6 @@ export function TokenJwksResolver({
   // Using error state for internal logic but displaying through toast
   const [_error, setError] = useState<string | null>(null);
   
-  // Use a ref to store the previous URL to prevent unnecessary fetches
-  const lastAutoFetchUrlRef = React.useRef<string>('');
-  
-  // Set the issuer URL to the current domain if it's a demo token or if the current issuer is auth.example.com
   // Using a separate flag to track whether we've already set the issuer URL
   const initialSetupDoneRef = React.useRef(false);
   
@@ -109,7 +112,7 @@ export function TokenJwksResolver({
       }
       
       // Log details about the keys we found
-      console.log('JWKS keys found:', jwks.keys.map(k => ({
+      console.log('JWKS keys found:', jwks.keys.map((k: KeyInfo) => ({
         kid: k.kid,
         alg: k.alg,
         use: k.use,
@@ -124,7 +127,7 @@ export function TokenJwksResolver({
         <div>
           <p><strong>JWKS Fetched Successfully</strong></p>
           <p>Found {jwks.keys.length} keys in the JWKS</p>
-          {jwks.keys.map((key, i) => (
+          {jwks.keys.map((key: KeyInfo, i: number) => (
             <p key={i} className="text-xs mt-1">Key ID: {key.kid}</p>
           ))}
         </div>,
