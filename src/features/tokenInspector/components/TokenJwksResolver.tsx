@@ -30,13 +30,18 @@ export function TokenJwksResolver({
   const lastAutoFetchUrlRef = React.useRef<string>('');
   
   // Set the issuer URL to the current domain if it's a demo token or if the current issuer is auth.example.com
+  // Using a separate flag to track whether we've already set the issuer URL
+  const initialSetupDoneRef = React.useRef(false);
+  
   useEffect(() => {
     const isAuthExample = issuerUrl && (issuerUrl === "https://auth.example.com");
     
-    if ((isDemoToken || isAuthExample) && !issuerUrl.includes(window.location.host)) {
+    // Only auto-set the URL once, not on every render or change
+    if (!initialSetupDoneRef.current && (isDemoToken || isAuthExample) && !issuerUrl.includes(window.location.host)) {
       const localIssuerUrl = getIssuerBaseUrl();
       console.log('Setting issuer URL to local domain:', localIssuerUrl);
       setIssuerUrl(localIssuerUrl);
+      initialSetupDoneRef.current = true;
     }
   }, [isDemoToken, issuerUrl, setIssuerUrl]);
 
@@ -238,6 +243,12 @@ export function TokenJwksResolver({
     }
   };
   
+  // Function to handle input changes - always allow editing
+  const handleIssuerUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Always set the issuer URL regardless of demo token state
+    setIssuerUrl(e.target.value);
+  };
+  
   return (
     <div className="space-y-4">
       <Tabs value={jwksMode} onValueChange={(value) => setJwksMode(value as "automatic" | "manual")}>
@@ -273,17 +284,13 @@ export function TokenJwksResolver({
                 id="issuer-url"
                 type="text"
                 value={issuerUrl}
-                onChange={(e) => {
-                  setIssuerUrl(e.target.value);
-                  // No additional state changes needed here
-                  // Fetching only happens on button click
-                }}
+                onChange={handleIssuerUrlChange}
                 placeholder="https://example.com/identity"
                 className="flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
               {isDemoToken && (
                 <div className="text-xs text-muted-foreground mt-1">
-                  <em>This is the demo issuer URL for the example token</em>
+                  <em>This token uses the local domain as its issuer</em>
                 </div>
               )}
             </div>

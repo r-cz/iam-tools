@@ -84,26 +84,6 @@ export function TokenInput({
       setIsLoadingExample(false);
     }
   };
-  
-  const showJwks = () => {
-    // Show the JWKS formatted as JSON in a toast message
-    toast.info(
-      <div className="space-y-2">
-        <p><strong>Demo JWKS</strong></p>
-        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">
-          {JSON.stringify(DEMO_JWKS, null, 2)}
-        </pre>
-        <p className="text-xs">
-          This is the JWKS that contains the public key to verify demo token signatures.
-          You can use this in the "Manual Entry" option of the JWKS resolver.
-        </p>
-      </div>,
-      {
-        id: 'demo-jwks',
-        duration: 10000,
-      }
-    );
-  };
 
   return (
     <div className="space-y-3">
@@ -141,16 +121,7 @@ export function TokenInput({
         <Alert variant="info" className="my-2 py-2">
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
-            This is an example token with a simulated signature. Since it's for demo purposes, 
-            you can validate it using the simulated JWKS provided by this tool.
-            <Button 
-              variant="link" 
-              size="sm" 
-              onClick={showJwks} 
-              className="px-0 h-auto font-normal"
-            >
-              View JWKS
-            </Button>
+            This is an example token that demonstrates how the inspector works. The signature validation will succeed automatically.
           </AlertDescription>
         </Alert>
       )}
