@@ -1,6 +1,7 @@
 "use client"
 
 import { ChevronRight, type LucideIcon } from "lucide-react"
+import { Link } from 'react-router-dom'; // <-- Import Link
 
 import {
   Collapsible,
@@ -23,12 +24,12 @@ export function NavMain({
 }: {
   items: {
     title: string
-    url: string
+    url: string // This url for the top-level might not be used directly if it's just a trigger
     icon: LucideIcon
-    isActive?: boolean
+    isActive?: boolean // Consider managing active state based on React Router's location
     items?: {
       title: string
-      url: string
+      url: string // These are the important internal route paths
       icon?: LucideIcon
     }[]
   }[]
@@ -41,10 +42,12 @@ export function NavMain({
           <Collapsible
             key={item.title}
             asChild
+            // Default open state might be better managed based on current route
             defaultOpen={item.isActive}
             className="group/collapsible"
           >
             <SidebarMenuItem>
+              {/* The CollapsibleTrigger uses the SidebarMenuButton, no Link here */}
               <CollapsibleTrigger asChild>
                 <SidebarMenuButton tooltip={item.title}>
                   <item.icon />
@@ -56,11 +59,12 @@ export function NavMain({
                 <SidebarMenuSub>
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
+                      {/* Use asChild with Link for sub-menu items */}
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
+                        <Link to={subItem.url}>
                           {subItem.icon && <subItem.icon className="mr-2 size-4" />}
                           <span>{subItem.title}</span>
-                        </a>
+                        </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}
