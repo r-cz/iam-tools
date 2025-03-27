@@ -18,11 +18,8 @@ export async function testJwtVerification(token: string): Promise<{
   try {
     // Extract the header to check the alg and kid
     const headerBase64 = token.split('.')[0];
-    const header = JSON.parse(
-      new TextDecoder().decode(
-        Buffer.from(headerBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
-      )
-    );
+    const headerStr = atob(headerBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    const header = JSON.parse(headerStr);
     
     console.log('Token header:', header);
     

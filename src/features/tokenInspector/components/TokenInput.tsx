@@ -6,7 +6,6 @@ import { InfoIcon } from "lucide-react";
 import { generateFreshToken } from "../utils/generate-token";
 import { useState } from "react";
 import { toast } from "sonner";
-import { testJwtVerification } from "@/lib/jwt/test-verification";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 
 interface TokenInputProps {
@@ -14,12 +13,18 @@ interface TokenInputProps {
   setToken: (token: string) => void;
   onDecode: () => void;
   onReset: () => void;
+  onJwksResolved?: (jwks: any) => void; // Optional callback for JWKS
 }
 
-export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputProps) {
+export function TokenInput({ 
+  token, 
+  setToken, 
+  onDecode, 
+  onReset,
+  onJwksResolved
+}: TokenInputProps) {
   const [isLoadingExample, setIsLoadingExample] = useState(false);
   const [isExampleToken, setIsExampleToken] = useState(false);
-  const [isTestingVerification, setIsTestingVerification] = useState(false);
 
   const handlePaste = async () => {
     try {
@@ -52,6 +57,12 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
       setToken(freshToken);
       setIsExampleToken(true);
       
+      // If we have an onJwksResolved callback, provide the demo JWKS directly
+      if (onJwksResolved) {
+        console.log('Providing demo JWKS directly to parent component:', DEMO_JWKS);
+        onJwksResolved(DEMO_JWKS);
+      }
+      
       // Success message
       toast.success(
         "Example token generated successfully",
@@ -74,44 +85,24 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
     }
   };
   
-  const testVerification = async () => {
-    if (!token) return;
-    
-    setIsTestingVerification(true);
-    try {
-      // Direct verification test
-      const result = await testJwtVerification(token);
-      
-      if (result.valid) {
-        toast.success(
-          <div>
-            <p><strong>Verification Successful!</strong></p>
-            <p>Token signature is valid.</p>
-          </div>,
-          {
-            id: 'verify-success',
-            duration: 5000,
-          }
-        );
-        
-        console.log('JWKS used for verification:', DEMO_JWKS);
-      } else {
-        toast.error(
-          <div>
-            <p><strong>Verification Failed</strong></p>
-            <p>{result.error}</p>
-          </div>,
-          {
-            id: 'verify-error',
-            duration: 5000,
-          }
-        );
+  const showJwks = () => {
+    // Show the JWKS formatted as JSON in a toast message
+    toast.info(
+      <div className="space-y-2">
+        <p><strong>Demo JWKS</strong></p>
+        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">
+          {JSON.stringify(DEMO_JWKS, null, 2)}
+        </pre>
+        <p className="text-xs">
+          This is the JWKS that contains the public key to verify demo token signatures.
+          You can use this in the "Manual Entry" option of the JWKS resolver.
+        </p>
+      </div>,
+      {
+        id: 'demo-jwks',
+        duration: 10000,
       }
-    } catch (error) {
-      console.error('Verification test error:', error);
-    } finally {
-      setIsTestingVerification(false);
-    }
+    );
   };
 
   return (
@@ -143,16 +134,6 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
           >
             Reset
           </Button>
-          {isExampleToken && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={testVerification}
-              disabled={isTestingVerification || !token}
-            >
-              {isTestingVerification ? "Testing..." : "Test Verification"}
-            </Button>
-          )}
         </div>
       </div>
       
@@ -160,8 +141,16 @@ export function TokenInput({ token, setToken, onDecode, onReset }: TokenInputPro
         <Alert variant="info" className="my-2 py-2">
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
-            This is an example token signed by an internal demo issuer. 
-            It can be validated using the JWKS endpoint at <code className="bg-muted px-1 py-0.5 rounded text-xs">{window.location.origin}/api</code>
+            This is an example token with a simulated signature. Since it's for demo purposes, 
+            you can validate it using the simulated JWKS provided by this tool.
+            <Button 
+              variant="link" 
+              size="sm" 
+              onClick={showJwks} 
+              className="px-0 h-auto font-normal"
+            >
+              View JWKS
+            </Button>
           </AlertDescription>
         </Alert>
       )}

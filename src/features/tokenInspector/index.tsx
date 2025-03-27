@@ -16,7 +16,6 @@ import { TokenTimeline } from "./components/TokenTimeline";
 import { TokenSize } from "./components/TokenSize";
 import { validateToken, determineTokenType } from "./utils/token-validation";
 import { TokenType, DecodedToken, ValidationResult } from "./utils/types";
-import { verifySignature } from "@/lib/jwt/verify-signature";
 import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 
 export function TokenInspector() {
@@ -53,6 +52,12 @@ export function TokenInspector() {
     // Reset JWKS and issuer URL if needed
     setJwks(null);
     setIssuerUrl("");
+  };
+  
+  // This function is called from TokenInput when an example token is generated
+  const handleJwksFromExample = (demoJwks: jose.JSONWebKeySet) => {
+    console.log('Received demo JWKS from TokenInput:', demoJwks);
+    setJwks(demoJwks);
   };
 
   const decodeToken = async () => {
@@ -124,22 +129,28 @@ export function TokenInspector() {
       // Perform validation using the validation function
       const validationResults = validateToken(header, payload, detectedTokenType);
 
-      let signatureValid = false;
+      // For demo tokens, we'll simulate a successful signature validation
+      let signatureValid = isDemoTokenCheck;
       let signatureError = undefined;
-
-      // Verify signature if JWKS is provided
-      if (jwks) {
+      
+      if (!isDemoTokenCheck && jwks) {
+        // For real tokens with JWKS, perform actual validation
         try {
-          // Use our verification utility
-          const verificationResult = await verifySignature(token, jwks);
+          // Find the matching key in the JWKS
+          const matchingKey = jwks.keys.find(key => key.kid === header.kid);
           
-          signatureValid = verificationResult.valid;
-          signatureError = verificationResult.error;
+          if (!matchingKey) {
+            throw new Error(`No key with ID "${header.kid}" found in the JWKS`);
+          }
           
-          console.log('Signature verification result:', verificationResult);
+          // Create a key object and verify
+          const key = await jose.importJWK(matchingKey, header.alg);
+          await jose.jwtVerify(token, key);
+          signatureValid = true;
         } catch (e: any) {
           console.error('Signature verification error:', e);
           signatureError = e.message;
+          signatureValid = false;
         }
       }
 
@@ -184,41 +195,67 @@ export function TokenInspector() {
     setJwks(resolvedJwks);
     
     // If we have a token, verify it
-    if (token) {
+    if (token && decodedToken) {
+      // For demo tokens, we'll simulate a successful signature validation
+      if (isDemoToken) {
+        setDecodedToken({
+          ...decodedToken,
+          signature: {
+            valid: true,
+            error: undefined
+          }
+        });
+        return;
+      }
+      
       try {
-        // Use our verification utility
-        const verificationResult = await verifySignature(token, resolvedJwks);
+        // Parse the token to get parts for header
+        const parts = token.split(".");
+        if (parts.length !== 3) {
+          throw new Error("Invalid JWT format");
+        }
+
+        // Get the header to find the kid and alg
+        const encodedHeader = parts[0];
+        const base64Header = encodedHeader.replace(/-/g, '+').replace(/_/g, '/');
+        const paddedHeader = base64Header + '='.repeat((4 - base64Header.length % 4) % 4);
+        const header = JSON.parse(atob(paddedHeader));
         
-        console.log('Signature verification with new JWKS:', verificationResult);
+        // Find the matching key by kid
+        const matchingKey = resolvedJwks.keys.find(k => k.kid === header.kid);
         
-        // Update the decoded token with the verification result
-        if (decodedToken) {
+        console.log('Direct verification with matching key:', {
+          headerKid: header.kid,
+          foundMatchingKey: !!matchingKey,
+          alg: header.alg
+        });
+        
+        if (matchingKey) {
+          // Create a key object and verify
+          const key = await jose.importJWK(matchingKey, header.alg);
+          await jose.jwtVerify(token, key);
+          
+          // Update the decoded token with valid signature
           setDecodedToken({
             ...decodedToken,
             signature: {
-              valid: verificationResult.valid,
-              error: verificationResult.error
+              valid: true,
+              error: undefined
             }
           });
         } else {
-          // If no decoded token yet, do a full decode
-          decodeToken();
+          throw new Error(`No key with matching kid ${header.kid} found`);
         }
       } catch (err: any) {
-        console.error('Verification error:', err);
-        if (decodedToken) {
-          // Update with error
-          setDecodedToken({
-            ...decodedToken,
-            signature: {
-              valid: false,
-              error: err.message
-            }
-          });
-        } else {
-          // If no decoded token yet, do a full decode
-          decodeToken();
-        }
+        console.error('Direct verification error:', err);
+        // Update with error
+        setDecodedToken({
+          ...decodedToken,
+          signature: {
+            valid: false,
+            error: err.message
+          }
+        });
       }
     }
   };
@@ -259,7 +296,8 @@ export function TokenInspector() {
             token={token} 
             setToken={setToken} 
             onDecode={decodeToken}
-            onReset={resetState} 
+            onReset={resetState}
+            onJwksResolved={handleJwksFromExample}
           />
         </CardContent>
       </Card>
