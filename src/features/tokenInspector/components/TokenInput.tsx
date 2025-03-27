@@ -121,7 +121,7 @@ export function TokenInput({
         <Alert variant="info" className="my-2 py-2">
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
-            This is an example token that demonstrates how the inspector works. The signature validation will succeed automatically.
+            This is an example token that performs real signature verification using built-in demo endpoints on this site.
           </AlertDescription>
         </Alert>
       )}

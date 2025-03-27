@@ -129,12 +129,12 @@ export function TokenInspector() {
       // Perform validation using the validation function
       const validationResults = validateToken(header, payload, detectedTokenType);
 
-      // For demo tokens, we'll simulate a successful signature validation
-      let signatureValid = isDemoTokenCheck;
+      // Initialize signature validation state
+      let signatureValid = false;
       let signatureError = undefined;
       
-      if (!isDemoTokenCheck && jwks) {
-        // For real tokens with JWKS, perform actual validation
+      // Perform signature validation if JWKS is available
+      if (jwks) {
         try {
           // Find the matching key in the JWKS
           const matchingKey = jwks.keys.find(key => key.kid === header.kid);
@@ -196,18 +196,6 @@ export function TokenInspector() {
     
     // If we have a token, verify it
     if (token && decodedToken) {
-      // For demo tokens, we'll simulate a successful signature validation
-      if (isDemoToken) {
-        setDecodedToken({
-          ...decodedToken,
-          signature: {
-            valid: true,
-            error: undefined
-          }
-        });
-        return;
-      }
-      
       try {
         // Parse the token to get parts for header
         const parts = token.split(".");
