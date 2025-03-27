@@ -5,50 +5,58 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CodeBlock } from "@/components/ui/code-block";
 import { toast } from "sonner";
+import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 
 interface TokenJwksResolverProps {
   issuerUrl: string;
   setIssuerUrl: (url: string) => void;
   onJwksResolved: (jwks: any) => void;
+  isDemoToken?: boolean;
+}
+
+interface KeyInfo {
+  kid?: string;
+  alg?: string;
+  use?: string;
+  kty?: string;
 }
 
 export function TokenJwksResolver({ 
   issuerUrl, 
   setIssuerUrl, 
-  onJwksResolved 
+  onJwksResolved,
+  isDemoToken = false
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<"automatic" | "manual">("automatic");
   const [manualJwks, setManualJwks] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // Using error state for internal logic but displaying through toast
   const [_error, setError] = useState<string | null>(null);
-  // Removed isAutoPopulated state
   
-  // Instead of trying to auto-fetch with every URL change,
-  // we'll add a function that parent components can call to trigger a one-time fetch
-  // This simplifies the logic and prevents unwanted fetches
+  // Using a separate flag to track whether we've already set the issuer URL
+  const initialSetupDoneRef = React.useRef(false);
   
-  // Use a ref to store the previous URL to prevent unnecessary fetches
-  const lastAutoFetchUrlRef = React.useRef<string>('');
-  
-  // This effect will run exactly ONCE when a token with an issuer is first loaded
   useEffect(() => {
-    // Only do this once when the component mounts and there's an initial URL
-    if (issuerUrl && issuerUrl !== lastAutoFetchUrlRef.current) {
-      // Record this URL to prevent duplicate fetches
-      lastAutoFetchUrlRef.current = issuerUrl;
-      
-      // Auto-fetch JWKS with a small delay to ensure UI is rendered
-      const timer = setTimeout(() => {
-        console.log('Initial auto-fetch for token issuer:', issuerUrl);
-        fetchJwks();
-      }, 300);
-      
-      return () => clearTimeout(timer);
+    const isAuthExample = issuerUrl && (issuerUrl === "https://auth.example.com");
+    
+    // Only auto-set the URL once, not on every render or change
+    if (!initialSetupDoneRef.current && (isDemoToken || isAuthExample) && !issuerUrl.includes(window.location.host)) {
+      const localIssuerUrl = getIssuerBaseUrl();
+      console.log('Setting issuer URL to local domain:', localIssuerUrl);
+      setIssuerUrl(localIssuerUrl);
+      initialSetupDoneRef.current = true;
     }
-  // We only want this to run ONCE on initial mount with a valid URL
+  }, [isDemoToken, issuerUrl, setIssuerUrl]);
+
+  // This effect will automatically fetch JWKS when a demo token is detected
+  useEffect(() => {
+    if (isDemoToken && issuerUrl && issuerUrl.includes(window.location.host)) {
+      console.log('Auto-fetching JWKS for demo token with issuer:', issuerUrl);
+      fetchJwks();
+    }
+  // We want this to run whenever isDemoToken or issuerUrl changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isDemoToken, issuerUrl]);
   
   const fetchJwks = async () => {
     setIsLoading(true);
@@ -64,12 +72,23 @@ export function TokenJwksResolver({
       const configUrl = `${normalizedIssuerUrl}.well-known/openid-configuration`;
       console.log(`Fetching OpenID configuration from: ${configUrl}`);
       
-      const configResponse = await proxyFetch(configUrl);
+      // Special case for local development or demo tokens
+      const useDirectFetch = issuerUrl.includes('localhost') || 
+                             issuerUrl.includes(window.location.host) ||
+                             isDemoToken;
+      
+      console.log(`Using direct fetch: ${useDirectFetch}`);
+      
+      const configResponse = useDirectFetch 
+        ? await fetch(configUrl, { cache: 'no-store' }) // Prevent caching
+        : await proxyFetch(configUrl);
+      
       if (!configResponse.ok) {
         throw new Error(`Failed to fetch OpenID configuration: ${configResponse.status} ${configResponse.statusText}`);
       }
       
       const config = await configResponse.json();
+      console.log('OpenID configuration:', config);
       
       if (!config.jwks_uri) {
         throw new Error("No JWKS URI found in OpenID configuration");
@@ -77,24 +96,40 @@ export function TokenJwksResolver({
       
       // Then, fetch the JWKS using the jwks_uri
       console.log(`Fetching JWKS from: ${config.jwks_uri}`);
-      const jwksResponse = await proxyFetch(config.jwks_uri);
+      const jwksResponse = useDirectFetch 
+        ? await fetch(config.jwks_uri, { cache: 'no-store' }) // Prevent caching
+        : await proxyFetch(config.jwks_uri);
       
       if (!jwksResponse.ok) {
         throw new Error(`Failed to fetch JWKS: ${jwksResponse.status} ${jwksResponse.statusText}`);
       }
       
       const jwks = await jwksResponse.json();
+      console.log('JWKS data:', jwks);
       
       if (!jwks.keys || !Array.isArray(jwks.keys)) {
         throw new Error("Invalid JWKS format: missing 'keys' array");
       }
       
+      // Log details about the keys we found
+      console.log('JWKS keys found:', jwks.keys.map((k: KeyInfo) => ({
+        kid: k.kid,
+        alg: k.alg,
+        use: k.use,
+        kty: k.kty
+      })));
+      
+      // Pass the JWKS to the callback function for verification
       onJwksResolved(jwks);
       setError(null);
+      
       toast.success(
         <div>
           <p><strong>JWKS Fetched Successfully</strong></p>
           <p>Found {jwks.keys.length} keys in the JWKS</p>
+          {jwks.keys.map((key: KeyInfo, i: number) => (
+            <p key={i} className="text-xs mt-1">Key ID: {key.kid}</p>
+          ))}
         </div>,
         {
           id: 'jwks-fetch-success',
@@ -211,6 +246,12 @@ export function TokenJwksResolver({
     }
   };
   
+  // Function to handle input changes - always allow editing
+  const handleIssuerUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Always set the issuer URL regardless of demo token state
+    setIssuerUrl(e.target.value);
+  };
+  
   return (
     <div className="space-y-4">
       <Tabs value={jwksMode} onValueChange={(value) => setJwksMode(value as "automatic" | "manual")}>
@@ -246,15 +287,15 @@ export function TokenJwksResolver({
                 id="issuer-url"
                 type="text"
                 value={issuerUrl}
-                onChange={(e) => {
-                  setIssuerUrl(e.target.value);
-                  // No additional state changes needed here
-                  // Fetching only happens on button click
-                }}
+                onChange={handleIssuerUrlChange}
                 placeholder="https://example.com/identity"
                 className="flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
-              {/* Removed auto-populated message */}
+              {isDemoToken && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  <em>This token uses the local domain as its issuer</em>
+                </div>
+              )}
             </div>
             <Button 
               onClick={fetchJwks}

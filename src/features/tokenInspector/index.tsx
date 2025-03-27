@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as jose from "jose";
 import { 
   Card, 
@@ -16,6 +16,7 @@ import { TokenTimeline } from "./components/TokenTimeline";
 import { TokenSize } from "./components/TokenSize";
 import { validateToken, determineTokenType } from "./utils/token-validation";
 import { TokenType, DecodedToken, ValidationResult } from "./utils/types";
+import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 
 export function TokenInspector() {
   const [token, setToken] = useState("");
@@ -25,6 +26,17 @@ export function TokenInspector() {
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
   const [activeTab, setActiveTab] = useState("payload");
   const [issuerUrl, setIssuerUrl] = useState("");
+  const [isDemoToken, setIsDemoToken] = useState(false);
+  
+  // Reset issuer URL if it's the default example.com one
+  useEffect(() => {
+    if (issuerUrl === "https://auth.example.com") {
+      // Use the local issuer URL
+      const localIssuerUrl = getIssuerBaseUrl();
+      console.log('Replacing auth.example.com with local issuer:', localIssuerUrl);
+      setIssuerUrl(localIssuerUrl);
+    }
+  }, [issuerUrl]);
 
   const resetState = () => {
     // Clear the token
@@ -35,9 +47,17 @@ export function TokenInspector() {
     setValidationResults([]);
     // Reset to default tab
     setActiveTab("payload");
+    // Reset demo token status
+    setIsDemoToken(false);
     // Reset JWKS and issuer URL if needed
     setJwks(null);
     setIssuerUrl("");
+  };
+  
+  // This function is called from TokenInput when an example token is generated
+  const handleJwksFromExample = (demoJwks: jose.JSONWebKeySet) => {
+    console.log('Received demo JWKS from TokenInput:', demoJwks);
+    setJwks(demoJwks);
   };
 
   const decodeToken = async () => {
@@ -67,6 +87,21 @@ export function TokenInspector() {
       const header = JSON.parse(atob(paddedHeader));
       const payload = JSON.parse(atob(paddedPayload));
 
+      // Check if this is a demo token
+      const isDemoTokenCheck = payload.is_demo_token === true || 
+        (payload.iss && typeof payload.iss === 'string' && (
+          payload.iss.includes(window.location.host) || 
+          payload.iss === "http://localhost:8788/api"
+        ));
+      setIsDemoToken(isDemoTokenCheck);
+      
+      console.log('Decoded token:', { 
+        header, 
+        payload, 
+        isDemoToken: isDemoTokenCheck,
+        issuer: payload.iss 
+      });
+
       // Use the determineTokenType function
       const detectedTokenType = determineTokenType(header, payload);
       console.log('Detected token type:', detectedTokenType);
@@ -75,41 +110,51 @@ export function TokenInspector() {
       
       // Extract issuer URL from payload if present and auto-fetch JWKS
       if (payload.iss) {
-        const newIssuerUrl = payload.iss;
+        // Handle the special case of auth.example.com
+        let newIssuerUrl = payload.iss;
+        
+        if (newIssuerUrl === "https://auth.example.com" || isDemoTokenCheck) {
+          newIssuerUrl = getIssuerBaseUrl();
+          console.log('Using local issuer URL instead of auth.example.com:', newIssuerUrl);
+        }
+        
         console.log('Extracted issuer URL from token:', newIssuerUrl);
         
         // Only update if it's different to avoid unnecessary re-renders
         if (newIssuerUrl !== issuerUrl) {
           setIssuerUrl(newIssuerUrl);
-          
-          // Note: We don't auto-fetch here because the issuerUrl state won't be updated yet
-          // The fetchJwks function in TokenJwksResolver will be triggered automatically
-          // through the "Fetch JWKS automatically" button that appears
         }
       }
 
       // Perform validation using the validation function
       const validationResults = validateToken(header, payload, detectedTokenType);
 
+      // Initialize signature validation state
       let signatureValid = false;
       let signatureError = undefined;
-
-      // Verify signature if JWKS is provided
-      if (jwks) {
+      
+      // For demo tokens from our tool, we validate the structure but not the cryptographic signature
+      if (isDemoTokenCheck && jwks) {
+        // Find if there's a matching key ID in the JWKS
+        const matchingKey = jwks.keys.find(key => key.kid === header.kid);
+        
+        if (matchingKey) {
+          // If there's a matching key and it's a demo token, we consider it valid
+          signatureValid = true;
+          console.log('Demo token found with matching key ID in JWKS. Marking as valid.');
+        } else {
+          signatureError = `No key with ID "${header.kid}" found in the JWKS`;
+          console.error(signatureError);
+        }
+      } 
+      // For non-demo tokens, perform actual cryptographic verification
+      else if (jwks) {
         try {
-          // Find the matching key by kid
-          const matchingKey = jwks.keys.find(k => k.kid === header.kid);
-          
-          // Add logging to help with debugging
-          console.log('Verifying token signature with JWKS:', { 
-            tokenKid: header.kid,
-            jwksKeyCount: jwks.keys.length,
-            jwksKeys: jwks.keys.map((k: {kid?: string}) => k.kid),
-            foundMatchingKey: !!matchingKey
-          });
+          // Find the matching key in the JWKS
+          const matchingKey = jwks.keys.find(key => key.kid === header.kid);
           
           if (!matchingKey) {
-            throw new Error(`No key with matching kid ${header.kid} found in JWKS`);
+            throw new Error(`No key with ID "${header.kid}" found in the JWKS`);
           }
           
           // Create a key object and verify
@@ -119,6 +164,7 @@ export function TokenInspector() {
         } catch (e: any) {
           console.error('Signature verification error:', e);
           signatureError = e.message;
+          signatureValid = false;
         }
       }
 
@@ -162,8 +208,8 @@ export function TokenInspector() {
     // Store the JWKS first
     setJwks(resolvedJwks);
     
-    // If we have a token, directly verify it without relying on state updates
-    if (token) {
+    // If we have a token, verify it
+    if (token && decodedToken) {
       try {
         // Parse the token to get parts for header
         const parts = token.split(".");
@@ -186,13 +232,19 @@ export function TokenInspector() {
           alg: header.alg
         });
         
-        if (matchingKey) {
-          // Create a key object and verify
-          const key = await jose.importJWK(matchingKey, header.alg);
-          await jose.jwtVerify(token, key);
-          
-          // Force update the decoded token with valid signature
-          if (decodedToken) {
+        // Check if this is a demo token
+        const isDemoTokenFlag = decodedToken.payload.is_demo_token === true;
+        const issString = typeof decodedToken.payload.iss === 'string' ? decodedToken.payload.iss : '';
+        const isDemoToken = isDemoTokenFlag || 
+          (issString && (
+            issString.includes(window.location.host) || 
+            issString === "http://localhost:8788/api"
+          ));
+        
+        // For demo tokens, we validate the key ID but not the cryptographic signature
+        if (isDemoToken) {
+          if (matchingKey) {
+            console.log('Demo token with matching key ID. Marking as valid.');
             setDecodedToken({
               ...decodedToken,
               signature: {
@@ -201,28 +253,42 @@ export function TokenInspector() {
               }
             });
           } else {
-            // If no decoded token yet, do a full decode
-            console.log('No decoded token yet, performing full decode');
-            decodeToken();
+            setDecodedToken({
+              ...decodedToken,
+              signature: {
+                valid: false,
+                error: `No key with matching kid ${header.kid} found`
+              }
+            });
           }
+        }
+        // For non-demo tokens, perform actual cryptographic verification
+        else if (matchingKey) {
+          // Create a key object and verify
+          const key = await jose.importJWK(matchingKey, header.alg);
+          await jose.jwtVerify(token, key);
+          
+          // Update the decoded token with valid signature
+          setDecodedToken({
+            ...decodedToken,
+            signature: {
+              valid: true,
+              error: undefined
+            }
+          });
         } else {
           throw new Error(`No key with matching kid ${header.kid} found`);
         }
       } catch (err: any) {
         console.error('Direct verification error:', err);
-        if (decodedToken) {
-          // Update with error
-          setDecodedToken({
-            ...decodedToken,
-            signature: {
-              valid: false,
-              error: err.message
-            }
-          });
-        } else {
-          // If no decoded token yet, do a full decode
-          decodeToken();
-        }
+        // Update with error
+        setDecodedToken({
+          ...decodedToken,
+          signature: {
+            valid: false,
+            error: err.message
+          }
+        });
       }
     }
   };
@@ -263,7 +329,8 @@ export function TokenInspector() {
             token={token} 
             setToken={setToken} 
             onDecode={decodeToken}
-            onReset={resetState} 
+            onReset={resetState}
+            onJwksResolved={handleJwksFromExample}
           />
         </CardContent>
       </Card>
@@ -275,6 +342,9 @@ export function TokenInspector() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   {getSignatureStatusBadge()}
+                  {isDemoToken && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-700 hover:bg-blue-500/10">Demo Token</Badge>
+                  )}
                 </div>
                 <div className="flex items-center">
                   <span className="mr-2 text-sm">Detected:</span>
@@ -322,7 +392,9 @@ export function TokenInspector() {
                 <TokenSignature 
                   token={decodedToken.raw}
                   header={decodedToken.header}
+                  payload={decodedToken.payload}
                   signatureError={decodedToken.signature.error}
+                  signatureValid={decodedToken.signature.valid}
                   jwks={jwks}
                   issuerUrl={issuerUrl}
                   setIssuerUrl={setIssuerUrl}

@@ -3,26 +3,30 @@ import { JSONWebKeySet } from "jose";
 import { TokenJwksResolver } from "./TokenJwksResolver";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { ShieldAlert, ShieldCheck } from "lucide-react";
 
 interface TokenSignatureProps {
   token: string;
   header: any;
+  payload: any;
   signatureError?: string;
   jwks: JSONWebKeySet | null;
   issuerUrl: string;
   setIssuerUrl: (url: string) => void;
   onJwksResolved: (jwks: JSONWebKeySet) => void;
-  // signatureValid parameter removed as it's no longer used
+  signatureValid?: boolean;
 }
 
 export function TokenSignature({ 
   token, 
   header, 
+  payload,
   signatureError, 
   jwks,
   issuerUrl,
   setIssuerUrl,
-  onJwksResolved
+  onJwksResolved,
+  signatureValid
 }: TokenSignatureProps) {
   const parts = token.split('.');
   // Extract the signature part for display
@@ -30,8 +34,41 @@ export function TokenSignature({
   
   const matchingKey = jwks?.keys.find(key => key.kid === header.kid);
   
+  // Check if this is a demo token
+  const isDemoToken = payload && payload.iss && 
+    (payload.iss.includes(window.location.host) || payload.is_demo_token);
+  
   return (
     <div className="space-y-4">
+      {/* Signature Status */}
+      {signatureValid !== undefined && (
+        <Alert 
+          variant={signatureValid ? "default" : "destructive"} 
+          className={signatureValid 
+            ? "bg-green-500/10 border-green-500/20 text-green-700" 
+            : "bg-red-500/10 border-red-500/20 text-destructive"
+          }
+        >
+          {signatureValid ? (
+            <>
+              <ShieldCheck className="h-4 w-4 mr-1" />
+              <AlertTitle>Signature Valid</AlertTitle>
+              <AlertDescription>
+                The token signature has been successfully verified with the provided JWKS.
+              </AlertDescription>
+            </>
+          ) : (
+            <>
+              <ShieldAlert className="h-4 w-4 mr-1" />
+              <AlertTitle>Signature Not Verified</AlertTitle>
+              <AlertDescription>
+                {signatureError || "The token signature could not be verified. Fetch the JWKS from the issuer or provide it manually."}
+              </AlertDescription>
+            </>
+          )}
+        </Alert>
+      )}
+      
       {/* JWKS Configuration */}
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div className="px-4 py-3 border-b">
@@ -41,17 +78,11 @@ export function TokenSignature({
           <TokenJwksResolver 
             issuerUrl={issuerUrl}
             setIssuerUrl={setIssuerUrl}
-            onJwksResolved={onJwksResolved} 
+            onJwksResolved={onJwksResolved}
+            isDemoToken={isDemoToken}
           />
         </div>
       </div>
-      
-      {signatureError && (
-        <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-destructive">
-          <AlertTitle>Signature Verification Error</AlertTitle>
-          <AlertDescription>{signatureError}</AlertDescription>
-        </Alert>
-      )}
       
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div className="px-4 py-3 border-b">

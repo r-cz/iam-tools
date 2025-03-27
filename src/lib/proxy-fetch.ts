@@ -56,6 +56,11 @@ function needsProxy(url: string): boolean {
       return false;
     }
     
+    // Don't proxy requests to localhost
+    if (urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1') {
+      return false;
+    }
+    
     // Check if it's a well-known configuration or jwks endpoint
     const isWellKnown = urlObj.pathname.includes('/.well-known/');
     // Make the JWKS check case-insensitive and more inclusive
