@@ -41,8 +41,11 @@ export function OidcExplorer() {
       // and avoid potential state update conflicts if fetchJwks is too fast.
       setTimeout(() => {
         // Pass the URI directly from the fetched config
-        handleFetchJwks(config.jwks_uri); 
-      }, 100); 
+        handleFetchJwks(config.jwks_uri);
+      }, 100);
+    } else {
+      // If no JWKS URI, stop loading immediately after config fetch
+      setIsLoading(false); 
     }
     // --- End auto-fetch ---
   };
@@ -68,7 +71,7 @@ export function OidcExplorer() {
       return;
     }
 
-    setIsLoading(true);
+    // setIsLoading(true); // Remove: Loading state is already managed
     try {
       const jwksData = await fetchJwks(uriToFetch); // Use uriToFetch
       setJwks(jwksData);
@@ -134,8 +137,9 @@ export function OidcExplorer() {
             {/* Only show JWKS tab trigger if JWKS URI exists in config */}
             {oidcConfig.jwks_uri && (
               // Remove onClick handler, disable until JWKS is loaded
+              // Remove the inline spinner here as the main spinner handles the loading state
               <TabsTrigger value="jwks" disabled={!jwks}> 
-                JWKS {isLoading && jwks === null && <Loader2 className="ml-2 h-4 w-4 animate-spin" />} 
+                JWKS 
               </TabsTrigger>
             )}
           </TabsList>
@@ -144,8 +148,7 @@ export function OidcExplorer() {
           <TabsContent value="config" className="mt-4 space-y-6">
             <ConfigDisplay 
               config={oidcConfig} 
-              // Call handleFetchJwks without args here, so it uses state (for manual click)
-              onJwksClick={() => handleFetchJwks()} 
+              // Removed onJwksClick prop as it's no longer needed/accepted
             />
             {providerName && (
               <ProviderInfo
