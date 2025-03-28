@@ -119,3 +119,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* JWT Syntax Highlighting */
+.jwt-header {
+  color: #dc2626; /* Red */
+}
+.jwt-payload {
+  color: #d97706; /* Amber */
+}
+.jwt-signature {
+  color: #059669; /* Emerald */
+}
+.jwt-dot {
+  color: #6b7280; /* Gray */
+}

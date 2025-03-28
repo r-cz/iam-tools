@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { 
   Card, 
-  CardContent,
+  CardContent
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 import { AlertCircle, Loader2 } from "lucide-react";
-// Importing components for the OIDC Explorer
 import { toast } from "sonner";
 
 import { ConfigInput } from "./components/ConfigInput";
@@ -34,14 +33,25 @@ export function OidcExplorer() {
     const detectedProvider = detectProvider(config.issuer, config);
     setProviderName(detectedProvider);
     
-    // Show success toast
-    toast.success('Successfully loaded configuration', {
-      description: `Configuration loaded from ${config.issuer}`,
-      duration: 5000, // 5 seconds
-    });
+    // --- REMOVED Config success toast ---
+
+    // --- Automatically fetch JWKS if URI exists ---
+    if (config.jwks_uri) {
+      // Use a brief timeout to allow the UI to update with the config first
+      // and avoid potential state update conflicts if fetchJwks is too fast.
+      setTimeout(() => {
+        // Pass the URI directly from the fetched config
+        handleFetchJwks(config.jwks_uri);
+      }, 100);
+    } else {
+      // If no JWKS URI, stop loading immediately after config fetch
+      setIsLoading(false); 
+    }
+    // --- End auto-fetch ---
   };
 
-  const handleError = (error: Error) => {
+  // This is the correct handleError function
+  const handleError = (error: Error) => { 
     setError(error);
     setOidcConfig(null);
     
@@ -52,15 +62,18 @@ export function OidcExplorer() {
     });
   };
 
-  const handleFetchJwks = async () => {
-    if (!oidcConfig || !oidcConfig.jwks_uri) {
+  // Modified to accept optional jwksUri argument
+  const handleFetchJwks = async (jwksUri?: string) => { 
+    const uriToFetch = jwksUri || oidcConfig?.jwks_uri; // Use arg first, fallback to state
+
+    if (!uriToFetch) { // Check the resolved URI
       setError(new Error("No JWKS URI available in the configuration"));
       return;
     }
 
-    setIsLoading(true);
+    // setIsLoading(true); // Remove: Loading state is already managed
     try {
-      const jwksData = await fetchJwks(oidcConfig.jwks_uri);
+      const jwksData = await fetchJwks(uriToFetch); // Use uriToFetch
       setJwks(jwksData);
       setError(null);
       
@@ -116,33 +129,53 @@ export function OidcExplorer() {
         </Alert>
       )}
 
-      {/* Display the configuration */}
+      {/* Display the configuration and JWKS using Tabs */}
       {!isLoading && oidcConfig && (
-        <div className="space-y-6">
-          <ConfigDisplay 
-            config={oidcConfig} 
-            onJwksClick={handleFetchJwks} 
-          />
+        <Tabs defaultValue="config" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="config">Configuration</TabsTrigger>
+            {/* Only show JWKS tab trigger if JWKS URI exists in config */}
+            {oidcConfig.jwks_uri && (
+              // Remove onClick handler, disable until JWKS is loaded
+              // Remove the inline spinner here as the main spinner handles the loading state
+              <TabsTrigger value="jwks" disabled={!jwks}> 
+                JWKS 
+              </TabsTrigger>
+            )}
+          </TabsList>
           
-          {/* Provider info now at the bottom */}
-          {providerName && (
-            <ProviderInfo 
-              providerName={providerName} 
-              issuerUrl={issuerUrl} 
+          {/* Configuration Tab Content */}
+          <TabsContent value="config" className="mt-4 space-y-6">
+            <ConfigDisplay 
+              config={oidcConfig} 
+              // Removed onJwksClick prop as it's no longer needed/accepted
             />
-          )}
-        </div>
-      )}
+            {providerName && (
+              <ProviderInfo
+                providerName={providerName} 
+                issuerUrl={issuerUrl} 
+              />
+            )}
+          </TabsContent>
 
-      {/* JWKS Display */}
-      {jwks && oidcConfig?.jwks_uri && (
-        <div className="mt-6">
-          <Separator className="mb-6" />
-          <JwksDisplay 
-            jwks={jwks} 
-            jwksUri={oidcConfig.jwks_uri} 
-          />
-        </div>
+          {/* JWKS Tab Content */}
+          {oidcConfig.jwks_uri && (
+            <TabsContent value="jwks" className="mt-4">
+              {jwks ? (
+                <JwksDisplay 
+                  jwks={jwks} 
+                  // Ensure we use the correct URI here as well
+                  jwksUri={oidcConfig.jwks_uri!} // Non-null assertion ok since tab is conditional
+                />
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  {/* Update text to reflect automatic fetching */}
+                  {isLoading ? 'Loading JWKS...' : 'JWKS data will be fetched automatically if available.'} 
+                </div>
+              )}
+            </TabsContent>
+          )}
+        </Tabs>
       )}
     </div>
   );

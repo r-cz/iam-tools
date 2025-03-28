@@ -1,12 +1,14 @@
 
+import React, { useState } from "react";
+import Editor from "react-simple-code-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { generateFreshToken } from "../utils/generate-token";
-import { useState } from "react";
 import { toast } from "sonner";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
+import { cn } from "@/lib/utils"; // Import cn utility
 
 interface TokenInputProps {
   token: string;
@@ -16,9 +18,29 @@ interface TokenInputProps {
   onJwksResolved?: (jwks: any) => void; // Optional callback for JWKS
 }
 
-export function TokenInput({ 
-  token, 
-  setToken, 
+// Highlighting function for JWT parts
+const highlightJwt = (code: string): React.ReactNode => {
+  const parts = code.split('.');
+  if (parts.length !== 3) {
+    // Not a standard JWT structure, return as is or with basic styling
+    return code; 
+  }
+
+  return (
+    <>
+      <span className="jwt-header">{parts[0]}</span>
+      <span className="jwt-dot">.</span>
+      <span className="jwt-payload">{parts[1]}</span>
+      <span className="jwt-dot">.</span>
+      <span className="jwt-signature">{parts[2]}</span>
+    </>
+  );
+};
+
+
+export function TokenInput({
+  token,
+  setToken,
   onDecode, 
   onReset,
   onJwksResolved
@@ -125,19 +147,35 @@ export function TokenInput({
           </AlertDescription>
         </Alert>
       )}
-      
-      <textarea
-        id="token-input"
-        className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-        value={token}
-        onChange={(e) => {
-          setToken(e.target.value);
-          setIsExampleToken(false); // Reset example status when manually edited
-        }}
-        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-      />
-      
-      <div className="flex justify-between items-center">
+
+      {/* Replace textarea with react-simple-code-editor */}
+      <div className={cn(
+        "relative min-h-[100px] w-full rounded-md border border-input bg-background text-sm font-mono",
+        "focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2" // Add focus ring styling
+      )}>
+        <Editor
+          value={token}
+          onValueChange={(code) => {
+            setToken(code);
+            setIsExampleToken(false); // Reset example status when manually edited
+          }}
+          highlight={highlightJwt}
+          padding={10} // Corresponds roughly to px-3 py-2
+          textareaId="token-input"
+          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '0.875rem', // text-sm
+            lineHeight: '1.25rem',
+            outline: 'none', // Remove default editor outline
+            minHeight: '100px',
+          }}
+          // Apply necessary classes for styling consistency
+          className="caret-foreground" // Use foreground color for caret
+        />
+      </div>
+
+      <div className="flex justify-between items-center mt-1"> {/* Added small top margin */}
         {token && (
           <Badge variant="secondary" className="font-mono">
             Characters: {token.length}

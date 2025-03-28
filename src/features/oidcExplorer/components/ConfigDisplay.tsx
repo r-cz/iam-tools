@@ -15,8 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   CheckCircle2, 
   XCircle, 
-  Link, 
-  ChevronRight,
+  Link,
   Copy,
   ClipboardCheck 
 } from 'lucide-react';
@@ -28,10 +27,10 @@ import { endpointDescriptions } from '../data/common-endpoints';
 
 interface ConfigDisplayProps {
   config: OidcConfiguration;
-  onJwksClick: () => void;
+  // onJwksClick: () => void; // Removed unused prop
 }
 
-export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
+export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwksClick from destructuring
   const [view, setView] = useState<'formatted' | 'raw'>('formatted');
   const { copy, copied } = useClipboard();
   
@@ -314,15 +313,7 @@ export function ConfigDisplay({ config, onJwksClick }: ConfigDisplayProps) {
                                   </>
                                 )}
                               </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={onJwksClick}
-                                className="h-7 text-xs"
-                              >
-                                Fetch JWKS
-                                <ChevronRight className="ml-1 h-3 w-3" />
-                              </Button>
+                              {/* Removed Fetch JWKS button */}
                             </div>
                           </div>
                         </div>
