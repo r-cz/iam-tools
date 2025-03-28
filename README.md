@@ -1,6 +1,6 @@
 # IAM Tools
 
-A collection of specialized tools for Identity and Access Management (IAM) development and debugging.
+A collection of specialized tools for Identity and Access Management (IAM) development and debugging. These tools help developers understand, troubleshoot, and work with various IAM technologies like JWT tokens, OIDC providers, and OAuth 2.0 flows.
 
 ## Technologies
 
@@ -119,7 +119,7 @@ We use a feature-based organization pattern that groups code by functionality:
 - `src/hooks` - Custom React hooks (useIsMobile, useLocalStorage, useDebounce, useClipboard)
 - `src/tests` - Test files following the same structure as the application
 
-See [docs/file-structure.md](docs/file-structure.md) for more details.
+See [docs/file-structure.md](docs/file-structure.md) for more details on the codebase organization.
 
 ## Available Tools
 
@@ -131,6 +131,26 @@ Analyze and debug JWT tokens with detailed information about:
 - Token expiration timelines
 - Standard claim validation
 
+See [Token Inspector Documentation](docs/feature-guides/token-inspector.md) for detailed usage instructions.
+
+### OIDC Explorer
+
+Explore and analyze OpenID Connect provider configurations:
+- Fetch and display `.well-known/openid-configuration` details
+- Fetch and inspect the provider's JSON Web Key Set (JWKS)
+- Identify common providers based on issuer URL or configuration
+
+See [OIDC Explorer Documentation](docs/feature-guides/oidc-explorer.md) for detailed usage instructions.
+
 ## Deployment
 
-The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch.
+The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch. For more information about the deployment process, see [Deployment Documentation](docs/deployment.md).
+
+## Documentation
+
+- [Getting Started Guide](docs/getting-started.md) - How to set up and run the project
+- [Architecture Overview](docs/architecture.md) - System design and principles
+- [API Documentation](docs/api.md) - Details about the backend API endpoints
+- [Feature Guides](docs/feature-guides/) - Usage guides for specific features
+- [Contributing Guide](docs/contributing.md) - How to contribute to the project
+
