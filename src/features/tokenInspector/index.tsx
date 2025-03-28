@@ -322,8 +322,10 @@ export function TokenInspector() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    // Use grid layout: 1 column default, 2 columns on large screens and up
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Input Card (spans 1 column) */}
+      <Card className="lg:col-span-1"> 
         <CardContent className="p-5">
           <TokenInput 
             token={token} 
@@ -335,8 +337,9 @@ export function TokenInspector() {
         </CardContent>
       </Card>
 
+      {/* Decoded Token Details Card (spans 1 column) */}
       {decodedToken && (
-        <Card>
+        <Card className="lg:col-span-1">
           <CardContent className="p-5">
             <div className="flex flex-col space-y-3 mb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
