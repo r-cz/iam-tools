@@ -75,6 +75,9 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
     localStorage.setItem('oauth_playground_config', JSON.stringify(config));
     localStorage.setItem('oauth_playground_pkce', JSON.stringify(pkce));
     
+    // Store the current flow path to redirect back to the right flow page
+    localStorage.setItem('oauth_playground_flow_path', window.location.pathname);
+    
     // Open the authorization URL in a popup window
     const width = 800;
     const height = 600;

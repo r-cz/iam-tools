@@ -43,9 +43,14 @@ export function CallbackPage() {
   }, [code, state, error, errorDescription]);
   
   const handleContinue = () => {
+    // Get the stored flow path or default to the main OAuth Playground page
+    const flowPath = localStorage.getItem('oauth_playground_flow_path') || '/oauth-playground';
+    
     if (code) {
-      navigate('/oauth-playground', { state: { code, state } });
+      // Navigate to the appropriate flow page with the code
+      navigate(flowPath, { state: { code, state } });
     } else {
+      // If there was an error, just go to the OAuth Playground home
       navigate('/oauth-playground');
     }
   };
