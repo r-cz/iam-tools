@@ -1,71 +1,40 @@
+// src/features/tokenInspector/utils/generate-token.ts
 /**
- * Utility to generate a fresh JWT token with current timestamps
+ * Utility to generate a fresh, signed JWT token for examples.
  */
-import { generateSignedToken, getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token';
+import { signToken } from '@/lib/jwt/sign-token'; // Import the unified signing function
 
 /**
- * Generates a fresh JWT token with current timestamps
- * @returns A properly signed JWT token string
+ * Generates a fresh JWT token with current timestamps using the demo key.
+ * @returns A properly signed JWT token string.
  */
 export async function generateFreshToken(): Promise<string> {
   try {
-    // Use our new implementation to create a properly signed token
-    return await generateSignedToken();
+    // 1. Define a simple payload suitable for an example token
+    const examplePayload = {
+      iss: "https://iam.tools/demo", // A distinct issuer for examples
+      sub: "user-example-123",
+      aud: "iam-tools-example-audience",
+      name: "Example User",
+      email: "example@iam.tools",
+      iat: Math.floor(Date.now() / 1000), // Issued now
+      exp: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
+      scope: "openid profile email",
+      is_demo_token: true // Mark it clearly
+      // Add any other claims you want in the generic example
+    };
+
+    // 2. Call the unified signToken function with this payload
+    console.log("Generating fresh example token using signToken...");
+    const signedToken = await signToken(examplePayload);
+    return signedToken;
+
   } catch (error) {
-    console.error('Error generating signed token:', error);
-    // Fall back to the legacy method but still use the correct issuer URL
-    return generateLegacyToken();
+    console.error('Error generating fresh example token:', error);
+    // Re-throw the error so the component calling this can handle it (e.g., show a toast)
+    throw error;
   }
 }
 
-// Legacy implementation, kept for fallback
-function generateLegacyToken(): string {
-  const currentTimestamp = Math.floor(Date.now() / 1000);
-  
-  // Get the issuer URL from our utility
-  // This ensures we're always using the correct domain
-  const issuerUrl = getIssuerBaseUrl();
-  
-  // Create a token valid for 1 hour from now
-  const iat = currentTimestamp;
-  const exp = currentTimestamp + 3600; // 1 hour from now
-  
-  // Create the payload
-  const payload = {
-    sub: "1234567890",
-    name: "John Doe",
-    iat: iat,
-    exp: exp,
-    aud: "example-client",
-    // Use the correct issuer URL
-    iss: issuerUrl,
-    // Mark as demo token
-    is_demo_token: true
-  };
-  
-  // Create the header
-  const header = {
-    alg: "RS256", // Use RS256 to match our JWKS
-    typ: "JWT",
-    kid: "demo-key-2025" // Include the key ID
-  };
-  
-  // Encode header and payload
-  const encodedHeader = base64UrlEncode(JSON.stringify(header));
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-  
-  // For the signature, we'll use a placeholder
-  // Note: This won't be validatable, but at least the issuer is right
-  const signaturePart = "XCopO5RSxCARj0BoTPaHQXPFMjQ4inuX1TnuNKRdCrQ";
-  
-  // Combine parts to form the JWT
-  return `${encodedHeader}.${encodedPayload}.${signaturePart}`;
-}
-
-// Function to encode as base64url
-function base64UrlEncode(str: string): string {
-  return btoa(str)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
+// No more legacy code needed below this line!
+// The generateLegacyToken and base64UrlEncode functions have been removed.

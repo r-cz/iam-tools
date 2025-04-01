@@ -1,8 +1,10 @@
+// src/lib/jwt/sign-token.ts
 import { SignJWT } from 'jose';
-import { DEMO_PRIVATE_KEY } from './demo-key';
+import { DEMO_PRIVATE_KEY } from './demo-key'; // Uses your new key
 
 /**
- * Signs a JWT token with the demo private key
+ * Signs a JWT token with the demo private key.
+ * Now simplified after debugging.
  *
  * @param payload The payload to include in the token
  * @param header Optional additional header parameters
@@ -14,94 +16,70 @@ export async function signToken(
 ): Promise<string> {
   let privateKey: CryptoKey;
   try {
-    console.log("[signToken] Attempting to import private key...");
+    // 1. Import the private key
+    console.log("[signToken] Importing private key...");
     privateKey = await importPrivateKey(DEMO_PRIVATE_KEY);
     console.log("[signToken] Private key imported successfully.");
 
-    // *** START: Direct Web Crypto API Sign Test ***
-    try {
-      console.log("[signToken] Attempting direct sign with crypto.subtle.sign...");
-      const dataToSign = new TextEncoder().encode("Test data to sign");
-      const signature = await crypto.subtle.sign(
-        { name: 'RSASSA-PKCS1-v1_5' }, // Algorithm for signing
-        privateKey,                   // The imported key
-        dataToSign                    // Data to sign (ArrayBuffer)
-      );
-      console.log("[signToken] Direct crypto.subtle.sign succeeded. Signature length:", signature.byteLength);
-    } catch (directSignError: any) {
-      console.error("[signToken] Direct crypto.subtle.sign FAILED:", directSignError);
-      // If this fails, the issue is likely with the key or Web Crypto API itself
-      throw new Error(`Direct Web Crypto sign failed: ${directSignError.message}`);
-    }
-    // *** END: Direct Web Crypto API Sign Test ***
-
-  } catch (importOrDirectSignError: any) {
-    // Catch errors from import OR the direct sign test
-    console.error('[signToken] Error importing key or during direct sign test:', importOrDirectSignError);
-    throw new Error(`Failed during key import or direct sign test: ${importOrDirectSignError.message || importOrDirectSignError}`);
+  } catch (importError: any) {
+    console.error('[signToken] Error importing private key:', importError);
+    throw new Error(`Failed to import private key: ${importError.message || importError}`);
   }
 
   try {
+    // 2. Prepare the JWT with headers using jose
     console.log("[signToken] Preparing JWT for signing with jose...");
     let jwt = new SignJWT(payload)
       .setProtectedHeader({
-        alg: 'RS256',
+        alg: 'RS256', // Algorithm defined in your key
         typ: 'JWT',
-        kid: DEMO_PRIVATE_KEY.kid,
+        kid: DEMO_PRIVATE_KEY.kid, // *** Use the Key ID from your key file ***
         ...header
       });
 
+    // Add standard timestamps if not provided in payload
     if (!payload.iat) jwt = jwt.setIssuedAt();
-    if (!payload.exp) jwt = jwt.setExpirationTime('1h');
+    if (!payload.exp) jwt = jwt.setExpirationTime('1h'); // Default 1 hour expiry
 
+    // 3. Sign the JWT using jose and the imported key
     console.log('[signToken] Attempting to sign JWT with jose...');
-    const signedToken = await jwt.sign(privateKey); // This is where the original error occurred
+    const signedToken = await jwt.sign(privateKey);
     console.log('[signToken] JWT signed successfully with jose.');
     return signedToken;
 
   } catch (joseSignError: any) {
-    // This specifically catches errors from jose's sign method
     console.error('[signToken] Error during jose JWT signing:', joseSignError);
     if (joseSignError.message) console.error('[signToken] Jose Sign Error Message:', joseSignError.message);
-    if (joseSignError.stack) console.error('[signToken] Jose Sign Error Stack:', joseSignError.stack);
-    // Re-throw the specific error from jose
+    // Re-throw for higher-level components to catch
     throw joseSignError;
   }
 }
 
 /**
- * Imports a JWK as a CryptoKey for signing
- *
- * @param jwk The JWK to import
- * @returns A CryptoKey that can be used for signing
+ * Imports a JWK as a CryptoKey for signing using Web Crypto API.
  */
 async function importPrivateKey(jwk: any): Promise<CryptoKey> {
   try {
-    console.log(`[importPrivateKey] Importing key with kty: ${jwk.kty}, alg: ${jwk.alg}`);
-    console.log(`[importPrivateKey] Using import parameters: name=RSASSA-PKCS1-v1_5, hash=SHA-256`);
-
+    // Check if necessary APIs exist
     if (!crypto?.subtle?.importKey) {
-        throw new Error("crypto.subtle.importKey is not available in this environment.");
-    }
-    if (!crypto?.subtle?.sign) {
-        throw new Error("crypto.subtle.sign is not available in this environment.");
+        throw new Error("crypto.subtle.importKey is not available.");
     }
 
-
+    // Import the key using corrected parameters
     const key = await crypto.subtle.importKey(
       'jwk',
       jwk,
       {
-        name: 'RSASSA-PKCS1-v1_5',
-        hash: { name: 'SHA-256' },
+        name: 'RSASSA-PKCS1-v1_5', // Algorithm name
+        hash: { name: 'SHA-256' },  // Hash function for the algorithm
       },
-      false,
-      ['sign']
+      false, // Exportable flag (false for private keys usually)
+      ['sign'] // Key usage - we want to sign with it
     );
     console.log('[importPrivateKey] crypto.subtle.importKey succeeded.');
     return key;
   } catch (error: any) {
      console.error('[importPrivateKey] Error during crypto.subtle.importKey:', error);
-     throw error;
+     throw error; // Re-throw to be caught by signToken
   }
 }
