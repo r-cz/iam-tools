@@ -36,6 +36,11 @@ const data = {
           url: "/oidc-explorer", // Internal route path
           icon: FileJson,
         },
+        {
+          title: "OAuth Playground",
+          url: "/oauth-playground", // Internal route path
+          icon: KeyRound,
+        },
       ],
     },
   ],

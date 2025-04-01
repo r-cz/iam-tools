@@ -8,6 +8,9 @@ import { Toaster } from './components/ui/sonner'
 import HomePage from './features/home'
 import TokenInspectorPage from './features/tokenInspector/pages'
 import OidcExplorerPage from './features/oidcExplorer/pages'
+import OAuthPlaygroundPage from './features/oauthPlayground/pages'
+import OAuthCallbackPage from './features/oauthPlayground/pages/callback'
+import DemoAuthPage from './features/oauthPlayground/pages/demo-auth'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -19,7 +22,10 @@ createRoot(document.getElementById('root')!).render(
             <Route index element={<HomePage />} />
             <Route path="token-inspector" element={<TokenInspectorPage />} />
             <Route path="oidc-explorer" element={<OidcExplorerPage />} />
+            <Route path="oauth-playground" element={<OAuthPlaygroundPage />} />
           </Route>
+          <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
+          <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

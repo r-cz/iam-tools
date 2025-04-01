@@ -6,6 +6,7 @@ This directory contains detailed documentation for each feature in the IAM Tools
 
 - [Token Inspector](./token-inspector.md) - Documentation for the JWT token inspection tool
 - [OIDC Explorer](./oidc-explorer.md) - Documentation for the OpenID Connect configuration explorer
+- [OAuth Playground](./oauth-playground.md) - Documentation for the interactive OAuth 2.0 flow testing tool
 
 ## Adding New Feature Guides
 
