@@ -1,13 +1,11 @@
-
 import { TokenInspector } from "@/features/tokenInspector";
 import { PageContainer, PageHeader } from "@/components/page";
 import { KeyRound } from "lucide-react";
-import { useUrlParams } from "@/hooks";
+// Removed unused import: import { useUrlParams } from "@/hooks";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 export default function TokenInspectorPage() {
-  const params = useUrlParams<{ token?: string }>();
   const [urlToken, setUrlToken] = useState<string | null>(null);
   const location = useLocation();
 
@@ -16,7 +14,7 @@ export default function TokenInspectorPage() {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const tokenParam = searchParams.get('token');
-    
+
     if (tokenParam) {
       console.log('Token found in URL parameters:', tokenParam.substring(0, 10) + '...');
       setUrlToken(tokenParam);

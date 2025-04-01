@@ -17,17 +17,17 @@ interface TokenExchangeProps {
   onTokenExchangeComplete: (tokenResponse: TokenResponse) => void;
 }
 
-export function TokenExchange({ 
-  config, 
-  pkce, 
-  authorizationCode, 
-  onTokenExchangeComplete 
+export function TokenExchange({
+  config,
+  pkce,
+  authorizationCode,
+  onTokenExchangeComplete
 }: TokenExchangeProps) {
   const navigate = useNavigate();
   const [isExchanging, setIsExchanging] = useState<boolean>(false);
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null);
   const [tokenRequestPayload, setTokenRequestPayload] = useState<string>('');
-  
+
   // Create token request payload
   useEffect(() => {
     const payload = new URLSearchParams({
@@ -37,13 +37,13 @@ export function TokenExchange({
       client_id: config.clientId,
       code_verifier: pkce.codeVerifier
     });
-    
+
     setTokenRequestPayload(payload.toString());
   }, [authorizationCode, config.clientId, config.redirectUri, pkce.codeVerifier]);
-  
+
   const exchangeToken = async () => {
     setIsExchanging(true);
-    
+
     try {
       if (config.demoMode) {
         // In demo mode, generate tokens locally instead of making a server request
@@ -54,7 +54,7 @@ export function TokenExchange({
       } else {
         // Real mode - use the token endpoint from the config
         const tokenEndpoint = config.tokenEndpoint!;
-        
+
         // Create token request payload
         const payload = new URLSearchParams({
           grant_type: 'authorization_code',
@@ -63,7 +63,7 @@ export function TokenExchange({
           client_id: config.clientId,
           code_verifier: pkce.codeVerifier
         });
-        
+
         // Make the token request
         const response = await proxyFetch(tokenEndpoint, {
           method: 'POST',
@@ -72,13 +72,13 @@ export function TokenExchange({
           },
           body: payload
         });
-        
+
         const data = await response.json();
-        
+
         if (data.error) {
           throw new Error(data.error_description || data.error);
         }
-        
+
         // Process token response
         const tokenData: TokenResponse = {
           access_token: data.access_token,
@@ -88,7 +88,7 @@ export function TokenExchange({
           id_token: data.id_token,
           scope: data.scope
         };
-        
+
         setTokenResponse(tokenData);
         onTokenExchangeComplete(tokenData);
         toast.success('Successfully exchanged code for tokens');
@@ -105,7 +105,7 @@ export function TokenExchange({
   const generateDemoTokens = async (code: string, clientId: string): Promise<TokenResponse> => {
     try {
       const currentTime = Math.floor(Date.now() / 1000);
-      
+
       // Create a JWT payload for access token
       const accessTokenPayload = {
         iss: `${window.location.origin}/oauth-playground`,
@@ -119,23 +119,23 @@ export function TokenExchange({
         scope: 'openid profile email',
         is_demo_token: true // Mark as demo token for verification
       };
-      
+
       // Create a JWT payload for ID token
       const idTokenPayload = {
         ...accessTokenPayload,
         auth_time: currentTime,
         nonce: code.substring(0, 8), // Use part of the code as a nonce
       };
-      
+
       // Use our token signing utility to create properly signed tokens
       const accessToken = await signToken(accessTokenPayload);
       const idToken = await signToken(idTokenPayload);
-      
+
       // Generate a random refresh token
       const refreshToken = `refresh-token-${Math.random().toString(36).substring(2)}`;
-      
+
       console.log('Generated properly signed demo tokens with kid:', DEMO_JWKS.keys[0].kid);
-      
+
       return {
         access_token: accessToken,
         id_token: idToken,
@@ -149,7 +149,7 @@ export function TokenExchange({
       throw new Error('Failed to generate demo tokens');
     }
   };
-  
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -163,7 +163,7 @@ export function TokenExchange({
         <div className="space-y-4">
           <h3 className="text-sm font-medium">Authorization Code</h3>
           <CodeBlock code={authorizationCode} language="text" />
-          
+
           <h3 className="text-sm font-medium">Token Request</h3>
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
@@ -178,14 +178,14 @@ export function TokenExchange({
             <CodeBlock code={tokenRequestPayload} language="text" />
           </div>
         </div>
-        
+
         {tokenResponse && (
           <Tabs defaultValue="formatted">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="formatted">Formatted</TabsTrigger>
               <TabsTrigger value="raw">Raw</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="formatted">
               <div className="space-y-4">
                 {tokenResponse.access_token && (
@@ -196,7 +196,7 @@ export function TokenExchange({
                     </div>
                   </div>
                 )}
-                
+
                 {tokenResponse.id_token && (
                   <div>
                     <h3 className="text-sm font-medium">ID Token</h3>
@@ -205,7 +205,7 @@ export function TokenExchange({
                     </div>
                   </div>
                 )}
-                
+
                 {tokenResponse.refresh_token && (
                   <div>
                     <h3 className="text-sm font-medium">Refresh Token</h3>
@@ -214,7 +214,7 @@ export function TokenExchange({
                     </div>
                   </div>
                 )}
-                
+
                 <div className="bg-muted rounded-md p-3">
                   <h3 className="text-sm font-medium mb-2">Token Details</h3>
                   <ul className="list-disc list-inside text-sm space-y-1">
@@ -229,11 +229,11 @@ export function TokenExchange({
                 </div>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="raw">
-              <CodeBlock 
-                code={JSON.stringify(tokenResponse, null, 2)} 
-                language="json" 
+              <CodeBlock
+                code={JSON.stringify(tokenResponse, null, 2)}
+                language="json"
               />
             </TabsContent>
           </Tabs>
@@ -241,8 +241,8 @@ export function TokenExchange({
       </CardContent>
       <CardFooter>
         {!tokenResponse ? (
-          <Button 
-            onClick={exchangeToken} 
+          <Button
+            onClick={exchangeToken}
             disabled={isExchanging}
             className="w-full"
           >
@@ -250,8 +250,8 @@ export function TokenExchange({
           </Button>
         ) : (
           <div className="w-full space-y-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full"
               onClick={() => {
                 // Use React Router navigation for a smoother experience
@@ -262,14 +262,15 @@ export function TokenExchange({
             >
               Inspect Access Token
             </Button>
-            
+
             {tokenResponse.id_token && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
                 onClick={() => {
                   // Use React Router navigation for a smoother experience
-                  navigate(`/token-inspector?token=${encodeURIComponent(tokenResponse.id_token)}`);
+                  // Add ! to assert that id_token is not null/undefined here
+                  navigate(`/token-inspector?token=${encodeURIComponent(tokenResponse.id_token!)}`);
                 }}
               >
                 Inspect ID Token
