@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CodeBlock } from "@/components/ui/code-block";
 import { toast } from "sonner";
 import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
+import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 
 interface TokenJwksResolverProps {
   issuerUrl: string;
@@ -36,7 +37,7 @@ export function TokenJwksResolver({
   // Using a separate flag to track whether we've already set the issuer URL
   const initialSetupDoneRef = React.useRef(false);
 
-  // This useEffect for initial issuerUrl setup is fine
+  // Initial setup effect - set issuer URL and apply DEMO_JWKS for demo tokens
   useEffect(() => {
     const isAuthExample = issuerUrl && (issuerUrl === "https://auth.example.com");
 
@@ -45,9 +46,16 @@ export function TokenJwksResolver({
       const localIssuerUrl = getIssuerBaseUrl();
       console.log('Setting issuer URL to local domain:', localIssuerUrl);
       setIssuerUrl(localIssuerUrl);
+      
+      // If this is a demo token, automatically apply the DEMO_JWKS
+      if (isDemoToken) {
+        console.log('Auto-applying DEMO_JWKS for demo token');
+        onJwksResolved(DEMO_JWKS);
+      }
+      
       initialSetupDoneRef.current = true;
     }
-  }, [isDemoToken, issuerUrl, setIssuerUrl]);
+  }, [isDemoToken, issuerUrl, setIssuerUrl, onJwksResolved]);
 
   // REMOVED THE PROBLEMATIC useEffect HOOK THAT CAUSED AUTOMATIC FETCHING
 

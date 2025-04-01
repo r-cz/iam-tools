@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signToken } from '@/lib/jwt/sign-token';
+import { DEMO_JWKS } from '@/lib/jwt/demo-key';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,7 +47,7 @@ export function TokenExchange({
     try {
       if (config.demoMode) {
         // In demo mode, generate tokens locally instead of making a server request
-        const demoTokenResponse = generateDemoTokens(authorizationCode, config.clientId);
+        const demoTokenResponse = await generateDemoTokens(authorizationCode, config.clientId);
         setTokenResponse(demoTokenResponse);
         onTokenExchangeComplete(demoTokenResponse);
         toast.success('Successfully exchanged code for tokens (demo mode)');
@@ -100,62 +102,52 @@ export function TokenExchange({
   };
 
   // Generate demo tokens for the demo mode
-  const generateDemoTokens = (code: string, clientId: string): TokenResponse => {
-    // Create a JWT header
-    const header = {
-      alg: 'HS256',
-      typ: 'JWT'
-    };
-    
-    // Create a JWT payload for access token
-    const accessTokenPayload = {
-      iss: `${window.location.origin}/oauth-playground`,
-      sub: 'demo-user',
-      aud: clientId,
-      exp: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
-      iat: Math.floor(Date.now() / 1000),
-      name: 'Demo User',
-      email: 'demo@example.com',
-      preferred_username: 'demouser',
-      scope: 'openid profile email'
-    };
-    
-    // Create a JWT payload for ID token
-    const idTokenPayload = {
-      ...accessTokenPayload,
-      auth_time: Math.floor(Date.now() / 1000),
-      nonce: code.substring(0, 8), // Use part of the code as a nonce
-    };
-    
-    // Function to base64url encode
-    const base64UrlEncode = (obj: any): string => {
-      return btoa(JSON.stringify(obj))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-    };
-    
-    // Create unsigned tokens (for demo purposes only)
-    const headerStr = base64UrlEncode(header);
-    const accessPayloadStr = base64UrlEncode(accessTokenPayload);
-    const idPayloadStr = base64UrlEncode(idTokenPayload);
-    
-    // Generate dummy signature (real signatures would be cryptographically signed)
-    const dummySignature = base64UrlEncode({sig: 'demo'});
-    
-    // Assemble tokens
-    const accessToken = `${headerStr}.${accessPayloadStr}.${dummySignature}`;
-    const idToken = `${headerStr}.${idPayloadStr}.${dummySignature}`;
-    const refreshToken = `refresh-token-${Math.random().toString(36).substring(2)}`;
-    
-    return {
-      access_token: accessToken,
-      id_token: idToken,
-      refresh_token: refreshToken,
-      token_type: 'Bearer',
-      expires_in: 3600,
-      scope: 'openid profile email'
-    };
+  const generateDemoTokens = async (code: string, clientId: string): Promise<TokenResponse> => {
+    try {
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // Create a JWT payload for access token
+      const accessTokenPayload = {
+        iss: `${window.location.origin}/oauth-playground`,
+        sub: 'demo-user',
+        aud: clientId,
+        exp: currentTime + 3600, // Expires in 1 hour
+        iat: currentTime,
+        name: 'Demo User',
+        email: 'demo@example.com',
+        preferred_username: 'demouser',
+        scope: 'openid profile email',
+        is_demo_token: true // Mark as demo token for verification
+      };
+      
+      // Create a JWT payload for ID token
+      const idTokenPayload = {
+        ...accessTokenPayload,
+        auth_time: currentTime,
+        nonce: code.substring(0, 8), // Use part of the code as a nonce
+      };
+      
+      // Use our token signing utility to create properly signed tokens
+      const accessToken = await signToken(accessTokenPayload);
+      const idToken = await signToken(idTokenPayload);
+      
+      // Generate a random refresh token
+      const refreshToken = `refresh-token-${Math.random().toString(36).substring(2)}`;
+      
+      console.log('Generated properly signed demo tokens with kid:', DEMO_JWKS.keys[0].kid);
+      
+      return {
+        access_token: accessToken,
+        id_token: idToken,
+        refresh_token: refreshToken,
+        token_type: 'Bearer',
+        expires_in: 3600,
+        scope: 'openid profile email'
+      };
+    } catch (error) {
+      console.error('Error generating demo tokens:', error);
+      throw new Error('Failed to generate demo tokens');
+    }
   };
   
   return (
