@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Highlight, themes } from "prism-react-renderer";
+import { Highlight, themes, } from "prism-react-renderer"; // Import types
 import { useTheme } from "@/components/theme/theme-provider";
 
 interface CodeBlockProps extends React.HTMLAttributes<HTMLPreElement> {
@@ -10,8 +10,7 @@ interface CodeBlockProps extends React.HTMLAttributes<HTMLPreElement> {
 
 export function CodeBlock({ code, language = "json", className, ...props }: CodeBlockProps) {
   const { theme } = useTheme();
-  
-  // Determine if the current theme is dark mode
+
   const isDarkMode = useMemo(() => {
     if (theme === "dark") return true;
     if (theme === "system") {
@@ -19,16 +18,15 @@ export function CodeBlock({ code, language = "json", className, ...props }: Code
     }
     return false;
   }, [theme]);
-  
-  // Select appropriate theme based on dark/light mode
+
   const codeTheme = useMemo(() => {
     return isDarkMode ? themes.nightOwl : themes.github;
   }, [isDarkMode]);
 
   return (
-    <Highlight 
-      theme={codeTheme} 
-      code={code} 
+    <Highlight
+      theme={codeTheme}
+      code={code}
       language={language as any}
     >
       {({ style, tokens, getLineProps, getTokenProps }) => (
@@ -39,17 +37,27 @@ export function CodeBlock({ code, language = "json", className, ...props }: Code
           )}
           style={{
             ...style,
-            backgroundColor: "var(--muted)", // Use theme variable instead of fixed color
+            backgroundColor: "var(--muted)",
           }}
           {...props}
         >
-          {tokens.map((line, i) => (
-            <div key={i} {...getLineProps({ line, key: i })}>
-              {line.map((token, key) => (
-                <span key={key} {...getTokenProps({ token, key })} />
-              ))}
-            </div>
-          ))}
+          {tokens.map((line, i) => {
+            const lineProps = getLineProps({ line, key: i });
+            // --- FIX: Destructure and Assert Type ---
+            const { key: lineKey, ...restLineProps } = lineProps;
+            return (
+              <div key={lineKey as React.Key ?? i} {...restLineProps}>
+            {/* --- END OF FIX --- */}
+                {line.map((token, key) => {
+                  const tokenProps = getTokenProps({ token, key });
+                  // --- FIX: Destructure and Assert Type ---
+                  const { key: tokenKey, ...restTokenProps } = tokenProps;
+                  return <span key={tokenKey as React.Key ?? key} {...restTokenProps} />;
+                  // --- END OF FIX ---
+                })}
+              </div>
+            );
+          })}
         </pre>
       )}
     </Highlight>

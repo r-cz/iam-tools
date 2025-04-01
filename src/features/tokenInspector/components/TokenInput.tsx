@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Editor from "react-simple-code-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ interface TokenInputProps {
   onDecode: () => void;
   onReset: () => void;
   onJwksResolved?: (jwks: any) => void; // Optional callback for JWKS
+  initialToken?: string | null; // Token from URL parameter
 }
 
 // Highlighting function for JWT parts
@@ -43,10 +44,21 @@ export function TokenInput({
   setToken,
   onDecode, 
   onReset,
-  onJwksResolved
+  onJwksResolved,
+  initialToken
 }: TokenInputProps) {
   const [isLoadingExample, setIsLoadingExample] = useState(false);
   const [isExampleToken, setIsExampleToken] = useState(false);
+  const [isInitialToken, setIsInitialToken] = useState(!!initialToken);
+  
+  // Show "from URL" indicator if token is from URL parameters
+  useEffect(() => {
+    if (initialToken && token === initialToken) {
+      setIsInitialToken(true);
+    } else {
+      setIsInitialToken(false);
+    }
+  }, [initialToken, token]);
 
   const handlePaste = async () => {
     try {
@@ -61,7 +73,15 @@ export function TokenInput({
 
   const handleReset = () => {
     setIsExampleToken(false);
+    setIsInitialToken(false);
     onReset();
+    
+    // Remove the token parameter from the URL without refreshing the page
+    if (initialToken) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('token');
+      window.history.replaceState({}, '', url.toString());
+    }
   };
 
   const loadExampleToken = async () => {
@@ -144,6 +164,15 @@ export function TokenInput({
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
             This is an example token using this site's demo endpoints. The key format is verified against our JWKS.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {isInitialToken && !isExampleToken && (
+        <Alert className="my-2 py-2 bg-green-500/10 border-green-500/20 text-green-700">
+          <InfoIcon className="h-4 w-4" />
+          <AlertDescription>
+            This token was provided via URL parameters. You can share links with tokens for quick inspection.
           </AlertDescription>
         </Alert>
       )}

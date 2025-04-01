@@ -12,34 +12,32 @@
  * RSA private key in JWK format for the demo token generator
  */
 export const DEMO_PRIVATE_KEY = {
-  kty: "RSA",
-  kid: "demo-key-2025",
-  use: "sig",
-  alg: "RS256",
-  // These are the JWK parameters for the private key
-  // The public parts (n, e) match the ones in the JWKS endpoint
-  n: "tqWVYpI3HVNmJ1quaLmOVADZG9F9aP3Kgp6Tm9RCLCQsNLLa3B1mTM8jgBwWSyGOcGkNYBHGMSo0iy_FYD8H7Jl9HQEQ5oGHd5T6jUUUfvQcHkGb5aWKVkrP7Wur8NZ0w_4WR_yjZ97QklFZ9iXOV1UEwjbYPsoxo5OhJUvW3J5J_ND2sB0nhvyYfX9Vjaz9M0BbBABeqVV1h49OQWVETDnC9A7MM7rlQ14wFWpdXnbDgIgV2CA98L6z7sjm9dKF38qVlwImJWI2JFl_rELsqFVMDutj0_AO6nZ_S-wGFD-FcB0Nkd6gKVskMkO1mLnJRuW_afBWgCLbbgb2nQsYoQ",
-  e: "AQAB",
-  d: "PczcIsuUK8vUTeMiY700BuZsJVuT6dZkQQlkzNGRfaVBf0jgEDLcFGHfJQgvWQT4f9Yn85n0LBr0Uc69f2_ak1XkbxMDZU0TQluVe0A2xn11TZt8dMEXRFcFiYDj4aXBd0tVT3gb5bYR4mCFgIVR4q3i3OfAmPXgNLvn7HREgXcmVzT3llGMSZhjOpJzq6UbEWZgkiLvwwZQKHsLloZM54xjsxBJEwg_iQMsjtxRPXP_aqTrZNYJKIhmJxFMJfMzGBh9KFJkgXtWK9tEKjjHMZKR81y8JPgSgCzWMf4xGODxOVvbxEAOdOAcVcwIOTNDjJ6g3TBYUYDCPXHYiU2jAQ",
-  p: "7pBwzR03Z8-NxVnrrrALfA8-MBG6nzKbMEDRDSNkLvimFjBEQPZXvM4WZI2f9Dj3WsYU8VT48hZkJrwZzGBrQ6lPrJBT8iXgA1OXuMNEDxUQlh9FHr8x0sJ0Pzdt-nL0ysyLEetaXJkT5GKfZYdx01BAmGn4gX3rIpYP_N7wb9M",
-  q: "xHQhVzC0A02XFzBGQ-5H3cYETndcwKkRDrhsS_YaSoYdnZ1ZMT5WRx-OaRPnWMcXIL5MxsX98_wTgkVwBQ_BOeqG98c2mTv0iA23wJk_oPIHvcgE3XEA6JcuGPzwLfO5YbGKIfAYcGRfTSCbxiJRpHmFJdjIMbBQSbQXLJMuT1s",
-  dp: "jBYnV7v6emluMxYuACDEJcgUJ4mGSr9lHDvdNA0GlA9rcjI6DpKQE9Ipbb79GPxhuK8Zj3zWAhUQXCw4n5dkOVzrLz6v7WcXEN6ZZcGAPqMQKK4KDMjB7L-1-yJQY9VmONLKCn0rNLRNAbKpRPYebHKzO75Tw1OWFRbXABg8exE",
-  dq: "Nj2MjLUl-NJc5c71dsVS_-GQN1I-jVSFnIPKFsNu5sYfvFcMTjiXh6GWP9PTc8R0FZMQty53eCPYDQHWK2B7JwiLYjnoGXkt4oABWLxLDKEj-lQAPJyxEMXejKIyga31B48WBXmvbzSdIJ5yl5xJQkNWBfQ_XGiYSj8KdyIZbPE",
-  qi: "kA1V4HXXr8Qtv0b_QVJPIVx0xKTZiuvaDOzkrdvLCYC9SyQ5U2ZtbhtrPS4Aq8dXQVu1_ZCuVqBU71FZpXhKGJKfLRkc9LDeBo31L9jqzwjK-rmwpU71oOyFAzrPqv3TPCbYVuUl8CWgAJYw-wPkYJrZOSiJyMvqzKG5vUQKBtQ"
+  "d": "L-a46fD4iPdQb5vHTA7BrcDkQ__Wgt3FC3mlbsLzWrQObMMnqnFhVtyIz2LH3w5LwqVo7R8JYs5wlokAg2fMuVcXOni2N9TcCeBt6b95gmWkU_BOvlNM7ionJ7gfUZLL0Sm9SR44K_qyv2jRWvs_m-i3IOb8oC9vbFiHaGBCXUbEvZKET7uJtIO_6bIMfnjmU-8MVeD9rW6D6lOijiw4wsxk9Es6bEkG-TFHvF1H5PcV4ANMqFiQ85b7GEW_n6WY5uwXqbVzo9I_82gpSvLbLnbwugBvTJ3rVFB5MRQOOSP9QtawjiOg8IrkWGkp0w0BTgZ4J_gnZw4mF1j0_0pMwQ",
+  "dp": "fcs9g7_jabymn2IC77ZdrZ3w4i3jtjc60FJ8YecjmOlJLPYVJx-mg6qlcfnYBJG7hj-NdZ02fsDmITZsRP7noJI9EMSzSm78yF9wEwozdxlHGoX31x7WEAvlCspDUxQW7FuEtroSpHmUjEBQaDzYIH6Ln_VZjFiZa2mDkNR0fZk",
+  "dq": "CF54pgmpLK-Sw8EZJ0G1CtLu9RtZLyyaJmtKsGUl1H2NuDWMenHftP1hkv3UOPirzTa9wyUOp89PnhE147YWkPqBVakn1_pcb43RyWwxU4yqxcW6c2BZenYSp6ZEJHfW7Dz1DgZiC7LXF91UVzi3sinF1jYnBGPY6qqxPj9NCtk",
+  "e": "AQAB",
+  "kty": "RSA",
+  "n": "wsUmq1_QIMejWqGLCTaBfDaKxFBX-HG4SvJChh75MlbdjBSHB5vOtBPxk7xkBxYfNXr1VcxzyJkJo_faVRLW0WWQZmlo3gcdC6pbM8S2nn9cPbL6nCEWi5BlbQpO_xzFIzB7S-Fl-JzGgXhfW4bSuG_dFVkwz47oZQOmLk8j407_-KWRP-cTAKSmLilQ0vPKB5_aWUsE1MhZvZYjnWrIENJ1IxbUYLKSl1ApMarLEZiAKBwzdscY3klXgfXbD4V9UKEgkKAxsyvy6SZNhxKLPWBwRVJ7YOcKNM_qh-NqdWax66qlYMC_w3u4gDYrF1W7G6htxXGSe0rmeUCnyvVLPQ",
+  "p": "5nN2_2UF3YIkaP91W2RSwJSbFiHKPp8-U2uIGKRXiHF7JI_hS4B9va-o9VxtY94qvFcZ5h1BMPUOvgLQ1mrjElGIhAb0wkJ8_z43v7n5gvmeRphEyqZB6dSObJ-m5xQYGs9Gasm5X7TXH58cq8hMzuLC5BzdKYjhA7L-ZkYyIrU",
+  "q": "2F0Ck3iZVQFB4EbIMMMisSCYsffzVBmVDsnh396ygc5WBCrjN-GEeui6qP2ZEy04CSTBrhT8JitdwN3C5TyEzbdSUgzgTcexBS0TAoXIBxGAzUEom2XHh5RCa76KOSgHrsuESkThNRtyfRBHjcpeNUReHhfBPco0kJKfc3tvM2k",
+  "qi": "gxMQ5I4YXvBJCfArJXZ_E73pww_nxua-5vf-CvIn2y0eIyT7FkMtHX8OA83uislWlbaw-wEokIDvVZohA_dSckFmUVLreKrTHsH1dfBF3oTA4F4qpM2WNj3pZKx1TksrRZ069l8l3rjchk7-Q6MXmiRdB151KZFWYxFHHBORtRs",
+  "kid": "iam-tools-demo-key-v1",
+  "use": "sig",
+  "alg": "RS256"
 };
 
 /**
  * JWKS format of the keys, for debugging and manual entry
  */
 export const DEMO_JWKS = {
-  keys: [
+  "keys": [
     {
-      kty: "RSA",
-      kid: "demo-key-2025",
-      use: "sig",
-      alg: "RS256",
-      n: "tqWVYpI3HVNmJ1quaLmOVADZG9F9aP3Kgp6Tm9RCLCQsNLLa3B1mTM8jgBwWSyGOcGkNYBHGMSo0iy_FYD8H7Jl9HQEQ5oGHd5T6jUUUfvQcHkGb5aWKVkrP7Wur8NZ0w_4WR_yjZ97QklFZ9iXOV1UEwjbYPsoxo5OhJUvW3J5J_ND2sB0nhvyYfX9Vjaz9M0BbBABeqVV1h49OQWVETDnC9A7MM7rlQ14wFWpdXnbDgIgV2CA98L6z7sjm9dKF38qVlwImJWI2JFl_rELsqFVMDutj0_AO6nZ_S-wGFD-FcB0Nkd6gKVskMkO1mLnJRuW_afBWgCLbbgb2nQsYoQ",
-      e: "AQAB"
+      "e": "AQAB",
+      "kty": "RSA",
+      "n": "wsUmq1_QIMejWqGLCTaBfDaKxFBX-HG4SvJChh75MlbdjBSHB5vOtBPxk7xkBxYfNXr1VcxzyJkJo_faVRLW0WWQZmlo3gcdC6pbM8S2nn9cPbL6nCEWi5BlbQpO_xzFIzB7S-Fl-JzGgXhfW4bSuG_dFVkwz47oZQOmLk8j407_-KWRP-cTAKSmLilQ0vPKB5_aWUsE1MhZvZYjnWrIENJ1IxbUYLKSl1ApMarLEZiAKBwzdscY3klXgfXbD4V9UKEgkKAxsyvy6SZNhxKLPWBwRVJ7YOcKNM_qh-NqdWax66qlYMC_w3u4gDYrF1W7G6htxXGSe0rmeUCnyvVLPQ",
+      "kid": "iam-tools-demo-key-v1",
+      "use": "sig",
+      "alg": "RS256"
     }
   ]
 };

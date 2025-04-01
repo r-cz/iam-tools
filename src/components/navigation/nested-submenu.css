@@ -1,0 +1,30 @@
+/* Custom styles for nested submenus */
+[data-sidebar="menu-sub"] {
+  max-width: calc(100% - 0.75rem);
+}
+
+[data-sidebar="menu-sub-button"] {
+  max-width: calc(100% - 4px);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Ensure text in sidebar menu items doesn't overflow */
+[data-sidebar="menu-button"] > span {
+  max-width: calc(100% - 24px);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Make sure icons don't get squished */
+[data-sidebar="menu-button"] > svg,
+[data-sidebar="menu-sub-button"] > svg {
+  flex-shrink: 0;
+  min-width: 16px;
+}
+
+/* Improve alignment in nested submenus */
+[data-sidebar="menu-sub-item"] {
+  width: 100%;
+  max-width: 100%;
+}

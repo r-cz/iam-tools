@@ -29,18 +29,24 @@ export default function HomePage() {
               <h3 className="text-xl font-medium">OIDC Explorer</h3>
               <p className="text-muted-foreground text-center mt-2">Explore OpenID Connect provider configurations and JWKS endpoints</p>
             </Link>
+            
+            <Link to="/oauth-playground" className="aspect-video rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-600/20 flex flex-col items-center justify-center hover:from-green-500/20 hover:to-emerald-600/30 transition-colors p-6">
+              <KeyRound className="h-12 w-12 mb-4 text-emerald-600" />
+              <h3 className="text-xl font-medium">OAuth Playground</h3>
+              <p className="text-muted-foreground text-center mt-2">Test and explore OAuth 2.0 flows interactively</p>
+            </Link>
           </div>
         </div>
         
         <div className="space-y-6">
           <h2 className="text-2xl font-semibold">Latest Updates</h2>
           <div className="rounded-xl border p-6 shadow-sm">
-            <h3 className="text-lg font-medium mb-2">New Feature: OIDC Explorer</h3>
+            <h3 className="text-lg font-medium mb-2">New Feature: OAuth Playground</h3>
             <p className="text-muted-foreground mb-4">
-              Explore OpenID Connect provider configurations with our new tool. Fetch and analyze OIDC metadata, inspect JWKS endpoints, and understand provider capabilities.
+              Interactively explore OAuth 2.0 flows with our new OAuth Playground tool. Walk through authorization code with PKCE flows step by step, test with your own IdP, or use our demo mode.
             </p>
             <Link 
-              to="/oidc-explorer" 
+              to="/oauth-playground" 
               className="text-sm text-primary hover:underline"
             >
               Try it now →

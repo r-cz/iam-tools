@@ -142,6 +142,16 @@ Explore and analyze OpenID Connect provider configurations:
 
 See [OIDC Explorer Documentation](docs/feature-guides/oidc-explorer.md) for detailed usage instructions.
 
+### OAuth Playground
+
+Test and explore OAuth 2.0 flows interactively:
+- Walk through the Authorization Code with PKCE flow step by step
+- Test with your own IdP or use a demo mode with a simulated identity provider
+- Generate PKCE parameters, build authorization requests, and exchange codes for tokens
+- Visualize the complete OAuth flow for learning and debugging
+
+See [OAuth Playground Documentation](docs/feature-guides/oauth-playground.md) for detailed usage instructions.
+
 ## Deployment
 
 The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch. For more information about the deployment process, see [Deployment Documentation](docs/deployment.md).

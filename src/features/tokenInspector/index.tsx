@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import * as jose from "jose";
-import { 
-  Card, 
+import {
+  Card,
   CardContent,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,359 +15,274 @@ import { TokenSignature } from "./components/TokenSignature";
 import { TokenTimeline } from "./components/TokenTimeline";
 import { TokenSize } from "./components/TokenSize";
 import { validateToken, determineTokenType } from "./utils/token-validation";
-import { TokenType, DecodedToken, ValidationResult } from "./utils/types";
+import type { TokenType, DecodedToken, ValidationResult } from "@/types"; // Point to the shared types directory
 import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 
-export function TokenInspector() {
-  const [token, setToken] = useState("");
-  const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null);
+interface TokenInspectorProps {
+  initialToken?: string | null;
+}
+
+export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
+  const [token, setToken] = useState(initialToken || "");
+  const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null); // Holds the currently loaded JWKS
   const [decodedToken, setDecodedToken] = useState<DecodedToken | null>(null);
-  const [tokenType, setTokenType] = useState<TokenType>("id_token");
+  const [tokenType, setTokenType] = useState<TokenType>("unknown"); // Default to unknown
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
   const [activeTab, setActiveTab] = useState("payload");
   const [issuerUrl, setIssuerUrl] = useState("");
-  const [isDemoToken, setIsDemoToken] = useState(false);
-  
-  // Reset issuer URL if it's the default example.com one
+  const [isDemoToken, setIsDemoToken] = useState(false); // Tracks if the CURRENT decoded token is a demo one
+
+  // Effect to handle initial token from URL
   useEffect(() => {
-    if (issuerUrl === "https://auth.example.com") {
-      // Use the local issuer URL
-      const localIssuerUrl = getIssuerBaseUrl();
-      console.log('Replacing auth.example.com with local issuer:', localIssuerUrl);
-      setIssuerUrl(localIssuerUrl);
+    if (initialToken && token !== initialToken) { // Process only if initialToken exists and hasn't been processed
+      console.log('Processing initial token from URL parameter:', initialToken.substring(0,10)+'...');
+      setToken(initialToken); // Set the token state
+      // Decode will happen via the useEffect watching `token` state below
     }
-  }, [issuerUrl]);
+   // Intentionally run only when initialToken prop changes
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialToken]);
+
+  // Effect to decode token whenever the 'token' state changes
+  useEffect(() => {
+    console.log("Token state changed, attempting decode...");
+    decodeToken(token, jwks); // Attempt decode with current token and JWKS state
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]); // Rerun when the main token string changes
+
 
   const resetState = () => {
-    // Clear the token
-    setToken("");
-    // Reset decoded token data
+    console.log("Resetting Token Inspector state.");
+    setToken(""); // Clear token input state
     setDecodedToken(null);
-    // Reset validation results
     setValidationResults([]);
-    // Reset to default tab
     setActiveTab("payload");
-    // Reset demo token status
     setIsDemoToken(false);
-    // Reset JWKS and issuer URL if needed
-    setJwks(null);
+    setJwks(null); // Reset loaded JWKS
     setIssuerUrl("");
-  };
-  
-  // This function is called from TokenInput when an example token is generated
-  const handleJwksFromExample = (demoJwks: jose.JSONWebKeySet) => {
-    console.log('Received demo JWKS from TokenInput:', demoJwks);
-    setJwks(demoJwks);
+     // Clear token from URL if it was present
+     if (initialToken) {
+         const url = new URL(window.location.href);
+         url.searchParams.delete('token');
+         window.history.replaceState({}, '', url.toString());
+     }
   };
 
-  const decodeToken = async () => {
-    if (!token) {
+  // Callback for TokenInput when an example token is generated
+  // It provides the corresponding DEMO_JWKS immediately
+  const handleJwksFromExample = (demoJwks: jose.JSONWebKeySet) => {
+    console.log('Received demo JWKS automatically from TokenInput (example generated)');
+    setJwks(demoJwks); // Set the JWKS state
+    // Re-decode is triggered by the 'token' state change anyway
+  };
+
+  // Main decoding and validation logic
+  const decodeToken = async (tokenToDecode = token, currentJwks = jwks) => {
+    if (!tokenToDecode) {
+      setDecodedToken(null);
+      setIsDemoToken(false);
+      setValidationResults([]);
+      setTokenType('unknown');
+      setIssuerUrl('');
+      // Don't reset JWKS here, user might want to keep it loaded
       return;
     }
 
     try {
-      // Parse the token to get parts
-      const parts = token.split(".");
-      if (parts.length !== 3) {
-        throw new Error("Invalid JWT format");
-      }
+      const parts = tokenToDecode.split(".");
+      if (parts.length !== 3) throw new Error("Invalid JWT format (must have 3 parts)");
 
-      // Base64 URL decode the header and payload
       const [encodedHeader, encodedPayload] = parts;
-      
-      // Convert base64url to base64
       const base64Header = encodedHeader.replace(/-/g, '+').replace(/_/g, '/');
       const base64Payload = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
-      
-      // Add padding
       const paddedHeader = base64Header + '='.repeat((4 - base64Header.length % 4) % 4);
       const paddedPayload = base64Payload + '='.repeat((4 - base64Payload.length % 4) % 4);
-      
-      // Decode
       const header = JSON.parse(atob(paddedHeader));
       const payload = JSON.parse(atob(paddedPayload));
 
-      // Check if this is a demo token
-      const isDemoTokenCheck = payload.is_demo_token === true || 
-        (payload.iss && typeof payload.iss === 'string' && (
-          payload.iss.includes(window.location.host) || 
-          payload.iss === "http://localhost:8788/api"
-        ));
-      setIsDemoToken(isDemoTokenCheck);
-      
-      console.log('Decoded token:', { 
-        header, 
-        payload, 
-        isDemoToken: isDemoTokenCheck,
-        issuer: payload.iss 
-      });
+      // Determine if it's a demo token
+      const demoIssuerUrl = getIssuerBaseUrl();
+      // Check explicit claim first, then check issuer matching our known demo issuer URL
+      const isLikelyDemo = payload.is_demo_token === true ||
+                           (payload.iss && typeof payload.iss === 'string' && payload.iss === demoIssuerUrl);
+      setIsDemoToken(isLikelyDemo); // Update state based on CURRENT token
+      console.log('Decoded token. Is Demo:', isLikelyDemo, 'Issuer:', payload.iss);
 
-      // Use the determineTokenType function
+      // Determine token type and perform basic claim validation
       const detectedTokenType = determineTokenType(header, payload);
-      console.log('Detected token type:', detectedTokenType);
-      
       setTokenType(detectedTokenType);
-      
-      // Extract issuer URL from payload if present and auto-fetch JWKS
-      if (payload.iss) {
-        // Handle the special case of auth.example.com
-        let newIssuerUrl = payload.iss;
-        
-        if (newIssuerUrl === "https://auth.example.com" || isDemoTokenCheck) {
-          newIssuerUrl = getIssuerBaseUrl();
-          console.log('Using local issuer URL instead of auth.example.com:', newIssuerUrl);
-        }
-        
-        console.log('Extracted issuer URL from token:', newIssuerUrl);
-        
-        // Only update if it's different to avoid unnecessary re-renders
-        if (newIssuerUrl !== issuerUrl) {
-          setIssuerUrl(newIssuerUrl);
-        }
-      }
-
-      // Perform validation using the validation function
       const validationResults = validateToken(header, payload, detectedTokenType);
 
-      // Initialize signature validation state
+      // Set issuer URL for JWKS resolver (use demo issuer if it's a demo token)
+      const currentIssuer = isLikelyDemo ? demoIssuerUrl : (payload.iss || "");
+      if (currentIssuer && currentIssuer !== issuerUrl) {
+          setIssuerUrl(currentIssuer);
+      } else if (!currentIssuer) {
+          setIssuerUrl(""); // Clear if no issuer found
+      }
+
+      // Perform signature validation if JWKS are available
       let signatureValid = false;
-      let signatureError = undefined;
-      
-      // For demo tokens from our tool, we validate the structure but not the cryptographic signature
-      if (isDemoTokenCheck && jwks) {
-        // Find if there's a matching key ID in the JWKS
-        const matchingKey = jwks.keys.find(key => key.kid === header.kid);
-        
-        if (matchingKey) {
-          // If there's a matching key and it's a demo token, we consider it valid
-          signatureValid = true;
-          console.log('Demo token found with matching key ID in JWKS. Marking as valid.');
-        } else {
-          signatureError = `No key with ID "${header.kid}" found in the JWKS`;
-          console.error(signatureError);
-        }
-      } 
-      // For non-demo tokens, perform actual cryptographic verification
-      else if (jwks) {
+      let signatureError: string | undefined = undefined;
+
+      if (currentJwks) {
         try {
-          // Find the matching key in the JWKS
-          const matchingKey = jwks.keys.find(key => key.kid === header.kid);
-          
+          const matchingKey = currentJwks.keys.find(key => key.kid === header.kid);
           if (!matchingKey) {
-            throw new Error(`No key with ID "${header.kid}" found in the JWKS`);
+            throw new Error(`No key with ID "${header.kid}" found in the loaded JWKS`);
           }
-          
-          // Create a key object and verify
-          const key = await jose.importJWK(matchingKey, header.alg);
-          await jose.jwtVerify(token, key);
-          signatureValid = true;
+
+          // For demo tokens, accept matching kid as valid (due to potential env issues with crypto.sign)
+          if (isLikelyDemo) {
+            console.log(`Demo token signature check: Found key ${header.kid}. Marking as valid.`);
+            signatureValid = true;
+          } else {
+            // For non-demo tokens, perform actual crypto verification
+            console.log("Attempting cryptographic verification for non-demo token...");
+            const key = await jose.importJWK(matchingKey, header.alg); // Let jose handle alg selection based on JWK
+            await jose.jwtVerify(tokenToDecode, key);
+            signatureValid = true;
+            console.log("Cryptographic verification successful.");
+          }
         } catch (e: any) {
           console.error('Signature verification error:', e);
           signatureError = e.message;
           signatureValid = false;
         }
+      } else {
+          signatureError = "JWKS not yet loaded for validation.";
       }
 
+      // Update state with decoded results
       setDecodedToken({
         header,
         payload,
-        signature: {
-          valid: signatureValid,
-          error: signatureError
-        },
-        raw: token
+        signature: { valid: signatureValid, error: signatureError },
+        raw: tokenToDecode
       });
-
       setValidationResults(validationResults);
-      
+
     } catch (err: any) {
-      setDecodedToken({
-        header: {},
-        payload: {},
-        signature: {
-          valid: false,
-          error: err.message
-        },
-        raw: token
-      });
+      console.error("Token decoding/validation failed:", err);
+      setDecodedToken(null); // Clear decoded state on error
+      setIsDemoToken(false);
+      setTokenType('unknown');
       setValidationResults([{
         claim: "format",
         valid: false,
-        message: err.message,
+        message: `Invalid token: ${err.message}`,
         severity: "error"
       }]);
+      // Don't reset JWKS or issuerUrl on format error
     }
   };
 
-  const handleJwksResolved = async (resolvedJwks: jose.JSONWebKeySet) => {
-    console.log('JWKS resolved:', { 
-      keyCount: resolvedJwks.keys.length,
-      keyIds: resolvedJwks.keys.map((k: {kid?: string}) => k.kid) 
-    });
-    
-    // Store the JWKS first
-    setJwks(resolvedJwks);
-    
-    // If we have a token, verify it
-    if (token && decodedToken) {
-      try {
-        // Parse the token to get parts for header
-        const parts = token.split(".");
-        if (parts.length !== 3) {
-          throw new Error("Invalid JWT format");
-        }
+   // Callback function passed to TokenJwksResolver
+   // This is triggered when JWKS are fetched automatically OR loaded manually (incl. demo)
+   const handleJwksResolved = async (resolvedJwks: jose.JSONWebKeySet) => {
+     console.log('JWKS resolved/loaded in parent:', {
+       keyCount: resolvedJwks.keys.length,
+       keyIds: resolvedJwks.keys.map((k: {kid?: string}) => k.kid)
+     });
+     setJwks(resolvedJwks); // Store the resolved JWKS state
 
-        // Get the header to find the kid and alg
-        const encodedHeader = parts[0];
-        const base64Header = encodedHeader.replace(/-/g, '+').replace(/_/g, '/');
-        const paddedHeader = base64Header + '='.repeat((4 - base64Header.length % 4) % 4);
-        const header = JSON.parse(atob(paddedHeader));
-        
-        // Find the matching key by kid
-        const matchingKey = resolvedJwks.keys.find(k => k.kid === header.kid);
-        
-        console.log('Direct verification with matching key:', {
-          headerKid: header.kid,
-          foundMatchingKey: !!matchingKey,
-          alg: header.alg
-        });
-        
-        // Check if this is a demo token
-        const isDemoTokenFlag = decodedToken.payload.is_demo_token === true;
-        const issString = typeof decodedToken.payload.iss === 'string' ? decodedToken.payload.iss : '';
-        const isDemoToken = isDemoTokenFlag || 
-          (issString && (
-            issString.includes(window.location.host) || 
-            issString === "http://localhost:8788/api"
-          ));
-        
-        // For demo tokens, we validate the key ID but not the cryptographic signature
-        if (isDemoToken) {
-          if (matchingKey) {
-            console.log('Demo token with matching key ID. Marking as valid.');
-            setDecodedToken({
-              ...decodedToken,
-              signature: {
-                valid: true,
-                error: undefined
-              }
-            });
-          } else {
-            setDecodedToken({
-              ...decodedToken,
-              signature: {
-                valid: false,
-                error: `No key with matching kid ${header.kid} found`
-              }
-            });
-          }
-        }
-        // For non-demo tokens, perform actual cryptographic verification
-        else if (matchingKey) {
-          // Create a key object and verify
-          const key = await jose.importJWK(matchingKey, header.alg);
-          await jose.jwtVerify(token, key);
-          
-          // Update the decoded token with valid signature
-          setDecodedToken({
-            ...decodedToken,
-            signature: {
-              valid: true,
-              error: undefined
-            }
-          });
-        } else {
-          throw new Error(`No key with matching kid ${header.kid} found`);
-        }
-      } catch (err: any) {
-        console.error('Direct verification error:', err);
-        // Update with error
-        setDecodedToken({
-          ...decodedToken,
-          signature: {
-            valid: false,
-            error: err.message
-          }
-        });
-      }
-    }
-  };
+     // Re-run validation with the new JWKS if a token is already decoded
+     if (decodedToken) {
+       console.log("Re-running decode/validation with newly resolved JWKS...");
+       await decodeToken(decodedToken.raw, resolvedJwks); // Pass current token and new JWKS
+     }
+   };
 
-  // Helper to get token type badge
-  const getTokenTypeBadge = () => {
-    if (tokenType === "id_token") {
-      return <Badge variant="outline" className="bg-blue-500/20 text-blue-700 hover:bg-blue-500/20">OIDC ID Token</Badge>;
-    } else if (tokenType === "access_token") {
-      if (decodedToken?.header.typ === "at+jwt" || decodedToken?.header.typ === "application/at+jwt") {
-        return <Badge variant="outline" className="bg-purple-500/20 text-purple-700 hover:bg-purple-500/20">OAuth JWT Access Token (RFC9068)</Badge>;
-      } else {
-        return <Badge variant="outline" className="bg-green-500/20 text-green-700 hover:bg-green-500/20">OAuth Access Token</Badge>;
-      }
-    } else {
-      return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">Unknown Token Type</Badge>;
-    }
-  };
-
-  // Helper to get signature status badge
+  // Helper function for rendering signature status badge
   const getSignatureStatusBadge = () => {
-    if (!decodedToken) return null;
-    
-    if (decodedToken.signature.valid) {
-      return <Badge variant="outline" className="bg-green-500/20 text-green-700 hover:bg-green-500/20">Signature Valid</Badge>;
-    } else if (jwks) {
-      return <Badge variant="outline" className="bg-red-500/20 text-red-700 hover:bg-red-500/20">Signature Invalid</Badge>;
-    } else {
-      return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">Signature Not Verified</Badge>;
+    if (!decodedToken) return null; // No token, no status
+
+    // If JWKS are loaded, show valid/invalid status
+    if (jwks) {
+        if (decodedToken.signature.valid) {
+            return <Badge variant="outline" className="bg-green-500/20 text-green-700 hover:bg-green-500/20">Signature Valid</Badge>;
+        } else {
+            return <Badge variant="outline" className="bg-red-500/20 text-red-700 hover:bg-red-500/20">Signature Invalid</Badge>;
+        }
+    }
+
+    // If JWKS are not loaded, show "Not Verified"
+    return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">Signature Not Verified</Badge>;
+  };
+
+  // Helper function for rendering token type badge
+  const getTokenTypeBadge = () => {
+    if (!decodedToken) return null; // No token, no type
+
+    switch (tokenType) {
+        case "id_token":
+            return <Badge variant="outline" className="bg-blue-500/20 text-blue-700 hover:bg-blue-500/20">OIDC ID Token</Badge>;
+        case "access_token":
+            const typ = decodedToken.header?.typ;
+            if (typ === "at+jwt" || typ === "application/at+jwt") {
+                return <Badge variant="outline" className="bg-purple-500/20 text-purple-700 hover:bg-purple-500/20">OAuth JWT Access Token (RFC9068)</Badge>;
+            } else {
+                return <Badge variant="outline" className="bg-green-500/20 text-green-700 hover:bg-green-500/20">OAuth Access Token</Badge>;
+            }
+        default:
+             return <Badge variant="outline" className="bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">Unknown Token Type</Badge>;
     }
   };
+
 
   return (
-    // Use grid layout: 1 column default, 2 columns on large screens and up
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Input Card (spans 1 column) */}
-      <Card className="lg:col-span-1"> 
+      {/* Input Card */}
+      <Card className="lg:col-span-1">
         <CardContent className="p-5">
-          <TokenInput 
-            token={token} 
-            setToken={setToken} 
-            onDecode={decodeToken}
+          <TokenInput
+            token={token}
+            setToken={setToken} // Let input component update token state
+            onDecode={() => decodeToken(token)} // Explicitly trigger decode on button click
             onReset={resetState}
-            onJwksResolved={handleJwksFromExample}
+            onJwksResolved={handleJwksFromExample} // For auto-loading JWKS from example btn
+            initialToken={initialToken} // Pass initial token if present
           />
         </CardContent>
       </Card>
 
-      {/* Decoded Token Details Card (spans 1 column) */}
+      {/* Decoded Token Details Card (Conditionally Rendered) */}
       {decodedToken && (
         <Card className="lg:col-span-1">
           <CardContent className="p-5">
+            {/* Header Section with Badges and Size */}
             <div className="flex flex-col space-y-3 mb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+                {/* Signature and Demo Status Badges */}
+                <div className="flex items-center gap-2 flex-wrap">
                   {getSignatureStatusBadge()}
                   {isDemoToken && (
                     <Badge variant="outline" className="bg-blue-500/10 text-blue-700 hover:bg-blue-500/10">Demo Token</Badge>
                   )}
                 </div>
+                {/* Token Type Badge */}
                 <div className="flex items-center">
                   <span className="mr-2 text-sm">Detected:</span>
                   {getTokenTypeBadge()}
                 </div>
               </div>
-              
+
+              {/* Warning for Unknown Type */}
               {tokenType === "unknown" && (
                 <Alert className="mt-2 bg-amber-500/10 border-amber-500/20 text-amber-700">
                   <AlertDescription>
-                    Missing standard claims. Check browser console for details.
+                    Could not definitively determine token type based on standard claims.
                   </AlertDescription>
                 </Alert>
               )}
-              
+
+              {/* Token Size Component */}
               <div className="border-t pt-3">
                 <TokenSize token={decodedToken.raw} />
               </div>
             </div>
 
+            {/* Tabs for Decoded Content */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">
                 <TabsTrigger value="header" className="flex-1 min-w-fit">Header</TabsTrigger>
@@ -375,43 +290,65 @@ export function TokenInspector() {
                 <TabsTrigger value="signature" className="flex-1 min-w-fit">Signature</TabsTrigger>
                 <TabsTrigger value="timeline" className="flex-1 min-w-fit">Timeline</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="header">
-                <TokenHeader 
-                  header={decodedToken.header} 
+                <TokenHeader
+                  header={decodedToken.header}
                   validationResults={validationResults.filter(r => r.claim.startsWith('header.'))}
                 />
               </TabsContent>
-              
+
               <TabsContent value="payload">
-                <TokenPayload 
-                  payload={decodedToken.payload} 
+                <TokenPayload
+                  payload={decodedToken.payload}
                   tokenType={tokenType}
                   validationResults={validationResults.filter(r => !r.claim.startsWith('header.'))}
                 />
               </TabsContent>
-              
+
               <TabsContent value="signature">
-                <TokenSignature 
+                <TokenSignature
                   token={decodedToken.raw}
                   header={decodedToken.header}
-                  payload={decodedToken.payload}
                   signatureError={decodedToken.signature.error}
                   signatureValid={decodedToken.signature.valid}
-                  jwks={jwks}
-                  issuerUrl={issuerUrl}
-                  setIssuerUrl={setIssuerUrl}
-                  onJwksResolved={handleJwksResolved}
+                  jwks={jwks} // Pass current JWKS state
+                  issuerUrl={issuerUrl} // Pass current issuer state
+                  setIssuerUrl={setIssuerUrl} // Allow resolver to update issuer
+                  onJwksResolved={handleJwksResolved} // Function to call when JWKS are resolved/loaded
+                  isCurrentTokenDemo={isDemoToken} // Pass the flag indicating if CURRENT token is demo
                 />
               </TabsContent>
-              
+
               <TabsContent value="timeline">
-                <TokenTimeline payload={decodedToken.payload} />
+                 <TokenTimeline payload={decodedToken.payload} />
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       )}
+
+       {/* Placeholder when no token is decoded AND no format error exists */}
+       {!decodedToken && !validationResults.some(r => r.claim === 'format' && !r.valid) && (
+         <Card className="lg:col-span-1">
+           <CardContent className="p-5 text-center text-muted-foreground">
+             Paste or generate a token and click "Inspect Token" to see details.
+           </CardContent>
+         </Card>
+       )}
+
+       {/* Error display specifically for format errors */}
+       {validationResults.some(r => r.claim === 'format' && !r.valid) && (
+         <Card className="lg:col-span-1 border-destructive bg-destructive/5">
+             <CardContent className="p-5">
+                 <Alert variant="destructive" className="border-0 bg-transparent p-0 text-destructive">
+                     <AlertDescription>
+                         {validationResults.find(r => r.claim === 'format')?.message || "Invalid token format."}
+                     </AlertDescription>
+                 </Alert>
+             </CardContent>
+         </Card>
+       )}
     </div>
   );
 }
