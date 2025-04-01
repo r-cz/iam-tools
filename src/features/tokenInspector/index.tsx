@@ -18,8 +18,12 @@ import { validateToken, determineTokenType } from "./utils/token-validation";
 import { TokenType, DecodedToken, ValidationResult } from "./utils/types";
 import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 
-export function TokenInspector() {
-  const [token, setToken] = useState("");
+interface TokenInspectorProps {
+  initialToken?: string | null;
+}
+
+export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
+  const [token, setToken] = useState(initialToken || "");
   const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null);
   const [decodedToken, setDecodedToken] = useState<DecodedToken | null>(null);
   const [tokenType, setTokenType] = useState<TokenType>("id_token");
@@ -37,6 +41,19 @@ export function TokenInspector() {
       setIssuerUrl(localIssuerUrl);
     }
   }, [issuerUrl]);
+  
+  // Auto-decode token when provided via URL parameter
+  useEffect(() => {
+    if (initialToken && !decodedToken) {
+      console.log('Auto-decoding token from URL parameter');
+      // Set the token value first
+      setToken(initialToken);
+      // Then decode it with a slight delay to ensure state update completes
+      setTimeout(() => {
+        decodeToken();
+      }, 50);
+    }
+  }, [initialToken]);
 
   const resetState = () => {
     // Clear the token
@@ -333,6 +350,7 @@ export function TokenInspector() {
             onDecode={decodeToken}
             onReset={resetState}
             onJwksResolved={handleJwksFromExample}
+            initialToken={initialToken}
           />
         </CardContent>
       </Card>

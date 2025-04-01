@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +21,7 @@ export function TokenExchange({
   authorizationCode, 
   onTokenExchangeComplete 
 }: TokenExchangeProps) {
+  const navigate = useNavigate();
   const [isExchanging, setIsExchanging] = useState<boolean>(false);
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null);
   const [tokenRequestPayload, setTokenRequestPayload] = useState<string>('');
@@ -260,9 +262,9 @@ export function TokenExchange({
               variant="outline" 
               className="w-full"
               onClick={() => {
-                // Navigate to token inspector with the access token
+                // Use React Router navigation for a smoother experience
                 if (tokenResponse.access_token) {
-                  window.location.href = `/token-inspector?token=${tokenResponse.access_token}`;
+                  navigate(`/token-inspector?token=${encodeURIComponent(tokenResponse.access_token)}`);
                 }
               }}
             >
@@ -274,8 +276,8 @@ export function TokenExchange({
                 variant="outline" 
                 className="w-full"
                 onClick={() => {
-                  // Navigate to token inspector with the ID token
-                  window.location.href = `/token-inspector?token=${tokenResponse.id_token}`;
+                  // Use React Router navigation for a smoother experience
+                  navigate(`/token-inspector?token=${encodeURIComponent(tokenResponse.id_token)}`);
                 }}
               >
                 Inspect ID Token
