@@ -278,15 +278,18 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-1/4">Key ID (kid)</TableHead>
-                    <TableHead className="w-1/6">Type</TableHead>
-                    <TableHead className="w-1/6">Usage</TableHead>
-                    <TableHead className="w-1/6">Algorithm</TableHead>
-                    <TableHead className="w-1/6">Actions</TableHead>
+                    <TableHead className="w-1/4">Type</TableHead> {/* Adjusted width */}
+                    <TableHead className="w-1/4">Usage</TableHead> {/* Adjusted width */}
+                    <TableHead className="w-1/4">Algorithm</TableHead> {/* Adjusted width */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {jwks.keys.map((key) => (
-                    <TableRow key={key.kid} className={key.kid === selectedKeyId ? 'bg-muted/50' : ''}>
+                    <TableRow 
+                      key={key.kid} 
+                      className={`cursor-pointer hover:bg-muted/30 ${key.kid === selectedKeyId ? 'bg-muted/50' : ''}`}
+                      onClick={() => setSelectedKeyId(key.kid)}
+                    >
                       <TableCell className="font-mono text-sm">{key.kid}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{key.kty}</Badge>
@@ -306,15 +309,6 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
                         ) : (
                           <span className="text-muted-foreground italic">-</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant={key.kid === selectedKeyId ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedKeyId(key.kid)}
-                        >
-                          {key.kid === selectedKeyId ? 'Selected' : 'View'}
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

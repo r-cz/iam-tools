@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Removed Tabs imports
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce';
 import { proxyFetch } from '@/lib/proxy-fetch';
-import { OAuthConfig, OAuthFlowType, PkceParams } from '../utils/types';
+import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
 import { toast } from 'sonner';
 
 interface ConfigurationFormProps {
@@ -16,17 +16,18 @@ interface ConfigurationFormProps {
 }
 
 export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) {
-  const [flowType, setFlowType] = useState<OAuthFlowType>(OAuthFlowType.AUTH_CODE_PKCE);
+  // Removed flowType state
   const [issuerUrl, setIssuerUrl] = useState<string>('');
   const [authEndpoint, setAuthEndpoint] = useState<string>('');
   const [tokenEndpoint, setTokenEndpoint] = useState<string>('');
   const [jwksEndpoint, setJwksEndpoint] = useState<string>('');
   const [clientId, setClientId] = useState<string>('');
-  const [redirectUri, setRedirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`);
+  const [redirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`); // Removed setRedirectUri
   const [scopes, setScopes] = useState<string>('openid profile email');
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
-  
+  const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false); // Track if endpoints were set by discovery
+
   // Generate PKCE values
   const [codeVerifier, setCodeVerifier] = useState<string>('');
   const [codeChallenge, setCodeChallenge] = useState<string>('');
@@ -64,11 +65,18 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       const config = await response.json();
 
       if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
+      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
       if (config.token_endpoint) setTokenEndpoint(config.token_endpoint);
       if (config.jwks_uri) setJwksEndpoint(config.jwks_uri);
+      
+      // Lock endpoints if discovery was successful
+      if (config.authorization_endpoint || config.token_endpoint || config.jwks_uri) {
+        setEndpointsLocked(true);
+      }
 
       toast.success('OIDC configuration loaded successfully');
     } catch (error) {
+      setEndpointsLocked(false); // Unlock on error
       console.error('Error fetching OIDC configuration:', error);
       toast.error('Failed to fetch OIDC configuration');
     } finally {
@@ -95,7 +103,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     }
 
     const config: OAuthConfig = {
-      flowType,
+      // Removed flowType property
       issuerUrl: isDemoMode ? undefined : issuerUrl,
       authEndpoint: isDemoMode ? undefined : authEndpoint,
       tokenEndpoint: isDemoMode ? undefined : tokenEndpoint,
@@ -125,28 +133,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       </CardHeader>
       <CardContent>
         <div className="grid gap-6">
-          {/* Flow Type Selection */}
-          <div className="space-y-2">
-            <Label>OAuth Flow Type</Label>
-            <Select
-              value={flowType}
-              onValueChange={(value) => setFlowType(value as OAuthFlowType)}
-              disabled={true} // Currently only supporting Auth Code + PKCE
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select flow type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={OAuthFlowType.AUTH_CODE_PKCE}>Authorization Code with PKCE</SelectItem>
-                <SelectItem value={OAuthFlowType.AUTH_CODE} disabled>Authorization Code</SelectItem>
-                <SelectItem value={OAuthFlowType.CLIENT_CREDENTIALS} disabled>Client Credentials</SelectItem>
-                <SelectItem value={OAuthFlowType.IMPLICIT} disabled>Implicit</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              Only Authorization Code with PKCE is currently supported
-            </p>
-          </div>
+          {/* Flow Type Selection Removed */}
 
           {/* Demo Mode Toggle */}
           <div className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -164,71 +151,80 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
 
           {/* Configuration based on mode */}
           {!isDemoMode ? (
-            <Tabs defaultValue="discover" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="discover">Auto-discover</TabsTrigger>
-                <TabsTrigger value="manual">Manual Configuration</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="discover">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Issuer URL</Label>
-                    <div className="flex space-x-2">
-                      <Input
-                        placeholder="https://example.com"
-                        value={issuerUrl}
-                        onChange={(e) => setIssuerUrl(e.target.value)}
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={fetchOidcConfig}
-                        disabled={isLoadingDiscovery || !issuerUrl}
-                      >
-                        {isLoadingDiscovery ? "Loading..." : "Discover"}
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      The base URL of your Identity Provider
-                    </p>
-                  </div>
+            <div className="space-y-4 rounded-lg border p-4">
+              <h3 className="text-lg font-medium">Identity Provider Details</h3>
+              {/* Issuer URL for Auto-Discovery */}
+              <div className="space-y-2">
+                <Label>Issuer URL (for Auto-Discovery)</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="https://example.com"
+                    value={issuerUrl}
+                    onChange={(e) => {
+                      setIssuerUrl(e.target.value);
+                      // Clear endpoints if issuer changes, allowing manual input or re-discovery
+                      setAuthEndpoint('');
+                      setTokenEndpoint('');
+                      setJwksEndpoint('');
+                      setEndpointsLocked(false);
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={fetchOidcConfig}
+                    disabled={isLoadingDiscovery || !issuerUrl}
+                  >
+                    {isLoadingDiscovery ? "Loading..." : "Discover Endpoints"}
+                  </Button>
                 </div>
-              </TabsContent>
+                <p className="text-sm text-muted-foreground">
+                  Enter the base URL of your IdP to attempt auto-discovery of endpoints via OIDC .well-known configuration.
+                </p>
+              </div>
+
+              {/* Manual/Discovered Endpoints */}
+              <div className="space-y-2">
+                <Label>Authorization Endpoint</Label>
+                <Input
+                  placeholder="https://example.com/authorize"
+                  value={authEndpoint}
+                  onChange={(e) => setAuthEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                />
+                 <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>Required endpoint for starting the authorization flow.</span>
+                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
+                </p>
+              </div>
               
-              <TabsContent value="manual">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Authorization Endpoint</Label>
-                    <Input
-                      placeholder="https://example.com/authorize"
-                      value={authEndpoint}
-                      onChange={(e) => setAuthEndpoint(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Token Endpoint</Label>
-                    <Input
-                      placeholder="https://example.com/token"
-                      value={tokenEndpoint}
-                      onChange={(e) => setTokenEndpoint(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>JWKS Endpoint (Optional)</Label>
-                    <Input
-                      placeholder="https://example.com/jwks"
-                      value={jwksEndpoint}
-                      onChange={(e) => setJwksEndpoint(e.target.value)}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Used for validating token signatures
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+              <div className="space-y-2">
+                <Label>Token Endpoint</Label>
+                <Input
+                  placeholder="https://example.com/token"
+                  value={tokenEndpoint}
+                  onChange={(e) => setTokenEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                />
+                 <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>Required endpoint for exchanging the authorization code for tokens.</span>
+                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>JWKS Endpoint (Optional)</Label>
+                <Input
+                  placeholder="https://example.com/.well-known/jwks.json"
+                  value={jwksEndpoint}
+                  onChange={(e) => setJwksEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                />
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>Endpoint for retrieving public keys to validate token signatures.</span>
+                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
+                </p>
+              </div>
+            </div>
           ) : (
             <div className="rounded-lg border p-4 bg-muted/50">
               <p className="text-sm text-muted-foreground">
@@ -256,12 +252,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
             <Label>Redirect URI</Label>
             <Input
               value={redirectUri}
-              onChange={(e) => setRedirectUri(e.target.value)}
+              readOnly // Make the input read-only
+              // onChange removed
             />
             <p className="text-sm text-muted-foreground">
-              {isDemoMode 
-                ? "Any URL is accepted in demo mode" 
-                : "Must match a redirect URI registered with your Identity Provider"}
+              {isDemoMode
+                ? "The URI where the demo server sends the response."
+                : "This is the required Redirect URI. You MUST register this exact URI with your Identity Provider for this client."}
             </p>
           </div>
           
