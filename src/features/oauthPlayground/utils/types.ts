@@ -13,7 +13,7 @@ export enum OAuthFlowType {
  * OAuth configuration interface
  */
 export interface OAuthConfig {
-  flowType: OAuthFlowType;
+  // flowType: OAuthFlowType; // Removed as flow is determined by the page/route
   issuerUrl?: string;
   authEndpoint?: string;
   tokenEndpoint?: string;

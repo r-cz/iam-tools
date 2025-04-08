@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce';
 import { proxyFetch } from '@/lib/proxy-fetch';
-import { OAuthConfig, OAuthFlowType, PkceParams } from '../utils/types';
+import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
 import { toast } from 'sonner';
 
 interface ConfigurationFormProps {
@@ -16,7 +16,7 @@ interface ConfigurationFormProps {
 }
 
 export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) {
-  const [flowType, setFlowType] = useState<OAuthFlowType>(OAuthFlowType.AUTH_CODE_PKCE);
+  // Removed flowType state
   const [issuerUrl, setIssuerUrl] = useState<string>('');
   const [authEndpoint, setAuthEndpoint] = useState<string>('');
   const [tokenEndpoint, setTokenEndpoint] = useState<string>('');
@@ -95,7 +95,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     }
 
     const config: OAuthConfig = {
-      flowType,
+      // Removed flowType property
       issuerUrl: isDemoMode ? undefined : issuerUrl,
       authEndpoint: isDemoMode ? undefined : authEndpoint,
       tokenEndpoint: isDemoMode ? undefined : tokenEndpoint,
@@ -125,28 +125,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       </CardHeader>
       <CardContent>
         <div className="grid gap-6">
-          {/* Flow Type Selection */}
-          <div className="space-y-2">
-            <Label>OAuth Flow Type</Label>
-            <Select
-              value={flowType}
-              onValueChange={(value) => setFlowType(value as OAuthFlowType)}
-              disabled={true} // Currently only supporting Auth Code + PKCE
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select flow type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={OAuthFlowType.AUTH_CODE_PKCE}>Authorization Code with PKCE</SelectItem>
-                <SelectItem value={OAuthFlowType.AUTH_CODE} disabled>Authorization Code</SelectItem>
-                <SelectItem value={OAuthFlowType.CLIENT_CREDENTIALS} disabled>Client Credentials</SelectItem>
-                <SelectItem value={OAuthFlowType.IMPLICIT} disabled>Implicit</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              Only Authorization Code with PKCE is currently supported
-            </p>
-          </div>
+          {/* Flow Type Selection Removed */}
 
           {/* Demo Mode Toggle */}
           <div className="flex flex-row items-center justify-between rounded-lg border p-4">
