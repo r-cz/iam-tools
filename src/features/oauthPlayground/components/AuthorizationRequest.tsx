@@ -79,8 +79,8 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
     localStorage.setItem('oauth_playground_flow_path', window.location.pathname);
     
     // Open the authorization URL in a popup window
-    const width = 800;
-    const height = 600;
+    const width = 768;
+    const height = 1024;
     const left = (window.innerWidth - width) / 2;
     const top = (window.innerHeight - height) / 2;
     const features = `width=${width},height=${height},left=${left},top=${top}`;
