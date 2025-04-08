@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge'; // Import Badge
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce';
 import { proxyFetch } from '@/lib/proxy-fetch';
 import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
