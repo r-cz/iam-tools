@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Removed Tabs imports
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,11 +22,12 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
   const [tokenEndpoint, setTokenEndpoint] = useState<string>('');
   const [jwksEndpoint, setJwksEndpoint] = useState<string>('');
   const [clientId, setClientId] = useState<string>('');
-  const [redirectUri, setRedirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`);
+  const [redirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`); // Removed setRedirectUri
   const [scopes, setScopes] = useState<string>('openid profile email');
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
-  
+  const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false); // Track if endpoints were set by discovery
+
   // Generate PKCE values
   const [codeVerifier, setCodeVerifier] = useState<string>('');
   const [codeChallenge, setCodeChallenge] = useState<string>('');
@@ -64,11 +65,18 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       const config = await response.json();
 
       if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
+      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
       if (config.token_endpoint) setTokenEndpoint(config.token_endpoint);
       if (config.jwks_uri) setJwksEndpoint(config.jwks_uri);
+      
+      // Lock endpoints if discovery was successful
+      if (config.authorization_endpoint || config.token_endpoint || config.jwks_uri) {
+        setEndpointsLocked(true);
+      }
 
       toast.success('OIDC configuration loaded successfully');
     } catch (error) {
+      setEndpointsLocked(false); // Unlock on error
       console.error('Error fetching OIDC configuration:', error);
       toast.error('Failed to fetch OIDC configuration');
     } finally {
@@ -143,71 +151,77 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
 
           {/* Configuration based on mode */}
           {!isDemoMode ? (
-            <Tabs defaultValue="discover" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="discover">Auto-discover</TabsTrigger>
-                <TabsTrigger value="manual">Manual Configuration</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="discover">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Issuer URL</Label>
-                    <div className="flex space-x-2">
-                      <Input
-                        placeholder="https://example.com"
-                        value={issuerUrl}
-                        onChange={(e) => setIssuerUrl(e.target.value)}
-                      />
-                      <Button 
-                        type="button" 
-                        onClick={fetchOidcConfig}
-                        disabled={isLoadingDiscovery || !issuerUrl}
-                      >
-                        {isLoadingDiscovery ? "Loading..." : "Discover"}
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      The base URL of your Identity Provider
-                    </p>
-                  </div>
+            <div className="space-y-4 rounded-lg border p-4">
+              <h3 className="text-lg font-medium">Identity Provider Details</h3>
+              {/* Issuer URL for Auto-Discovery */}
+              <div className="space-y-2">
+                <Label>Issuer URL (for Auto-Discovery)</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="https://example.com"
+                    value={issuerUrl}
+                    onChange={(e) => {
+                      setIssuerUrl(e.target.value);
+                      // Clear endpoints if issuer changes, allowing manual input or re-discovery
+                      setAuthEndpoint('');
+                      setTokenEndpoint('');
+                      setJwksEndpoint('');
+                      setEndpointsLocked(false);
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={fetchOidcConfig}
+                    disabled={isLoadingDiscovery || !issuerUrl}
+                  >
+                    {isLoadingDiscovery ? "Loading..." : "Discover Endpoints"}
+                  </Button>
                 </div>
-              </TabsContent>
+                <p className="text-sm text-muted-foreground">
+                  Enter the base URL of your IdP to attempt auto-discovery of endpoints via OIDC .well-known configuration.
+                </p>
+              </div>
+
+              {/* Manual/Discovered Endpoints */}
+              <div className="space-y-2">
+                <Label>Authorization Endpoint</Label>
+                <Input
+                  placeholder="https://example.com/authorize"
+                  value={authEndpoint}
+                  onChange={(e) => setAuthEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                />
+                 <p className="text-sm text-muted-foreground">
+                  Required endpoint for starting the authorization flow. {endpointsLocked ? '(Auto-discovered)' : '(Enter manually if not discovered)'}
+                </p>
+              </div>
               
-              <TabsContent value="manual">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Authorization Endpoint</Label>
-                    <Input
-                      placeholder="https://example.com/authorize"
-                      value={authEndpoint}
-                      onChange={(e) => setAuthEndpoint(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Token Endpoint</Label>
-                    <Input
-                      placeholder="https://example.com/token"
-                      value={tokenEndpoint}
-                      onChange={(e) => setTokenEndpoint(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>JWKS Endpoint (Optional)</Label>
-                    <Input
-                      placeholder="https://example.com/jwks"
-                      value={jwksEndpoint}
-                      onChange={(e) => setJwksEndpoint(e.target.value)}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Used for validating token signatures
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+              <div className="space-y-2">
+                <Label>Token Endpoint</Label>
+                <Input
+                  placeholder="https://example.com/token"
+                  value={tokenEndpoint}
+                  onChange={(e) => setTokenEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                />
+                 <p className="text-sm text-muted-foreground">
+                  Required endpoint for exchanging the authorization code for tokens. {endpointsLocked ? '(Auto-discovered)' : '(Enter manually if not discovered)'}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>JWKS Endpoint (Optional)</Label>
+                <Input
+                  placeholder="https://example.com/.well-known/jwks.json"
+                  value={jwksEndpoint}
+                  onChange={(e) => setJwksEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Endpoint for retrieving public keys to validate token signatures. {endpointsLocked ? '(Auto-discovered)' : '(Enter manually if not discovered)'}
+                </p>
+              </div>
+            </div>
           ) : (
             <div className="rounded-lg border p-4 bg-muted/50">
               <p className="text-sm text-muted-foreground">
@@ -235,12 +249,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
             <Label>Redirect URI</Label>
             <Input
               value={redirectUri}
-              onChange={(e) => setRedirectUri(e.target.value)}
+              readOnly // Make the input read-only
+              // onChange removed
             />
             <p className="text-sm text-muted-foreground">
-              {isDemoMode 
-                ? "Any URL is accepted in demo mode" 
-                : "Must match a redirect URI registered with your Identity Provider"}
+              {isDemoMode
+                ? "The URI where the demo server sends the response."
+                : "This is the required Redirect URI. You MUST register this exact URI with your Identity Provider for this client."}
             </p>
           </div>
           
