@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce';
 import { proxyFetch } from '@/lib/proxy-fetch';
@@ -191,8 +192,9 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                   onChange={(e) => setAuthEndpoint(e.target.value)}
                   readOnly={endpointsLocked}
                 />
-                 <p className="text-sm text-muted-foreground">
-                  Required endpoint for starting the authorization flow. {endpointsLocked ? '(Auto-discovered)' : '(Enter manually if not discovered)'}
+                 <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>Required endpoint for starting the authorization flow.</span>
+                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
                 </p>
               </div>
               
@@ -204,8 +206,9 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                   onChange={(e) => setTokenEndpoint(e.target.value)}
                   readOnly={endpointsLocked}
                 />
-                 <p className="text-sm text-muted-foreground">
-                  Required endpoint for exchanging the authorization code for tokens. {endpointsLocked ? '(Auto-discovered)' : '(Enter manually if not discovered)'}
+                 <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>Required endpoint for exchanging the authorization code for tokens.</span>
+                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
                 </p>
               </div>
               
@@ -217,8 +220,9 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                   onChange={(e) => setJwksEndpoint(e.target.value)}
                   readOnly={endpointsLocked}
                 />
-                <p className="text-sm text-muted-foreground">
-                  Endpoint for retrieving public keys to validate token signatures. {endpointsLocked ? '(Auto-discovered)' : '(Enter manually if not discovered)'}
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>Endpoint for retrieving public keys to validate token signatures.</span>
+                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
                 </p>
               </div>
             </div>
