@@ -1,36 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // Removed useEffect
+// Removed hook import: import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ShuffleIcon } from "lucide-react";
-import { fetchOidcConfig } from '../utils/config-helpers';
-import { OidcConfiguration } from '../utils/types';
+// No OIDC types needed here anymore
+// import { OidcConfiguration } from '../utils/types';
 
 interface ConfigInputProps {
-  onConfigFetched: (config: OidcConfiguration) => void;
-  onError: (error: Error) => void;
-  isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
+  onFetchRequested: (issuerUrl: string) => void; // Renamed prop
+  isLoading: boolean; // Added back isLoading prop
 }
 
-export function ConfigInput({ onConfigFetched, onError, isLoading, setIsLoading }: ConfigInputProps) {
+export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   const [issuerUrl, setIssuerUrl] = useState('');
+  // Removed hook instantiation
 
-  const handleFetchConfig = async () => {
+  // Removed useEffect hooks
+
+  const handleFetchConfig = () => {
     if (!issuerUrl) return;
-    
-    setIsLoading(true);
-    try {
-      const config = await fetchOidcConfig(issuerUrl);
-      onConfigFetched(config);
-    } catch (error) {
-      onError(error as Error);
-    } finally {
-      setIsLoading(false);
-    }
+    console.log(`Requesting fetch for: ${issuerUrl}`);
+    onFetchRequested(issuerUrl); // Call the prop function
   };
 
+  // Define handleKeyDown correctly
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleFetchConfig();
@@ -120,7 +115,7 @@ export function ConfigInput({ onConfigFetched, onError, isLoading, setIsLoading 
               type="text"
               value={issuerUrl}
               onChange={(e) => setIssuerUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={handleKeyDown} // Ensure this prop uses the correctly defined function
               placeholder="https://example.com/identity"
               className="pr-10"
             />
@@ -135,9 +130,9 @@ export function ConfigInput({ onConfigFetched, onError, isLoading, setIsLoading 
               <ShuffleIcon className="h-4 w-4" />
             </Button>
           </div>
-          <Button 
-            onClick={handleFetchConfig} 
-            disabled={isLoading || !issuerUrl}
+          <Button
+            onClick={handleFetchConfig}
+            disabled={isLoading || !issuerUrl} // Use prop isLoading state
             className="sm:w-auto w-full"
           >
             {isLoading ? 'Fetching...' : 'Fetch Config'}

@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { 
-  Card, 
-  CardContent
+import { useState, useEffect } from "react"; // Added useEffect
+import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig"; // Import hook
+import { useJwks } from "@/hooks/data-fetching/useJwks"; // Import hook
+import {
+  Card,
+  CardContent,
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
@@ -12,116 +14,108 @@ import { ConfigInput } from "./components/ConfigInput";
 import { ConfigDisplay } from "./components/ConfigDisplay";
 import { JwksDisplay } from "./components/JwksDisplay";
 import { ProviderInfo } from "./components/ProviderInfo";
-import { OidcConfiguration, Jwks } from "./utils/types";
-import { fetchJwks, detectProvider } from "./utils/config-helpers";
+// Removed Jwks type import as it's inferred from the hook
+import { OidcConfiguration } from "./utils/types";
+// Removed fetchJwks import, keep detectProvider
+import { detectProvider } from "./utils/config-helpers";
 
 export function OidcExplorer() {
-  const [oidcConfig, setOidcConfig] = useState<OidcConfiguration | null>(null);
-  const [jwks, setJwks] = useState<Jwks | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  // Instantiate hooks
+  const oidcConfigHook = useOidcConfig();
+  const jwksHook = useJwks();
+
+  // Local state for derived/UI data
   const [providerName, setProviderName] = useState<string | null>(null);
-  const [issuerUrl, setIssuerUrl] = useState<string>('');
+  const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>(''); // Store the URL used for the current fetch
 
-  const handleConfigFetched = (config: OidcConfiguration) => {
-    setOidcConfig(config);
-    setError(null);
-    setJwks(null); // Reset JWKS when new config is fetched
-    setIssuerUrl(config.issuer);
-    
-    // Try to detect the provider using both URL and configuration data
-    const detectedProvider = detectProvider(config.issuer, config);
-    setProviderName(detectedProvider);
-    
-    // --- REMOVED Config success toast ---
+  // Effect for successful OIDC config fetch
+  useEffect(() => {
+    if (oidcConfigHook.data) {
+      const config = oidcConfigHook.data;
+      console.log('OIDC Config loaded via hook:', config);
+      setCurrentIssuerUrl(config.issuer); // Store the issuer from the fetched config
 
-    // --- Automatically fetch JWKS if URI exists ---
-    if (config.jwks_uri) {
-      // Use a brief timeout to allow the UI to update with the config first
-      // and avoid potential state update conflicts if fetchJwks is too fast.
-      setTimeout(() => {
-        // Pass the URI directly from the fetched config
-        handleFetchJwks(config.jwks_uri);
-      }, 100);
-    } else {
-      // If no JWKS URI, stop loading immediately after config fetch
-      setIsLoading(false); 
+      // Detect provider
+      const detectedProvider = detectProvider(config.issuer, config);
+      setProviderName(detectedProvider);
+
+      // Automatically trigger JWKS fetch if URI exists
+      if (config.jwks_uri) {
+        console.log(`OIDC config has jwks_uri, fetching JWKS from: ${config.jwks_uri}`);
+        jwksHook.fetchJwks(config.jwks_uri);
+      } else {
+        console.log('OIDC config does not have jwks_uri.');
+        // Clear previous JWKS data if any
+        // Note: The useJwks hook doesn't automatically clear data,
+        // but fetching with an empty string does. Or we could add a reset function to the hook.
+        // For now, relying on the fact that jwksHook.data will be null if fetchJwks wasn't called or failed.
+      }
+
+      // Optional: Toast for config success (can be noisy)
+      // toast.success('Successfully fetched OIDC configuration');
+
     }
-    // --- End auto-fetch ---
-  };
+  }, [oidcConfigHook.data]); // Dependency: OIDC hook data
 
-  // This is the correct handleError function
-  const handleError = (error: Error) => { 
-    setError(error);
-    setOidcConfig(null);
-    
-    // Show error toast
-    toast.error('Error fetching configuration', {
-      description: error.message,
-      duration: 8000, // 8 seconds for error messages
-    });
-  };
-
-  // Modified to accept optional jwksUri argument
-  const handleFetchJwks = async (jwksUri?: string) => { 
-    const uriToFetch = jwksUri || oidcConfig?.jwks_uri; // Use arg first, fallback to state
-
-    if (!uriToFetch) { // Check the resolved URI
-      setError(new Error("No JWKS URI available in the configuration"));
-      return;
-    }
-
-    // setIsLoading(true); // Remove: Loading state is already managed
-    try {
-      const jwksData = await fetchJwks(uriToFetch); // Use uriToFetch
-      setJwks(jwksData);
-      setError(null);
-      
-      // Show success toast
+  // Effect for successful JWKS fetch
+  useEffect(() => {
+    if (jwksHook.data) {
+      console.log('JWKS loaded via hook:', jwksHook.data);
       toast.success('Successfully fetched JWKS', {
-        description: `Found ${jwksData.keys.length} keys in the JWKS`,
-        duration: 5000, // 5 seconds
+        description: `Found ${jwksHook.data.keys.length} keys`,
+        duration: 5000,
       });
-    } catch (err) {
-      setError(err as Error);
-      setJwks(null);
-      
-      // Show error toast
-      toast.error('Failed to fetch JWKS', {
-        description: (err as Error).message,
-        duration: 8000, // 8 seconds for error messages
-      });
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [jwksHook.data]); // Dependency: JWKS hook data
+
+  // Effect for handling errors from either hook
+  useEffect(() => {
+    const error = oidcConfigHook.error || jwksHook.error;
+    if (error) {
+      console.error('Error fetching OIDC config or JWKS:', error);
+      toast.error('Failed to fetch data', {
+        description: error.message,
+        duration: 8000,
+      });
+      // Reset provider name on error
+      setProviderName(null);
+    }
+  }, [oidcConfigHook.error, jwksHook.error]); // Dependencies: hook errors
+
+  // Combine loading states
+  const isLoading = oidcConfigHook.isLoading || jwksHook.isLoading;
+  // Combine error states
+  const error = oidcConfigHook.error || jwksHook.error;
 
   return (
     <div className="space-y-6">
       {/* Configuration Input */}
       <Card>
         <CardContent className="p-5">
-          <ConfigInput 
-            onConfigFetched={handleConfigFetched} 
-            onError={handleError} 
+          <ConfigInput
+            // Pass the hook's fetch function as the callback
+            onFetchRequested={oidcConfigHook.fetchConfig}
+            // Pass the combined loading state
             isLoading={isLoading}
-            setIsLoading={setIsLoading}
           />
         </CardContent>
       </Card>
-      
+
       {/* Loading state */}
       {isLoading && (
         <div className="flex items-center justify-center p-8 rounded-lg border border-border bg-card">
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Fetching configuration data...</p>
+            {/* Be more specific about what's loading */}
+            <p className="text-sm text-muted-foreground">
+              {oidcConfigHook.isLoading ? 'Fetching configuration...' : 'Fetching JWKS...'}
+            </p>
           </div>
         </div>
       )}
 
       {/* Error display */}
-      {error && (
+      {error && !isLoading && ( // Only show error if not loading
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
@@ -130,47 +124,47 @@ export function OidcExplorer() {
       )}
 
       {/* Display the configuration and JWKS using Tabs */}
-      {!isLoading && oidcConfig && (
+      {/* Use hook data directly for conditional rendering */}
+      {!isLoading && oidcConfigHook.data && (
         <Tabs defaultValue="config" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="config">Configuration</TabsTrigger>
             {/* Only show JWKS tab trigger if JWKS URI exists in config */}
-            {oidcConfig.jwks_uri && (
-              // Remove onClick handler, disable until JWKS is loaded
-              // Remove the inline spinner here as the main spinner handles the loading state
-              <TabsTrigger value="jwks" disabled={!jwks}> 
-                JWKS 
+            {oidcConfigHook.data.jwks_uri && (
+              // Disable tab until JWKS data is loaded
+              <TabsTrigger value="jwks" disabled={!jwksHook.data}>
+                JWKS
               </TabsTrigger>
             )}
           </TabsList>
-          
+
           {/* Configuration Tab Content */}
           <TabsContent value="config" className="mt-4 space-y-6">
-            <ConfigDisplay 
-              config={oidcConfig} 
-              // Removed onJwksClick prop as it's no longer needed/accepted
-            />
+            {/* Pass data directly from hook */}
+            <ConfigDisplay config={oidcConfigHook.data} />
             {providerName && (
               <ProviderInfo
-                providerName={providerName} 
-                issuerUrl={issuerUrl} 
+                providerName={providerName}
+                // Use the stored issuer URL corresponding to the fetched config
+                issuerUrl={currentIssuerUrl}
               />
             )}
           </TabsContent>
 
           {/* JWKS Tab Content */}
-          {oidcConfig.jwks_uri && (
+          {oidcConfigHook.data.jwks_uri && (
             <TabsContent value="jwks" className="mt-4">
-              {jwks ? (
-                <JwksDisplay 
-                  jwks={jwks} 
-                  // Ensure we use the correct URI here as well
-                  jwksUri={oidcConfig.jwks_uri!} // Non-null assertion ok since tab is conditional
+              {/* Use JWKS hook data directly */}
+              {jwksHook.data ? (
+                <JwksDisplay
+                  // Cast might be needed if hook type isn't exactly Jwks from './utils/types'
+                  jwks={jwksHook.data as any}
+                  jwksUri={oidcConfigHook.data.jwks_uri!} // Non-null assertion ok
                 />
               ) : (
                 <div className="text-center text-muted-foreground py-8">
-                  {/* Update text to reflect automatic fetching */}
-                  {isLoading ? 'Loading JWKS...' : 'JWKS data will be fetched automatically if available.'} 
+                  {/* Show specific message if JWKS is loading vs not available */}
+                  {jwksHook.isLoading ? 'Loading JWKS...' : 'JWKS data not yet available.'}
                 </div>
               )}
             </TabsContent>

@@ -1,7 +1,8 @@
 // src/features/tokenInspector/components/TokenJwksResolver.tsx
 
-import React, { useState } from "react"; // Removed unused useEffect, useRef
-import { proxyFetch } from "@/lib/proxy-fetch";
+import React, { useState, useEffect } from "react"; // Added useEffect
+import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig"; // Import new hook
+import { useJwks } from "@/hooks/data-fetching/useJwks"; // Import new hook
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,16 +35,65 @@ export function TokenJwksResolver({
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<"automatic" | "manual">("automatic");
   const [manualJwks, setManualJwks] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [_error, setError] = useState<string | null>(null); // Internal error state, shown via toast
+  // Removed component-level isLoading and error state, now handled by hooks
+  // const [isLoading, setIsLoading] = useState(false);
+  // const [_error, setError] = useState<string | null>(null); // Internal error state, shown via toast
 
-  // Function to handle automatic JWKS fetching
-  const fetchJwks = async () => {
-    // Prevent fetching if it's identified as a demo token - user must use the specific button
+  // Instantiate the hooks
+  const oidcConfigHook = useOidcConfig();
+  const jwksHook = useJwks();
+
+  // Effect to fetch JWKS when OIDC config is successfully loaded
+  useEffect(() => {
+    if (oidcConfigHook.data?.jwks_uri) {
+      console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfigHook.data.jwks_uri}`);
+      jwksHook.fetchJwks(oidcConfigHook.data.jwks_uri);
+    }
+  }, [oidcConfigHook.data]); // Trigger only when OIDC data changes
+
+  // Effect to handle successful JWKS fetch
+  useEffect(() => {
+    if (jwksHook.data) {
+      console.log('JWKS data loaded via hook:', jwksHook.data);
+      // Assuming hook's JwkSet is compatible or can be cast to JSONWebKeySet
+      onJwksResolved(jwksHook.data as JSONWebKeySet);
+      toast.success(
+        <div>
+          <p><strong>JWKS Fetched Successfully</strong></p>
+          <p>Found {jwksHook.data.keys.length} keys from {oidcConfigHook.data?.jwks_uri || 'source'}</p>
+        </div>,
+        { id: 'jwks-fetch-success', duration: 3000 }
+      );
+      toast.dismiss('jwks-fetch-error'); // Dismiss any previous error toast
+    }
+  }, [jwksHook.data, onJwksResolved, oidcConfigHook.data?.jwks_uri]); // Trigger when JWKS data changes
+
+  // Effect to handle errors from either hook
+  useEffect(() => {
+    const error = oidcConfigHook.error || jwksHook.error;
+    if (error) {
+      console.error("Error fetching OIDC config or JWKS:", error);
+      const errorMessage = error.message || "Unknown error";
+      // Show more informative error toast
+      toast.error(
+          <div>
+            <p><strong>Error Fetching Data</strong></p>
+            <p>{errorMessage}</p>
+            {errorMessage.includes("CORS") && <p className="text-xs mt-1">Try fetching manually or use the Manual Entry tab.</p>}
+          </div>,
+          { id: 'jwks-fetch-error', duration: 8000 }
+        );
+    }
+  }, [oidcConfigHook.error, jwksHook.error]);
+
+
+  // Function to initiate the automatic fetching process (now just triggers OIDC fetch)
+  const triggerAutomaticFetch = () => {
+    // Prevent fetching if it's identified as a demo token
     if (isCurrentTokenDemo) {
         toast.info("Automatic fetch disabled for demo token.", {
             description: "Use 'Load Demo JWKS' button instead.",
-            duration: 4000
+            duration: 4000,
         });
         return;
     }
@@ -52,88 +102,16 @@ export function TokenJwksResolver({
         return;
     }
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Normalize URL
-      const normalizedIssuerUrl = issuerUrl.endsWith("/")
-        ? issuerUrl
-        : `${issuerUrl}/`;
-
-      // Fetch OIDC config first
-      const configUrl = `${normalizedIssuerUrl}.well-known/openid-configuration`;
-      console.log(`Fetching OpenID configuration from: ${configUrl}`);
-
-      const useDirectFetch = issuerUrl.includes('localhost'); // Only use direct fetch for actual localhost
-      console.log(`Using direct fetch: ${useDirectFetch}`);
-
-      const configResponse = useDirectFetch
-        ? await fetch(configUrl, { cache: 'no-store' })
-        : await proxyFetch(configUrl);
-
-      if (!configResponse.ok) {
-        throw new Error(`Failed to fetch OpenID config: ${configResponse.status} ${configResponse.statusText}`);
-      }
-      const config = await configResponse.json();
-      console.log('OpenID configuration:', config);
-
-      if (!config.jwks_uri) {
-        throw new Error("No JWKS URI found in OpenID configuration");
-      }
-
-      // Fetch JWKS using the URI from config
-      console.log(`Fetching JWKS from: ${config.jwks_uri}`);
-      const jwksResponse = useDirectFetch
-        ? await fetch(config.jwks_uri, { cache: 'no-store' })
-        : await proxyFetch(config.jwks_uri);
-
-      if (!jwksResponse.ok) {
-        throw new Error(`Failed to fetch JWKS: ${jwksResponse.status} ${jwksResponse.statusText}`);
-      }
-      const jwks = await jwksResponse.json();
-      console.log('JWKS data:', jwks);
-
-      if (!jwks.keys || !Array.isArray(jwks.keys)) {
-        throw new Error("Invalid JWKS format: missing 'keys' array");
-      }
-
-      console.log('JWKS keys found:', jwks.keys.map((k: KeyInfo) => ({ kid: k.kid, alg: k.alg, use: k.use, kty: k.kty })));
-
-      // Success: Pass JWKS up and show toast
-      onJwksResolved(jwks);
-      setError(null);
-      toast.success(
-        <div>
-          <p><strong>JWKS Fetched Successfully</strong></p>
-          <p>Found {jwks.keys.length} keys from {config.jwks_uri}</p>
-        </div>,
-        { id: 'jwks-fetch-success', duration: 3000 }
-      );
-      toast.dismiss('jwks-fetch-error'); // Dismiss any previous error toast
-
-    } catch (err: any) {
-      console.error("Error fetching JWKS:", err);
-      const errorMessage = err.message || "Unknown error";
-      setError(errorMessage); // Set internal error state
-
-      // Show more informative error toast
-      toast.error(
-          <div>
-            <p><strong>Error Fetching JWKS</strong></p>
-            <p>{errorMessage}</p>
-            {errorMessage.includes("CORS") && <p className="text-xs mt-1">Try fetching manually or use the Manual Entry tab.</p>}
-          </div>,
-          { id: 'jwks-fetch-error', duration: 8000 }
-        );
-    } finally {
-      setIsLoading(false);
-    }
+    // Trigger the OIDC config fetch using the hook's function
+    console.log(`Initiating automatic fetch for issuer: ${issuerUrl}`);
+    oidcConfigHook.fetchConfig(issuerUrl);
+    // The useEffect hooks above will handle the rest (fetching JWKS, success/error)
   };
+
 
   // Function to handle submitting manually entered JWKS
   const handleManualJwksSubmit = () => {
-    setError(null); // Clear previous errors
+    // setError(null); // Hooks handle error state now
     try {
       const trimmedJwks = manualJwks.trim();
       if (!trimmedJwks) {
@@ -169,7 +147,7 @@ export function TokenJwksResolver({
     } catch (err: any) {
       console.error('Error parsing manual JWKS:', err);
       const errorText = `Invalid JWKS JSON: ${err.message}`;
-      setError(errorText);
+      // setError(errorText); // Removed call to non-existent function
       toast.error(
         <div>
           <p><strong>Invalid JWKS Format</strong></p>
@@ -187,10 +165,10 @@ export function TokenJwksResolver({
       onJwksResolved(DEMO_JWKS as JSONWebKeySet); // Assert type
       setManualJwks(JSON.stringify(DEMO_JWKS, null, 2)); // Pre-fill the manual text area
       setJwksMode('manual'); // Switch to the manual tab to show the loaded JWKS
-      setError(null); // Clear any previous errors
+      // setError(null); // Removed call to non-existent function
       toast.success("Demo JWKS loaded successfully.", {
          description: "Ready to validate demo/example tokens.",
-         duration: 3000
+         duration: 3000,
       });
     } catch (e) {
         console.error("Error loading demo JWKS:", e);
@@ -264,11 +242,11 @@ export function TokenJwksResolver({
               )}
             </div>
             <Button
-              onClick={fetchJwks}
-              disabled={isLoading || !issuerUrl || isCurrentTokenDemo} // Also disable fetch if demo token
+              onClick={triggerAutomaticFetch} // Use the new trigger function
+              disabled={oidcConfigHook.isLoading || jwksHook.isLoading || !issuerUrl || isCurrentTokenDemo} // Use hook loading states
               className="w-full sm:w-auto"
             >
-              {isLoading ? 'Fetching...' : 'Fetch JWKS'}
+              {oidcConfigHook.isLoading || jwksHook.isLoading ? 'Fetching...' : 'Fetch JWKS'}
             </Button>
           </div>
            <p className="text-xs text-muted-foreground">
