@@ -26,51 +26,10 @@ function isUrlFromDomain(urlString: string, domain: string): boolean {
   }
 }
 
-/**
- * Fetches the OpenID Connect configuration from a provider
- * @param issuerUrl The base URL of the identity provider
- * @returns The OIDC configuration
- */
-export async function fetchOidcConfig(issuerUrl: string): Promise<OidcConfiguration> {
-  try {
-    // Normalize issuer URL
-    const normalizedIssuerUrl = issuerUrl.endsWith("/") 
-      ? issuerUrl 
-      : `${issuerUrl}/`;
-      
-    // Construct the configuration URL
-    const configUrl = `${normalizedIssuerUrl}.well-known/openid-configuration`;
-    console.log(`Fetching OpenID configuration from: ${configUrl}`);
-    
-    // Fetch the configuration
-    const response = await proxyFetch(configUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch OpenID configuration: ${response.status} ${response.statusText}`);
-    }
-    
-    // Parse the configuration
-    const config = await response.json();
-    
-    // Validate required fields
-    if (!config.issuer) {
-      throw new Error('Invalid OIDC configuration: missing required "issuer" field');
-    }
-    
-    return config;
-  } catch (error: any) {
-    console.error("Error fetching OIDC configuration:", error);
-    
-    // Enhance error messages for common issues
-    if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-      throw new Error(`CORS error: Could not fetch configuration from ${issuerUrl}. The server may not allow direct browser access.`);
-    }
-    
-    throw error;
-  }
-}
+// Removed fetchOidcConfig function as it's replaced by useOidcConfig hook
 
 /**
- * Fetches the JWKS from the provider
+ * Fetches the JWKS from the provider (Still used by tests)
  * @param jwksUri The URI to the JWKS
  * @returns The JWKS with public keys
  */
