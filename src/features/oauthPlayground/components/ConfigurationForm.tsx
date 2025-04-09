@@ -174,7 +174,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                     onClick={fetchOidcConfig}
                     disabled={isLoadingDiscovery || !issuerUrl}
                   >
-                    {isLoadingDiscovery ? "Loading..." : "Discover Endpoints"}
+                    {isLoadingDiscovery ? "Loading..." : "Discover"}
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
