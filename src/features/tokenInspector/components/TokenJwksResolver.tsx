@@ -19,14 +19,6 @@ interface TokenJwksResolverProps {
   isCurrentTokenDemo?: boolean; // Flag from parent indicating if the current token is a demo one
 }
 
-// Interface for basic key info logging (optional but good practice)
-interface KeyInfo {
-  kid?: string;
-  alg?: string;
-  use?: string;
-  kty?: string;
-}
-
 export function TokenJwksResolver({
   issuerUrl,
   setIssuerUrl,

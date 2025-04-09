@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { proxyFetch } from '@/lib/proxy-fetch';
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'; // Assuming types exist here
 

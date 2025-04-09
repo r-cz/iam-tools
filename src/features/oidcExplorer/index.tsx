@@ -15,7 +15,6 @@ import { ConfigDisplay } from "./components/ConfigDisplay";
 import { JwksDisplay } from "./components/JwksDisplay";
 import { ProviderInfo } from "./components/ProviderInfo";
 // Removed Jwks type import as it's inferred from the hook
-import { OidcConfiguration } from "./utils/types";
 // Removed fetchJwks import, keep detectProvider
 import { detectProvider } from "./utils/config-helpers";
 
