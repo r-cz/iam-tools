@@ -8,10 +8,11 @@ updates:
     versioning-strategy: "auto"
     labels:
       - "dependencies"
-    # Removed the ignore section for major versions
-        
+    # For Bun compatibility
+    package-manager: "bun"
+    
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     open-pull-requests-limit: 5
