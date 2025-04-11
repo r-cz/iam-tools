@@ -7,9 +7,15 @@ const mockFetch = mock(); // Use Bun's built-in mock function
 
 describe('proxyFetch', () => {
   beforeEach(() => {
+    // Use type assertion to handle mismatch between mock and native fetch types
     global.fetch = mockFetch as unknown as typeof fetch;
+    // Ensure global.window exists before mocking location (for non-browser envs)
+    if (typeof global.window === 'undefined') {
+      // @ts-ignore - Define minimal window for test environment
+      global.window = { location: { hostname: '' } };
+    }
     // Mock window.location.hostname for needsProxy checks
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(global.window, 'location', {
       value: {
         hostname: 'test.app.com',
       },
