@@ -1,7 +1,22 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    // Explicitly include types needed for tests
+    "types": ["bun-types", "vite/client"],
+    // Ensure path alias is recognized (though it should be inherited)
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/tests/**/*", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+  // Explicitly include the bun test types file along with project test files
+  "include": [
+    "node_modules/bun-types/test.d.ts", 
+    "src/tests/**/*", 
+    "**/*.test.ts", 
+    "**/*.test.tsx", 
+    "**/*.spec.ts", 
+    "**/*.spec.tsx"
+  ]
 }
