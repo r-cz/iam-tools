@@ -64,7 +64,7 @@
     "@types/bun": "^1.2.9",
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.1",
+    "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.3.4",
     "bun-types": "^1.2.9",
     "concurrently": "^9.1.2",
@@ -76,8 +76,8 @@
     "node-jose-tools": "^2.0.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.29.1",
-    "vite": "^6.2.5",
+    "vite": "^6.2.6",
     "vite-plugin-pwa": "^1.0.0",
-    "wrangler": "^4.9.0"
+    "wrangler": "^4.10.0"
   }
 }
