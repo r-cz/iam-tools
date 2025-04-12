@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OAuthFlowType } from "../utils/types";
+import { ClientCredentialsFlow } from "./ClientCredentialsFlow";
 
 interface FlowSelectorProps {
   selectedFlow: OAuthFlowType;
@@ -28,7 +29,6 @@ export function FlowSelector({ selectedFlow, onSelectFlow }: FlowSelectorProps) 
             </TabsTrigger>
             <TabsTrigger
               value={OAuthFlowType.CLIENT_CREDENTIALS}
-              disabled
             >
               Client Credentials
             </TabsTrigger>
@@ -66,12 +66,7 @@ export function FlowSelector({ selectedFlow, onSelectFlow }: FlowSelectorProps) 
           </TabsContent>
           
           <TabsContent value={OAuthFlowType.CLIENT_CREDENTIALS}>
-            <div className="rounded-md bg-muted p-4">
-              <h3 className="font-medium">Coming Soon!</h3>
-              <p className="text-sm text-muted-foreground">
-                The Client Credentials flow implementation is coming in a future update.
-              </p>
-            </div>
+            <ClientCredentialsFlow />
           </TabsContent>
         </Tabs>
       </CardContent>

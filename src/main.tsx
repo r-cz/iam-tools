@@ -13,6 +13,7 @@ import OAuthPlaygroundPage from './features/oauthPlayground/pages'
 import OAuthCallbackPage from './features/oauthPlayground/pages/callback'
 import DemoAuthPage from './features/oauthPlayground/pages/demo-auth'
 import AuthCodeWithPkcePage from './features/oauthPlayground/pages/auth-code-pkce'
+import ClientCredentialsPage from './features/oauthPlayground/pages/client-credentials'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -26,6 +27,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="oidc-explorer" element={<OidcExplorerPage />} />
             <Route path="oauth-playground" element={<OAuthPlaygroundPage />} />
             <Route path="oauth-playground/auth-code-pkce" element={<AuthCodeWithPkcePage />} />
+            <Route path="oauth-playground/client-credentials" element={<ClientCredentialsPage />} />
           </Route>
           <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
           <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />

@@ -6,6 +6,7 @@ The OAuth Playground is a feature that allows users to test and explore OAuth 2.
 
 - Interactive OAuth 2.0 flow testing
 - Support for Authorization Code with PKCE flow
+- Support for Client Credentials flow
 - Real-world mode to connect to your own Identity Provider
 - Demo mode with a simulated IdP for testing
 - Step-by-step flow visualization
@@ -17,6 +18,22 @@ The OAuth Playground is a feature that allows users to test and explore OAuth 2.
 ### Authorization Code with PKCE Flow
 
 The OAuth Playground walks you through the Authorization Code with PKCE flow in four steps:
+
+### Client Credentials Flow
+
+The Client Credentials flow is designed for server-to-server and machine-to-machine authentication, where no user is involved. To use this flow in the OAuth Playground:
+
+1. **Select Flow**: Choose "Client Credentials" from the flow selector or the main playground page.
+2. **Configuration**:
+   - Enter the Token Endpoint URL of your Identity Provider.
+   - Provide your Client ID and Client Secret.
+   - Optionally, specify the scopes you want to request (space-separated).
+3. **Request Token**:
+   - Click "Request Token" to perform the client credentials grant.
+   - The access token response will be displayed in the UI.
+   - You can copy and inspect the token using the Token Inspector feature.
+
+This flow is useful for testing API integrations and service accounts that require direct access to protected resources without user interaction.
 
 1. **Select Flow**: Choose the OAuth flow you want to test (currently only Authorization Code with PKCE is supported).
 
@@ -81,7 +98,7 @@ In demo mode, the OAuth Playground:
 
 Future enhancements to the OAuth Playground include:
 
-- Support for additional OAuth flows (Client Credentials, Implicit, etc.)
+- Support for additional OAuth flows (Implicit, etc.)
 - Advanced token introspection and validation
 - Custom claim configuration for demo mode
 - Support for confidential clients with client secret
