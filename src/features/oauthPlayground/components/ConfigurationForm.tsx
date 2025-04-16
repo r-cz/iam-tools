@@ -38,6 +38,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     regeneratePkce();
   }, []);
 
+  // Add useEffect to show toast when demo mode is enabled
+  useEffect(() => {
+    if (isDemoMode) {
+      toast.info("Demo mode enabled. A mock OAuth server will be used.");
+    }
+  }, [isDemoMode]);
+
   const regeneratePkce = async () => {
     const verifier = generateCodeVerifier();
     setCodeVerifier(verifier);
@@ -226,9 +233,6 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
             </div>
           ) : (
             <div className="rounded-lg border p-4 bg-muted/50">
-              <p className="text-sm text-muted-foreground">
-                Demo mode enabled. A mock OAuth server will be used.
-              </p>
             </div>
           )}
 

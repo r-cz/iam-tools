@@ -128,13 +128,13 @@ export function AuthCodeWithPkceFlow() {
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid grid-cols-3 w-full mb-4">
               <TabsTrigger value="config">
-                1. Configuration
+                1. Config
               </TabsTrigger>
               <TabsTrigger value="auth" disabled={!isAuthTabEnabled}>
-                2. Authorization
+                2. AuthZ
               </TabsTrigger>
               <TabsTrigger value="token" disabled={!isTokenTabEnabled}>
-                3. Token Exchange
+                3. Get Token
               </TabsTrigger>
             </TabsList>
             
