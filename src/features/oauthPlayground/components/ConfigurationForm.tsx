@@ -232,8 +232,8 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               </div>
             </div>
           ) : (
-            <div className="rounded-lg border p-4 bg-muted/50">
-            </div>
+            // Removed the empty div that previously held the static message
+            null // Or simply remove the entire else block if nothing else goes here
           )}
 
           {/* Common Configuration */}
