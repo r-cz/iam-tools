@@ -57,6 +57,11 @@ const menuTree = [
             title: "Auth Code",
             url: "/oauth-playground/auth-code-pkce",
             icon: ArrowRight
+          },
+          {
+            title: "Client Credentials",
+            url: "/oauth-playground/client-credentials",
+            icon: KeyRound
           }
           // More flows will be added here later
         ]

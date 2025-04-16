@@ -38,6 +38,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     regeneratePkce();
   }, []);
 
+  // Add useEffect to show toast when demo mode is enabled
+  useEffect(() => {
+    if (isDemoMode) {
+      toast.info("Demo mode enabled. A mock OAuth server will be used.");
+    }
+  }, [isDemoMode]);
+
   const regeneratePkce = async () => {
     const verifier = generateCodeVerifier();
     setCodeVerifier(verifier);
@@ -133,20 +140,19 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       </CardHeader>
       <CardContent>
         <div className="grid gap-6">
-          {/* Flow Type Selection Removed */}
-
-          {/* Demo Mode Toggle */}
-          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label className="text-base">Demo Mode</Label>
-              <p className="text-sm text-muted-foreground">
-                Use a simulated Identity Provider for testing
-              </p>
-            </div>
+          {/* Demo Mode Toggle - Updated Styling */}
+          <div className="flex items-center space-x-2 mb-4 p-3 border rounded-md bg-muted/50">
             <Switch
+              id="demo-mode-switch"
               checked={isDemoMode}
               onCheckedChange={setIsDemoMode}
             />
+            <Label htmlFor="demo-mode-switch" className="mb-0"> {/* Remove bottom margin from label */}
+              Demo Mode
+              <p className="text-xs text-muted-foreground font-normal">
+                Use a simulated Identity Provider for testing
+              </p>
+            </Label>
           </div>
 
           {/* Configuration based on mode */}
@@ -226,11 +232,8 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               </div>
             </div>
           ) : (
-            <div className="rounded-lg border p-4 bg-muted/50">
-              <p className="text-sm text-muted-foreground">
-                Demo mode enabled. A mock OAuth server will be used.
-              </p>
-            </div>
+            // Removed the empty div that previously held the static message
+            null // Or simply remove the entire else block if nothing else goes here
           )}
 
           {/* Common Configuration */}

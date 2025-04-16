@@ -21,7 +21,7 @@ export function OAuthPlaygroundPage() {
       description: 'OAuth 2.0 flow for server-to-server API access and machine-to-machine communication.',
       icon: Key,
       url: '/oauth-playground/client-credentials',
-      active: false,
+      active: true,
     },
     {
       id: 'auth-code',
