@@ -107,157 +107,149 @@ export function formatJwkForDisplay(key: any): string {
  * Detects the identity provider from the configuration
  * Uses both the issuer URL and configuration-specific markers
  * @param config The OpenID Connect configuration
- * @returns The provider name or null if unknown
+ * @returns An object containing the provider name (or null) and the reasons for identification
  */
-export function detectProvider(issuerUrl: string, config?: OidcConfiguration): string | null {
-  if (!issuerUrl && !config) return null;
+export function detectProvider(issuerUrl: string, config?: OidcConfiguration): { name: string | null; reasons: string[] } {
+  if (!issuerUrl && !config) return { name: null, reasons: [] };
   
   const url = issuerUrl.toLowerCase();
   let parsedUrl: URL | null = null;
+  const reasons: string[] = [];
   
   try {
     parsedUrl = new URL(url);
   } catch (e) {
-    // If we can't parse the URL, just use the string version
     console.warn('Could not parse issuer URL:', url);
   }
   
   // First try to detect provider using the configuration if available
   if (config) {
     // PingFederate detection
-    // Look for PingFederate-specific endpoints and properties
-    if (
-      // Look for Ping-specific fields/values in the configuration
-      hasPingFederateMarkers(config) ||
-      // Fallback to URL matching for Ping
-      (parsedUrl && (isUrlFromDomain(url, 'pingidentity.com') || 
-                     isUrlFromDomain(url, 'ping-eng.com'))) ||
-      url.includes('pingfederate') ||
-      url.includes('ping.') ||
-      // PingOne detection
-      url.includes('pingone.') ||
-      url.includes('ping-one.')
-    ) {
-      return config.ping_provider_display_name || 'Ping Identity';
+    const pingMarkersFound = hasPingFederateMarkers(config);
+    const pingUrlMatch = (parsedUrl && (isUrlFromDomain(url, 'pingidentity.com') || isUrlFromDomain(url, 'ping-eng.com'))) || url.includes('pingfederate') || url.includes('ping.') || url.includes('pingone.') || url.includes('ping-one.');
+    if (pingMarkersFound || pingUrlMatch) {
+      if (pingMarkersFound) reasons.push("Configuration contains PingFederate-specific markers (e.g., 'ping_' prefix, version info).");
+      if (pingUrlMatch) reasons.push("Issuer URL matches known Ping Identity patterns (e.g., pingidentity.com, pingone).");
+      return { name: config.ping_provider_display_name || 'Ping Identity', reasons };
     }
 
     // Okta detection
-    if (
-      // Check for Okta-specific properties
-      hasOktaMarkers(config) ||
-      // Fallback to URL detection
-      (parsedUrl && isUrlFromDomain(url, 'okta.com')) ||
-      url.includes('.okta.')
-    ) {
-      return 'Okta';
+    const oktaMarkersFound = hasOktaMarkers(config);
+    const oktaUrlMatch = (parsedUrl && isUrlFromDomain(url, 'okta.com')) || url.includes('.okta.');
+    if (oktaMarkersFound || oktaUrlMatch) {
+      if (oktaMarkersFound) reasons.push("Configuration contains Okta-specific markers (e.g., endpoints, scopes, 'okta_' prefix).");
+      if (oktaUrlMatch) reasons.push("Issuer URL matches known Okta patterns (e.g., okta.com).");
+      return { name: 'Okta', reasons };
     }
 
     // Auth0 detection
-    if (
-      // Check for Auth0-specific properties
-      hasAuth0Markers(config) ||
-      // Fallback to URL detection
-      (parsedUrl && isUrlFromDomain(url, 'auth0.com')) ||
-      url.includes('.auth0.')
-    ) {
-      return 'Auth0';
+    const auth0MarkersFound = hasAuth0Markers(config);
+    const auth0UrlMatch = (parsedUrl && isUrlFromDomain(url, 'auth0.com')) || url.includes('.auth0.');
+    if (auth0MarkersFound || auth0UrlMatch) {
+      if (auth0MarkersFound) reasons.push("Configuration contains Auth0-specific markers (e.g., endpoints, scopes, properties).");
+      if (auth0UrlMatch) reasons.push("Issuer URL matches known Auth0 patterns (e.g., auth0.com).");
+      return { name: 'Auth0', reasons };
     }
 
     // Microsoft Entra ID / Azure AD detection
-    if (
-      // Check for Microsoft-specific properties
-      hasMicrosoftMarkers(config) ||
-      // Fallback to URL detection
-      (parsedUrl && (isUrlFromDomain(url, 'login.microsoftonline.com') ||
-                     isUrlFromDomain(url, 'login.windows.net') ||
-                     isUrlFromDomain(url, 'sts.windows.net')))
-    ) {
-      return 'Microsoft Entra ID (Azure AD)';
+    const microsoftMarkersFound = hasMicrosoftMarkers(config);
+    const microsoftUrlMatch = parsedUrl && (isUrlFromDomain(url, 'login.microsoftonline.com') || isUrlFromDomain(url, 'login.windows.net') || isUrlFromDomain(url, 'sts.windows.net'));
+    if (microsoftMarkersFound || microsoftUrlMatch) {
+      if (microsoftMarkersFound) reasons.push("Configuration contains Microsoft-specific markers (e.g., endpoints, claims, properties).");
+      if (microsoftUrlMatch) reasons.push("Issuer URL matches known Microsoft patterns (e.g., login.microsoftonline.com).");
+      return { name: 'Microsoft Entra ID (Azure AD)', reasons };
     }
 
     // Google detection
-    if (
-      // Check for Google-specific properties
-      hasGoogleMarkers(config) ||
-      // Fallback to URL detection
-      (parsedUrl && isUrlFromDomain(url, 'accounts.google.com'))
-    ) {
-      return 'Google';
+    const googleMarkersFound = hasGoogleMarkers(config);
+    const googleUrlMatch = parsedUrl && isUrlFromDomain(url, 'accounts.google.com');
+    if (googleMarkersFound || googleUrlMatch) {
+      if (googleMarkersFound) reasons.push("Configuration contains Google-specific markers (e.g., endpoints, PKCE support).");
+      if (googleUrlMatch) reasons.push("Issuer URL matches known Google pattern (accounts.google.com).");
+      return { name: 'Google', reasons };
     }
 
     // AWS Cognito detection
-    if (
-      // Check for Cognito-specific properties
-      hasCognitoMarkers(config) ||
-      // Fallback to URL detection
-      (parsedUrl && url.includes('cognito-idp') && isUrlFromDomain(url, 'amazonaws.com'))
-    ) {
-      return 'AWS Cognito';
+    const cognitoMarkersFound = hasCognitoMarkers(config);
+    const cognitoUrlMatch = parsedUrl && url.includes('cognito-idp') && isUrlFromDomain(url, 'amazonaws.com');
+    if (cognitoMarkersFound || cognitoUrlMatch) {
+      if (cognitoMarkersFound) reasons.push("Configuration contains AWS Cognito-specific markers (e.g., claims).");
+      if (cognitoUrlMatch) reasons.push("Issuer URL matches known AWS Cognito pattern (cognito-idp...amazonaws.com).");
+      return { name: 'AWS Cognito', reasons };
     }
 
     // Keycloak detection
-    if (
-      // Check for Keycloak-specific properties
-      hasKeycloakMarkers(config) ||
-      // Fallback to URL detection
-      url.includes('keycloak')
-    ) {
-      return 'Keycloak';
+    const keycloakMarkersFound = hasKeycloakMarkers(config);
+    const keycloakUrlMatch = url.includes('keycloak');
+    if (keycloakMarkersFound || keycloakUrlMatch) {
+      if (keycloakMarkersFound) reasons.push("Configuration contains Keycloak-specific markers (e.g., endpoints, version info).");
+      if (keycloakUrlMatch) reasons.push("Issuer URL contains 'keycloak'.");
+      return { name: 'Keycloak', reasons };
     }
 
     // ForgeRock detection
-    if (
-      // Check for ForgeRock-specific properties
-      hasForgeRockMarkers(config) ||
-      // Fallback to URL detection
-      (parsedUrl && (isUrlFromDomain(url, 'forgerock.io') || 
-                     isUrlFromDomain(url, 'forgerock.com')))
-    ) {
-      return 'ForgeRock';
+    const forgeRockMarkersFound = hasForgeRockMarkers(config);
+    const forgeRockUrlMatch = parsedUrl && (isUrlFromDomain(url, 'forgerock.io') || isUrlFromDomain(url, 'forgerock.com'));
+    if (forgeRockMarkersFound || forgeRockUrlMatch) {
+      if (forgeRockMarkersFound) reasons.push("Configuration contains ForgeRock-specific markers (e.g., endpoints, scopes, properties).");
+      if (forgeRockUrlMatch) reasons.push("Issuer URL matches known ForgeRock patterns (e.g., forgerock.io, forgerock.com).");
+      return { name: 'ForgeRock', reasons };
     }
 
     // IdentityServer/Duende detection
-    if (
-      // Check for IdentityServer-specific properties
-      hasIdentityServerMarkers(config) ||
-      // Fallback to URL detection
-      (parsedUrl && isUrlFromDomain(url, 'duendesoftware.com')) ||
-      url.includes('identityserver')
-    ) {
-      return config.server ? 'Duende IdentityServer' : 'IdentityServer';
+    const identityServerMarkersFound = hasIdentityServerMarkers(config);
+    const identityServerUrlMatch = (parsedUrl && isUrlFromDomain(url, 'duendesoftware.com')) || url.includes('identityserver');
+    if (identityServerMarkersFound || identityServerUrlMatch) {
+      if (identityServerMarkersFound) reasons.push("Configuration contains IdentityServer/Duende-specific markers (e.g., logout support, common properties).");
+      if (identityServerUrlMatch) reasons.push("Issuer URL matches known IdentityServer/Duende patterns (e.g., duendesoftware.com, contains 'identityserver').");
+      return { name: config.server ? 'Duende IdentityServer' : 'IdentityServer', reasons };
     }
   }
   
-  // Fallback to URL matching only
+  // Fallback to URL matching only if config didn't yield a result
   if (parsedUrl) {
     if (isUrlFromDomain(url, 'auth0.com')) {
-      return 'Auth0';
+      reasons.push("Issuer URL matches known Auth0 pattern (auth0.com).");
+      return { name: 'Auth0', reasons };
     } else if (isUrlFromDomain(url, 'okta.com')) {
-      return 'Okta';
+      reasons.push("Issuer URL matches known Okta pattern (okta.com).");
+      return { name: 'Okta', reasons };
     } else if (isUrlFromDomain(url, 'login.microsoftonline.com')) {
-      return 'Microsoft Entra ID (Azure AD)';
+      reasons.push("Issuer URL matches known Microsoft pattern (login.microsoftonline.com).");
+      return { name: 'Microsoft Entra ID (Azure AD)', reasons };
     } else if (isUrlFromDomain(url, 'accounts.google.com')) {
-      return 'Google';
+      reasons.push("Issuer URL matches known Google pattern (accounts.google.com).");
+      return { name: 'Google', reasons };
     } else if (url.includes('cognito-idp') && isUrlFromDomain(url, 'amazonaws.com')) {
-      return 'AWS Cognito';
+      reasons.push("Issuer URL matches known AWS Cognito pattern (cognito-idp...amazonaws.com).");
+      return { name: 'AWS Cognito', reasons };
     } else if (isUrlFromDomain(url, 'login.salesforce.com')) {
-      return 'Salesforce';
+      reasons.push("Issuer URL matches known Salesforce pattern (login.salesforce.com).");
+      return { name: 'Salesforce', reasons };
     } else if (isUrlFromDomain(url, 'pingidentity.com') || isUrlFromDomain(url, 'ping-eng.com') || url.includes('pingfederate')) {
-      return 'Ping Identity';
+      reasons.push("Issuer URL matches known Ping Identity patterns (e.g., pingidentity.com, pingfederate).");
+      return { name: 'Ping Identity', reasons };
     } else if (isUrlFromDomain(url, 'onelogin.com')) {
-      return 'OneLogin';
+      reasons.push("Issuer URL matches known OneLogin pattern (onelogin.com).");
+      return { name: 'OneLogin', reasons };
     } else if (url.includes('keycloak')) {
-      return 'Keycloak';
+      reasons.push("Issuer URL contains 'keycloak'.");
+      return { name: 'Keycloak', reasons };
     } else if (isUrlFromDomain(url, 'forgerock.io') || isUrlFromDomain(url, 'forgerock.com')) {
-      return 'ForgeRock';
+      reasons.push("Issuer URL matches known ForgeRock patterns (e.g., forgerock.io, forgerock.com).");
+      return { name: 'ForgeRock', reasons };
     } else if (isUrlFromDomain(url, 'duendesoftware.com')) {
-      return 'Duende IdentityServer';
+      reasons.push("Issuer URL matches known Duende pattern (duendesoftware.com).");
+      return { name: 'Duende IdentityServer', reasons };
     } else if (url.includes('identityserver')) {
-      return 'IdentityServer';
+      reasons.push("Issuer URL contains 'identityserver'.");
+      return { name: 'IdentityServer', reasons };
     }
   }
   
-  return null;
+  // If no provider identified
+  reasons.push("Could not identify a known provider based on the issuer URL or configuration markers.");
+  return { name: null, reasons };
 }
 
 // Helper functions to detect provider-specific markers
