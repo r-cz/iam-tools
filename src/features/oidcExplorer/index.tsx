@@ -25,6 +25,7 @@ export function OidcExplorer() {
 
   // Local state for derived/UI data
   const [providerName, setProviderName] = useState<string | null>(null);
+  const [detectionReasons, setDetectionReasons] = useState<string[]>([]); // State for reasons
   const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>(''); // Store the URL used for the current fetch
 
   // Effect for successful OIDC config fetch
@@ -34,9 +35,10 @@ export function OidcExplorer() {
       console.log('OIDC Config loaded via hook:', config);
       setCurrentIssuerUrl(config.issuer); // Store the issuer from the fetched config
 
-      // Detect provider
-      const detectedProvider = detectProvider(config.issuer, config);
+      // Detect provider and reasons
+      const { name: detectedProvider, reasons } = detectProvider(config.issuer, config);
       setProviderName(detectedProvider);
+      setDetectionReasons(reasons); // Store reasons
 
       // Automatically trigger JWKS fetch if URI exists
       if (config.jwks_uri) {
@@ -146,6 +148,9 @@ export function OidcExplorer() {
                 providerName={providerName}
                 // Use the stored issuer URL corresponding to the fetched config
                 issuerUrl={currentIssuerUrl}
+                // Pass the fetched configuration data
+                config={oidcConfigHook.data} 
+                reasons={detectionReasons} // Pass reasons
               />
             )}
           </TabsContent>

@@ -5,16 +5,19 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { InfoIcon, ExternalLink, StarIcon } from 'lucide-react';
+// Removed unused Badge import
+import { InfoIcon, ExternalLink } from 'lucide-react'; // Removed unused StarIcon import
 import { providerInfoData } from '../data/provider-info';
+import { OidcConfiguration } from '../utils/types'; // Import OidcConfiguration type
 
 interface ProviderInfoProps {
   providerName: string | null;
   issuerUrl: string;
+  config: OidcConfiguration | null; // Add config prop
+  reasons: string[]; // Add reasons prop
 }
 
-export function ProviderInfo({ providerName, issuerUrl }: ProviderInfoProps) {
+export function ProviderInfo({ providerName, issuerUrl, config, reasons }: ProviderInfoProps) {
   if (!providerName || !providerInfoData[providerName]) {
     return (
       <Card>
@@ -58,19 +61,21 @@ export function ProviderInfo({ providerName, issuerUrl }: ProviderInfoProps) {
             </p>
           </div>
 
-          {providerInfo.specialFeatures && providerInfo.specialFeatures.length > 0 && (
-            <div>
-              <h4 className="font-medium flex items-center gap-1 mb-2">
-                <StarIcon className="h-4 w-4 text-yellow-500" />
-                Special Features
-              </h4>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {providerInfo.specialFeatures.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-primary/5">
-                      {feature}
-                    </Badge>
-                  </li>
+          {/* Add explanation for provider identification */}
+          <div className="text-sm text-muted-foreground italic">
+            <p>
+              This provider was identified based on analysis of the OIDC configuration fetched from <code className="bg-muted px-1 rounded">{issuerUrl}</code>. 
+              The identification logic checks for provider-specific markers in the configuration data and known patterns in the issuer URL.
+            </p>
+          </div>
+
+          {/* Display identification reasons */}
+          {reasons && reasons.length > 0 && (
+            <div className="mt-3">
+              <h4 className="text-sm font-medium mb-1">Identification Logic:</h4>
+              <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+                {reasons.map((reason, index) => (
+                  <li key={index}>{reason}</li>
                 ))}
               </ul>
             </div>
