@@ -8,16 +8,16 @@ import {
 // Removed unused Badge import
 import { InfoIcon, ExternalLink } from 'lucide-react'; // Removed unused StarIcon import
 import { providerInfoData } from '../data/provider-info';
-import { OidcConfiguration } from '../utils/types'; // Import OidcConfiguration type
+// import { OidcConfiguration } from '../utils/types'; // Removed unused import
 
 interface ProviderInfoProps {
   providerName: string | null;
   issuerUrl: string;
-  config: OidcConfiguration | null; // Add config prop
+  // config: OidcConfiguration | null; // Remove unused config prop
   reasons: string[]; // Add reasons prop
 }
 
-export function ProviderInfo({ providerName, issuerUrl, config, reasons }: ProviderInfoProps) {
+export function ProviderInfo({ providerName, issuerUrl, /* config, */ reasons }: ProviderInfoProps) {
   if (!providerName || !providerInfoData[providerName]) {
     return (
       <Card>

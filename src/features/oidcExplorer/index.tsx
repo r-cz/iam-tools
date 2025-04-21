@@ -148,8 +148,6 @@ export function OidcExplorer() {
                 providerName={providerName}
                 // Use the stored issuer URL corresponding to the fetched config
                 issuerUrl={currentIssuerUrl}
-                // Pass the fetched configuration data
-                config={oidcConfigHook.data} 
                 reasons={detectionReasons} // Pass reasons
               />
             )}
