@@ -1,174 +1,183 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-import { proxyFetch } from '../../lib/proxy-fetch'; // Use relative path
+// src/tests/lib/proxy-fetch.test.ts
+import { describe, expect, test, mock, beforeEach, afterEach } from 'bun:test';
+import { proxyFetch } from '../../lib/proxy-fetch';
 
-// Mock fetch globally for all tests in this file
-const originalFetch = global.fetch;
-const mockFetch = mock(); // Use Bun's built-in mock function
-
-describe('proxyFetch', () => {
+describe('Proxy Fetch Utility', () => {
+  // Store the original fetch
+  const originalFetch = global.fetch;
+  
+  // Mock implementation
+  const fetchMock = mock(async (url: string) => {
+    return new Response(JSON.stringify({ url, mocked: true }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  });
+  
+  // Setup mocks before each test
   beforeEach(() => {
-    // Use type assertion to handle mismatch between mock and native fetch types
-    global.fetch = mockFetch as unknown as typeof fetch;
-    // Ensure global.window exists before mocking location (for non-browser envs)
-    if (typeof global.window === 'undefined') {
-      // @ts-ignore - Define minimal window for test environment
-      global.window = { location: { hostname: '' } };
-    }
-    // Mock window.location.hostname for needsProxy checks
-    Object.defineProperty(global.window, 'location', {
-      value: {
-        hostname: 'test.app.com',
-      },
-      writable: true,
+    // Replace global fetch with our mock
+    global.fetch = fetchMock;
+    
+    // Mock import.meta.env.DEV
+    Object.defineProperty(import.meta, 'env', {
+      value: { DEV: true },
+      writable: true
     });
-    // We will set import.meta.env.DEV directly in tests that need it
   });
-
+  
+  // Restore original implementation after each test
   afterEach(() => {
-    global.fetch = originalFetch; // Restore original fetch
-    mockFetch.mockClear(); // Clear mock history
-    // Restore window.location if needed, though usually resetting mocks is enough
+    // Restore the original fetch
+    global.fetch = originalFetch;
+    mock.reset(fetchMock);
   });
-
-  // === Testing proxyFetch function ===
-
-  it('should fetch directly if proxy is not needed', async () => {
-    const directUrl = 'http://test.app.com/api/data'; // Same domain
-    mockFetch.mockResolvedValue(new Response('Direct OK'));
-
-    const response = await proxyFetch(directUrl);
-    const text = await response.text();
-
-    expect(text).toBe('Direct OK');
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch).toHaveBeenCalledWith(directUrl, undefined);
-  });
-
-  // Test proxy usage (production path is used in bun test)
-  it('should use production proxy URL when proxy is needed', async () => {
-    const externalUrl = 'https://external.com/.well-known/openid-configuration';
-    const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-    mockFetch.mockResolvedValue(new Response('Proxy OK'));
-
-    const response = await proxyFetch(externalUrl);
-    const text = await response.text();
-
-    expect(text).toBe('Proxy OK');
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const actualUrl = mockFetch.mock.calls[0][0]; // Get the URL passed to fetch
-    expect(actualUrl).toStartWith(expectedProxyPrefix);
-    expect(actualUrl).toContain(encodeURIComponent(externalUrl));
-    expect(mockFetch).toHaveBeenCalledWith(actualUrl, undefined);
-  });
-
-  // Test proxy usage assuming DEV=false (prod proxy path)
-  // NOTE: We can't directly control import.meta.env.DEV easily in Bun tests.
-  // This test relies on the default behavior or requires environment setup.
-  // For now, we focus on testing the *logic* that a proxy is used.
-  // A more robust approach might involve refactoring proxyFetch slightly
-  // or using environment variables Bun *can* control.
-  // Let's assume for coverage purposes that testing one proxy path is sufficient
-  // if the conditional logic itself isn't complex.
-  // We will test the structure for the production path thoroughly.
-
-   it('should handle fetch errors through the proxy', async () => {
-    const externalUrl = 'https://external.com/.well-known/error-case';
-    const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-    const mockError = new Error('Network Failed');
-    mockFetch.mockRejectedValue(mockError);
-
-    await expect(proxyFetch(externalUrl)).rejects.toThrow('Network Failed');
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const actualUrl = mockFetch.mock.calls[0][0]; // Get the URL passed to fetch
-    expect(actualUrl).toStartWith(expectedProxyPrefix);
-    expect(actualUrl).toContain(encodeURIComponent(externalUrl));
-    expect(mockFetch).toHaveBeenCalledWith(actualUrl, undefined);
-  });
-
-  // === Testing needsProxy logic (implicitly via proxyFetch calls) ===
-  // We rely on proxyFetch calling needsProxy internally.
-
-  it('should not proxy URLs on the same domain', async () => {
-    const url = 'http://test.app.com/some/path'; // Same as window.location.hostname mock
-    mockFetch.mockResolvedValue(new Response('OK'));
-    await proxyFetch(url);
-    expect(mockFetch).toHaveBeenCalledWith(url, undefined); // Called directly
-  });
-
-  it('should not proxy localhost URLs', async () => {
-    const url = 'http://localhost:3000/api';
-    mockFetch.mockResolvedValue(new Response('OK'));
-    await proxyFetch(url);
-    expect(mockFetch).toHaveBeenCalledWith(url, undefined); // Called directly
-  });
-
-  it('should not proxy 127.0.0.1 URLs', async () => {
-    const url = 'http://127.0.0.1:8080/data';
-    mockFetch.mockResolvedValue(new Response('OK'));
-    await proxyFetch(url);
-    expect(mockFetch).toHaveBeenCalledWith(url, undefined); // Called directly
-  });
-
-  it('should proxy .well-known URLs', async () => {
-    const url = 'https://some-oidc.com/.well-known/openid-configuration';
-    const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-    mockFetch.mockResolvedValue(new Response('OK'));
-    await proxyFetch(url);
-    const actualUrl = mockFetch.mock.calls[0][0];
-    expect(actualUrl).toStartWith(expectedProxyPrefix);
-    expect(actualUrl).toContain(encodeURIComponent(url));
-    expect(mockFetch).toHaveBeenCalledWith(actualUrl, undefined);
-  });
-
-  // Test various JWKS path formats
-  const jwksPaths = [
-    'https://domain.com/oauth/jwks.json',
-    'https://domain.com/identity/keys',
-    'https://domain.com/oauth2/v1/certs',
-    'https://domain.com/path/to/JWKS', // Uppercase
-    'https://domain.com/path/to/JWK',  // Singular
-    'https://domain.com/api/get_jwk_set.json', // Contains jwk and .json
-  ];
-
-  jwksPaths.forEach(url => {
-    it(`should proxy JWKS URL: ${url}`, async () => {
-      const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-      mockFetch.mockResolvedValue(new Response('OK'));
-      await proxyFetch(url);
-      const actualUrl = mockFetch.mock.calls[0][0];
-      expect(actualUrl).toStartWith(expectedProxyPrefix);
-      expect(actualUrl).toContain(encodeURIComponent(url));
-      expect(mockFetch).toHaveBeenCalledWith(actualUrl, undefined);
+  
+  // Test direct fetch for same domain
+  test('should fetch directly for same domain URLs', async () => {
+    // Mock window.location.hostname
+    const originalHostname = window.location.hostname;
+    Object.defineProperty(window.location, 'hostname', {
+      value: 'example.com',
+      configurable: true
+    });
+    
+    // Make the request to the same domain
+    await proxyFetch('https://example.com/api/data');
+    
+    // Verify fetch was called with the direct URL
+    expect(fetchMock).toHaveBeenCalled();
+    const fetchCall = fetchMock.mock.calls[0];
+    expect(fetchCall.args[0]).toBe('https://example.com/api/data');
+    
+    // Restore original hostname
+    Object.defineProperty(window.location, 'hostname', {
+      value: originalHostname,
+      configurable: true
     });
   });
-
-  it('should not proxy invalid URLs', async () => {
-    const invalidUrl = 'this-is-not-a-url';
-    // needsProxy should return false, so fetch directly
-    mockFetch.mockResolvedValue(new Response('OK'));
+  
+  // Test direct fetch for localhost
+  test('should fetch directly for localhost URLs', async () => {
+    await proxyFetch('http://localhost:3000/api/data');
+    
+    expect(fetchMock).toHaveBeenCalled();
+    const fetchCall = fetchMock.mock.calls[0];
+    expect(fetchCall.args[0]).toBe('http://localhost:3000/api/data');
+  });
+  
+  // Test proxy fetch for well-known endpoints
+  test('should use proxy for .well-known endpoints', async () => {
+    const targetUrl = 'https://auth.example.com/.well-known/openid-configuration';
+    await proxyFetch(targetUrl);
+    
+    expect(fetchMock).toHaveBeenCalled();
+    const fetchCall = fetchMock.mock.calls[0];
+    expect(fetchCall.args[0]).toBe(`http://localhost:8788/api/cors-proxy/${encodeURIComponent(targetUrl)}`);
+  });
+  
+  // Test proxy fetch for JWKS endpoints
+  test('should use proxy for JWKS endpoints', async () => {
+    const jwksUrls = [
+      'https://auth.example.com/jwks',
+      'https://auth.example.com/.well-known/jwks.json',
+      'https://auth.example.com/oauth2/v1/certs',
+      'https://auth.example.com/keys'
+    ];
+    
+    for (const url of jwksUrls) {
+      mock.reset(fetchMock);
+      await proxyFetch(url);
+      
+      expect(fetchMock).toHaveBeenCalled();
+      const fetchCall = fetchMock.mock.calls[0];
+      expect(fetchCall.args[0]).toBe(`http://localhost:8788/api/cors-proxy/${encodeURIComponent(url)}`);
+    }
+  });
+  
+  // Test case insensitivity for JWKS detection
+  test('should use proxy for JWKS endpoints with different cases', async () => {
+    const jwksUrls = [
+      'https://auth.example.com/JWKS',
+      'https://auth.example.com/jwKs',
+      'https://auth.example.com/.well-known/JWK.json'
+    ];
+    
+    for (const url of jwksUrls) {
+      mock.reset(fetchMock);
+      await proxyFetch(url);
+      
+      expect(fetchMock).toHaveBeenCalled();
+      const fetchCall = fetchMock.mock.calls[0];
+      expect(fetchCall.args[0]).toBe(`http://localhost:8788/api/cors-proxy/${encodeURIComponent(url)}`);
+    }
+  });
+  
+  // Test direct fetch for non-proxy URLs
+  test('should fetch directly for non-proxy URLs', async () => {
+    const url = 'https://api.example.com/users';
+    await proxyFetch(url);
+    
+    expect(fetchMock).toHaveBeenCalled();
+    const fetchCall = fetchMock.mock.calls[0];
+    expect(fetchCall.args[0]).toBe(url);
+  });
+  
+  // Test production environment
+  test('should use correct proxy URL in production', async () => {
+    // Set to production environment
+    Object.defineProperty(import.meta, 'env', {
+      value: { DEV: false },
+      writable: true
+    });
+    
+    const targetUrl = 'https://auth.example.com/.well-known/openid-configuration';
+    await proxyFetch(targetUrl);
+    
+    expect(fetchMock).toHaveBeenCalled();
+    const fetchCall = fetchMock.mock.calls[0];
+    expect(fetchCall.args[0]).toBe(`/api/cors-proxy/${encodeURIComponent(targetUrl)}`);
+  });
+  
+  // Test with invalid URL
+  test('should handle invalid URLs gracefully', async () => {
+    const invalidUrl = 'not-a-valid-url';
     await proxyFetch(invalidUrl);
-    expect(mockFetch).toHaveBeenCalledWith(invalidUrl, undefined); // Called directly
+    
+    expect(fetchMock).toHaveBeenCalled();
+    const fetchCall = fetchMock.mock.calls[0];
+    expect(fetchCall.args[0]).toBe(invalidUrl);
   });
-
-  it('should pass fetch options correctly when fetching directly', async () => {
-    const directUrl = 'http://test.app.com/api/data';
-    const options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'value' }) };
-    mockFetch.mockResolvedValue(new Response('Direct OK'));
-
-    await proxyFetch(directUrl, options);
-    expect(mockFetch).toHaveBeenCalledWith(directUrl, options);
+  
+  // Test with fetch options
+  test('should pass fetch options to underlying fetch', async () => {
+    const url = 'https://api.example.com/users';
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: 'Test User' })
+    };
+    
+    await proxyFetch(url, options);
+    
+    expect(fetchMock).toHaveBeenCalled();
+    const fetchCall = fetchMock.mock.calls[0];
+    expect(fetchCall.args[0]).toBe(url);
+    expect(fetchCall.args[1]).toEqual(options);
   });
-
-  it('should pass fetch options correctly when using proxy', async () => {
-    const externalUrl = 'https://external.com/.well-known/config';
-    const options = { method: 'GET', headers: { 'Accept': 'application/json' } };
-    const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-    mockFetch.mockResolvedValue(new Response('Proxy OK'));
-
-    await proxyFetch(externalUrl, options);
-    const actualUrl = mockFetch.mock.calls[0][0];
-    expect(actualUrl).toStartWith(expectedProxyPrefix);
-    expect(actualUrl).toContain(encodeURIComponent(externalUrl));
-    expect(mockFetch).toHaveBeenCalledWith(actualUrl, options);
+  
+  // Test error handling
+  test('should handle fetch errors', async () => {
+    // Set fetch to throw an error
+    const errorMessage = 'Network error';
+    global.fetch = mock(() => {
+      throw new Error(errorMessage);
+    });
+    
+    const url = 'https://api.example.com/users';
+    
+    // The fetch should throw and proxyFetch should propagate the error
+    await expect(proxyFetch(url)).rejects.toThrow(errorMessage);
   });
 });

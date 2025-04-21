@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: bun install
+      
+      # Run linting first as it's usually the fastest check and can catch issues early
+      - name: Lint
+        run: bun run lint
+      
+      # Then build to make sure the application can be built successfully
+      - name: Build
+        run: bun run build
+      
+      # Finally run tests - this way we only run tests on code that builds and passes linting
+      - name: Run tests
+        run: bun test
+      
+      - name: Generate coverage report
+        run: bun test --coverage
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+
+  # Keep CodeQL separate as it's a specialized security analysis
+  # This keeps the original CodeQL workflow untouched
