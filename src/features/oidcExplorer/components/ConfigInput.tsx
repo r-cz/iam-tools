@@ -32,13 +32,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     }
   };
 
-  const exampleIssuers = [
-    { name: 'Auth0', url: 'https://example.auth0.com' },
-    { name: 'Okta', url: 'https://example.okta.com' },
-    { name: 'Azure AD', url: 'https://login.microsoftonline.com/common' },
-    { name: 'Google', url: 'https://accounts.google.com' },
-    { name: 'AWS Cognito', url: 'https://cognito-idp.region.amazonaws.com/userPoolId' },
-  ];
+  // Removed exampleIssuers array
 
   // Real-world public issuers for the random button
   const realWorldIssuers = [
@@ -48,9 +42,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     { name: 'Delta Airlines', url: 'https://signin.delta.com' },
   ];
 
-  const handleExampleClick = (url: string) => {
-    setIssuerUrl(url);
-  };
+  // Removed handleExampleClick function
 
   const handleRandomExample = () => {
     const randomIndex = Math.floor(Math.random() * realWorldIssuers.length);
@@ -90,19 +82,9 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
                   This is the base URL of the identity provider that implements OpenID Connect. The app will append 
                   <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch configuration info.
                 </p>
-                <p className="mt-2 text-xs">Examples:</p>
-                <ul className="text-xs mt-1 space-y-1">
-                  {exampleIssuers.map((issuer, index) => (
-                    <li key={index}>
-                      <button
-                        className="bg-muted px-1 hover:bg-muted/80 text-left w-full"
-                        onClick={() => handleExampleClick(issuer.url)}
-                      >
-                        {issuer.name}: {issuer.url}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <p className="mt-2 text-xs">
+                  Click the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button next to the input field to load a real-world example.
+                </p>
               </div>
             </PopoverContent>
           </Popover>
