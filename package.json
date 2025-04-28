@@ -76,7 +76,7 @@
     "node-jose-tools": "^2.0.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vite": "^6.3.2",
+    "vite": "^6.3.3",
     "vite-plugin-pwa": "^1.0.0",
     "wrangler": "^4.12.0"
   }
