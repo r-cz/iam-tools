@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     // Explicitly include types needed for tests
-    "types": ["bun-types", "vite/client"],
+    "types": ["bun-types", "vite/client", "jest-axe", "@cloudflare/workers-types", "playwright"],
     // Ensure path alias is recognized (though it should be inherited)
     "baseUrl": ".",
     "paths": {

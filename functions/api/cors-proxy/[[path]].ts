@@ -58,7 +58,7 @@ export const onRequest: PagesFunction = async (context) => {
 /**
  * Check if the requested endpoint is allowed for proxying
  */
-function isAllowedEndpoint(url: string): boolean {
+export function isAllowedEndpoint(url: string): boolean {
   // Parse the URL
   const parsedUrl = new URL(url);
   
@@ -87,7 +87,7 @@ function isAllowedEndpoint(url: string): boolean {
 /**
  * Filter request headers to forward to the target
  */
-function filterHeaders(headers: Headers): Headers {
+export function filterHeaders(headers: Headers): Headers {
   const filtered = new Headers();
   
   // Copy allowed headers

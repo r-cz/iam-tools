@@ -1,6 +1,6 @@
 import * as React from "react";
 
-type SetValue<T> = React.Dispatch<React.SetStateAction<T>>;
+type SetValue<T> = React.Dispatch<React.SetStateAction<T | null | undefined>>;
 
 /**
  * Hook for persistent state using localStorage
@@ -42,12 +42,17 @@ export function useLocalStorage<T>(
       try {
         // Allow value to be a function so we have the same API as useState
         const newValue = value instanceof Function ? value(storedValue) : value;
-        
-        // Save to localStorage
-        window.localStorage.setItem(key, JSON.stringify(newValue));
-        
-        // Save state
-        setStoredValue(newValue);
+
+        if (newValue === null || newValue === undefined) {
+          // Remove from localStorage if value is null or undefined
+          window.localStorage.removeItem(key);
+          setStoredValue(newValue as any); // Cast to any to satisfy type checker temporarily
+        } else {
+          // Save to localStorage
+          window.localStorage.setItem(key, JSON.stringify(newValue));
+          // Save state
+          setStoredValue(newValue);
+        }
       } catch (error) {
         console.warn(`Error setting localStorage key "${key}":`, error);
       }
