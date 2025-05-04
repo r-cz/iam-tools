@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function DemoAuthPage() {
   const [searchParams] = useSearchParams();
@@ -163,35 +162,6 @@ export function DemoAuthPage() {
         </CardFooter>
       </Card>
       
-      <div className="mt-8 w-full max-w-md">
-        <Tabs defaultValue="info">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="info">Info</TabsTrigger>
-            <TabsTrigger value="details">Request Details</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="info" className="p-4 bg-card rounded-md border mt-2">
-            <h3 className="font-medium mb-2">About Demo Mode</h3>
-            <p className="text-sm text-muted-foreground">
-              This is a simulated OAuth authorization server for educational purposes.
-              It demonstrates the OAuth authorization flow without requiring a real IdP.
-              Click "Authorize" to simulate a successful authentication and proceed with the flow.
-            </p>
-          </TabsContent>
-          
-          <TabsContent value="details" className="p-4 bg-card rounded-md border mt-2">
-            <h3 className="font-medium mb-2">Request Parameters</h3>
-            <div className="space-y-1 text-sm">
-              <p><strong>client_id:</strong> {clientId}</p>
-              <p><strong>redirect_uri:</strong> {redirectUri}</p>
-              <p><strong>state:</strong> {state}</p>
-              <p><strong>scope:</strong> {scope}</p>
-              <p><strong>code_challenge:</strong> {codeChallenge}</p>
-              <p><strong>code_challenge_method:</strong> {codeChallengeMethod}</p>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
     </div>
   );
 }
