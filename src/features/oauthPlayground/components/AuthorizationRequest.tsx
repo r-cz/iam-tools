@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { OAuthConfig, PkceParams } from '../utils/types';
 import { CodeBlock } from '@/components/ui/code-block';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface AuthorizationRequestProps {
   config: OAuthConfig;
@@ -79,8 +80,8 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
     localStorage.setItem('oauth_playground_flow_path', window.location.pathname);
     
     // Open the authorization URL in a popup window
-    const width = 768;
-    const height = 1024;
+    const width = 600; // Reduced width
+    const height = 724; // Reduced height
     const left = (window.innerWidth - width) / 2;
     const top = (window.innerHeight - height) / 2;
     const features = `width=${width},height=${height},left=${left},top=${top}`;
@@ -112,15 +113,44 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
         
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Request Parameters</h3>
-          <ul className="list-disc list-inside text-sm space-y-1">
-            <li><strong>response_type:</strong> code</li>
-            <li><strong>client_id:</strong> {config.clientId}</li>
-            <li><strong>redirect_uri:</strong> {config.redirectUri}</li>
-            <li><strong>code_challenge:</strong> {pkce.codeChallenge.substring(0, 20)}...</li>
-            <li><strong>code_challenge_method:</strong> S256</li>
-            <li><strong>state:</strong> {pkce.state.substring(0, 8)}...</li>
-            <li><strong>scope:</strong> {config.scopes.join(' ')}</li>
-          </ul>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[150px]">Parameter</TableHead>
+                <TableHead>Value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-medium">response_type</TableCell>
+                <TableCell>code</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">client_id</TableCell>
+                <TableCell>{config.clientId}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">redirect_uri</TableCell>
+                <TableCell>{config.redirectUri}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">code_challenge</TableCell>
+                <TableCell>{pkce.codeChallenge.substring(0, 20)}...</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">code_challenge_method</TableCell>
+                <TableCell>S256</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">state</TableCell>
+                <TableCell>{pkce.state.substring(0, 8)}...</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">scope</TableCell>
+                <TableCell>{config.scopes.join(' ')}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
         
         <div className="bg-muted/50 p-4 rounded-md">

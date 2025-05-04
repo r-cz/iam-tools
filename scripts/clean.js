@@ -13,6 +13,8 @@ const pathsToClean = [
   'node_modules',
   'dist',
   '.wrangler', // Wrangler local development directory
+  'test-results', // Playwright test results
+  'playwright-report', // Playwright HTML report
 ];
 
 // Extra paths to clean if using --deep flag
