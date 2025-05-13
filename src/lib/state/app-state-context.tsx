@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
 import { useLocalStorage } from '../../hooks/use-local-storage';
-import { AppState, TokenHistoryItem, IssuerHistoryItem, UserSettings, initialAppState } from './types';
+import { TokenHistoryItem, IssuerHistoryItem, UserSettings, initialAppState } from './types';
 import { STORAGE_KEYS } from './constants';
 import { 
   addTokenToHistory, 

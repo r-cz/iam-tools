@@ -3,7 +3,6 @@
 import {
   ChevronsUpDown,
   Github,
-  HelpCircle,
   Mail,
   ExternalLink,
   Settings,
@@ -109,7 +108,7 @@ export function NavSettings() {
                 <span>Theme</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+                <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as "light" | "dark" | "system")}>
                   <DropdownMenuRadioItem value="light" className="flex items-center gap-2">
                     <Sun className="h-4 w-4" />
                     <span>Light</span>

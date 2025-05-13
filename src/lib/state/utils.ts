@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, TokenHistoryItem, IssuerHistoryItem, initialAppState } from './types';
+import { TokenHistoryItem, IssuerHistoryItem } from './types';
 import { DEFAULT_MAX_HISTORY_ITEMS } from './constants';
 
 /**
