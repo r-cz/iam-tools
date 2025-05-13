@@ -5,30 +5,40 @@
  * Usage: bun scripts/start-server.js
  * 
  * This script starts both the Vite dev server and the CORS proxy
- * without blocking the terminal, allowing for continued interaction.
+ * and detaches them from the terminal, allowing for continued interaction.
  * 
  * Options:
- *   --only-vite    Start only the Vite dev server (no CORS proxy)
- *   --only-proxy   Start only the CORS proxy
- *   --timeout NUM  Maximum time in seconds to wait for services (default: 30)
- *   --exit-on-fail Exit the script if any service fails to start
+ *   --only-vite      Start only the Vite dev server (no CORS proxy)
+ *   --only-proxy     Start only the CORS proxy
+ *   --timeout=NUM    Maximum time in seconds to wait for services (default: 30)
+ *   --exit-on-fail   Exit the script if any service fails to start
+ *   --interactive    Keep the process running and show server output (default: false)
  */
 
 import { spawn } from 'child_process';
 import http from 'http';
 import process from 'process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get script directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configuration
 const VITE_PORT = process.env.VITE_PORT || 5173;
 const PROXY_PORT = process.env.PROXY_PORT || 8788;
 const HOST = process.env.HOST || 'localhost';
 const DEFAULT_TIMEOUT = 30; // 30 seconds default timeout
+const LOG_DIR = path.join(__dirname, '..', '.logs');
 
 // Parse arguments
 const args = process.argv.slice(2);
 const onlyVite = args.includes('--only-vite');
 const onlyProxy = args.includes('--only-proxy');
 const exitOnFail = args.includes('--exit-on-fail');
+const interactive = args.includes('--interactive');
 
 // Get timeout value if specified
 const timeoutArg = args.find(arg => arg.startsWith('--timeout='));
@@ -36,6 +46,16 @@ const MAX_RETRIES = timeoutArg
   ? parseInt(timeoutArg.split('=')[1], 10) 
   : DEFAULT_TIMEOUT;
 const RETRY_INTERVAL = 1000;
+
+// Create logs directory if it doesn't exist
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
+
+// Log file paths
+const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+const viteLogFile = path.join(LOG_DIR, `vite-${timestamp}.log`);
+const proxyLogFile = path.join(LOG_DIR, `proxy-${timestamp}.log`);
 
 // Process management
 const processes = [];
@@ -46,36 +66,54 @@ const expectedReady = onlyVite || onlyProxy ? 1 : 2;
 const log = (message, type = 'info') => {
   const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
   const prefix = type === 'error' ? '❌ ' : type === 'success' ? '✅ ' : '🔄 ';
-  console[type === 'error' ? 'error' : 'log'](`${prefix}[${now}] ${message}`);
+  const logMessage = `${prefix}[${now}] ${message}`;
+  console[type === 'error' ? 'error' : 'log'](logMessage);
 };
 
 // Start Vite dev server
 const startVite = () => {
   log('Starting Vite development server...');
   
+  // Create log file stream
+  const viteLogStream = interactive ? 'pipe' : fs.openSync(viteLogFile, 'a');
+  
   const vite = spawn('bun', ['run', 'dev'], {
-    stdio: 'pipe',
+    stdio: interactive ? 'pipe' : ['ignore', viteLogStream, viteLogStream],
     detached: true,
   });
   
   processes.push(vite);
   
-  vite.stdout.on('data', (data) => {
-    const output = data.toString();
-    process.stdout.write(`[Vite] ${output}`);
+  if (interactive) {
+    vite.stdout.on('data', (data) => {
+      const output = data.toString();
+      process.stdout.write(`[Vite] ${output}`);
+      
+      // Check for ready message
+      if (output.includes('Local:') && output.includes('http://localhost')) {
+        checkServer(VITE_PORT, 'Vite');
+      }
+    });
     
-    // Check for ready message
-    if (output.includes('Local:') && output.includes('http://localhost')) {
+    vite.stderr.on('data', (data) => {
+      process.stderr.write(`[Vite Error] ${data.toString()}`);
+    });
+  } else {
+    // We need a timer to check for server readiness
+    const checkViteInterval = setInterval(() => {
       checkServer(VITE_PORT, 'Vite');
-    }
-  });
-  
-  vite.stderr.on('data', (data) => {
-    process.stderr.write(`[Vite Error] ${data.toString()}`);
-  });
+    }, 1000);
+    
+    // Clear interval after MAX_RETRIES seconds
+    setTimeout(() => {
+      clearInterval(checkViteInterval);
+    }, MAX_RETRIES * 1000);
+  }
   
   vite.on('close', (code) => {
-    log(`Vite server exited with code ${code}`, code !== 0 ? 'error' : 'info');
+    if (interactive) {
+      log(`Vite server exited with code ${code}`, code !== 0 ? 'error' : 'info');
+    }
     if (code !== 0 && exitOnFail) {
       log('Exiting due to Vite server failure', 'error');
       cleanupAndExit(1);
@@ -89,30 +127,47 @@ const startVite = () => {
 const startProxy = () => {
   log('Starting CORS proxy server...');
   
+  // Create log file stream
+  const proxyLogStream = interactive ? 'pipe' : fs.openSync(proxyLogFile, 'a');
+  
   const proxy = spawn('bun', ['run', 'dev:proxy'], {
-    stdio: 'pipe',
+    stdio: interactive ? 'pipe' : ['ignore', proxyLogStream, proxyLogStream],
     detached: true,
   });
   
   processes.push(proxy);
   
-  proxy.stdout.on('data', (data) => {
-    const output = data.toString();
-    process.stdout.write(`[Proxy] ${output}`);
+  if (interactive) {
+    proxy.stdout.on('data', (data) => {
+      const output = data.toString();
+      process.stdout.write(`[Proxy] ${output}`);
+      
+      // Check for ready message directly
+      if (output.includes('Ready on http://localhost:8788')) {
+        log(`CORS Proxy is running successfully on port ${PROXY_PORT}!`, 'success');
+        serverReady();
+      }
+    });
     
-    // Check for ready message directly
-    if (output.includes('Ready on http://localhost:8788')) {
-      log(`CORS Proxy is running successfully on port ${PROXY_PORT}!`, 'success');
-      serverReady();
-    }
-  });
-  
-  proxy.stderr.on('data', (data) => {
-    process.stderr.write(`[Proxy Error] ${data.toString()}`);
-  });
+    proxy.stderr.on('data', (data) => {
+      process.stderr.write(`[Proxy Error] ${data.toString()}`);
+    });
+  } else {
+    // We need a timer to check for server readiness when in non-interactive mode
+    const checkProxyInterval = setInterval(() => {
+      checkServer(PROXY_PORT, 'CORS Proxy');
+    }, 1000);
+    
+    // Clear interval after MAX_RETRIES seconds
+    setTimeout(() => {
+      clearInterval(checkProxyInterval);
+    }, MAX_RETRIES * 1000);
+  }
   
   proxy.on('close', (code) => {
-    log(`CORS proxy exited with code ${code}`, code !== 0 ? 'error' : 'info');
+    if (interactive) {
+      log(`CORS proxy exited with code ${code}`, code !== 0 ? 'error' : 'info');
+    }
     if (code !== 0 && exitOnFail) {
       log('Exiting due to CORS proxy failure', 'error');
       cleanupAndExit(1);
@@ -124,12 +179,8 @@ const startProxy = () => {
 
 // Check if a server is running on the specified port
 const checkServer = (port, serverName, retries = 0) => {
-  log(`Checking if ${serverName} is running on port ${port} (attempt ${retries + 1}/${MAX_RETRIES})...`);
-  
-  // For the CORS proxy, rely on the "Ready on" message instead of making a request
-  if (serverName === 'CORS Proxy') {
-    // The proxy has its own check via the stdout "Ready on" message
-    return;
+  if (interactive) {
+    log(`Checking if ${serverName} is running on port ${port} (attempt ${retries + 1}/${MAX_RETRIES})...`);
   }
   
   http.get(`http://${HOST}:${port}`, (res) => {
@@ -147,7 +198,9 @@ const checkServer = (port, serverName, retries = 0) => {
 // Retry connection or fail after MAX_RETRIES
 const retryOrFail = (port, serverName, retries, reason) => {
   if (retries < MAX_RETRIES - 1) {
-    log(`${reason}, retrying ${serverName} in ${RETRY_INTERVAL}ms...`);
+    if (interactive) {
+      log(`${reason}, retrying ${serverName} in ${RETRY_INTERVAL}ms...`);
+    }
     setTimeout(() => checkServer(port, serverName, retries + 1), RETRY_INTERVAL);
   } else {
     log(`${serverName} failed to start after ${MAX_RETRIES} attempts: ${reason}`, 'error');
@@ -165,17 +218,27 @@ const serverReady = () => {
     log(`All servers are running!`, 'success');
     if (!onlyVite) log(`CORS proxy: http://${HOST}:${PROXY_PORT}`);
     if (!onlyProxy) log(`Vite dev server: http://${HOST}:${VITE_PORT}`);
-    log(`Press Ctrl+C to stop the servers`);
     
-    // Detach processes so they continue running after this script exits
-    processes.forEach(proc => {
-      if (!proc.killed) {
-        proc.unref();
-      }
-    });
-    
-    // Keep the script running until Ctrl+C
-    process.stdin.resume();
+    if (interactive) {
+      log(`Press Ctrl+C to stop the servers`);
+      // Keep the script running until Ctrl+C
+      process.stdin.resume();
+    } else {
+      // In non-interactive mode, log file locations and exit
+      if (!onlyProxy) log(`Vite logs: ${viteLogFile}`);
+      if (!onlyVite) log(`Proxy logs: ${proxyLogFile}`);
+      log(`Servers are detached. Use 'killall -9 vite wrangler' to stop them.`);
+      
+      // Detach processes so they continue running after this script exits
+      processes.forEach(proc => {
+        if (!proc.killed) {
+          proc.unref();
+        }
+      });
+      
+      // Exit the script
+      process.exit(0);
+    }
   }
 };
 
@@ -205,5 +268,9 @@ if (!onlyVite) {
   startProxy();
 }
 
-log(`Starting servers in background mode. You can continue using this terminal.`);
-log(`Server output will be displayed here. Press Ctrl+C to stop all servers.`);
+if (interactive) {
+  log(`Starting servers in interactive mode. You can continue using this terminal.`);
+  log(`Server output will be displayed here. Press Ctrl+C to stop all servers.`);
+} else {
+  log(`Starting servers in background mode. Logs will be written to ${LOG_DIR}`);
+}
