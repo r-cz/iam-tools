@@ -32,3 +32,4 @@ test-results
 .dev.vars
 .env
 .dev.vars.example
+**/.claude/settings.local.json
