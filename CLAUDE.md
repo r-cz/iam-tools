@@ -39,6 +39,9 @@ bun run dev:detach:proxy
 # Start only the CORS proxy
 bun run dev:proxy
 
+# Stop all running development servers
+bun run dev:stop
+
 # Build for production
 bun run build
 

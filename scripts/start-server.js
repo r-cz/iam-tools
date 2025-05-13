@@ -227,7 +227,7 @@ const serverReady = () => {
       // In non-interactive mode, log file locations and exit
       if (!onlyProxy) log(`Vite logs: ${viteLogFile}`);
       if (!onlyVite) log(`Proxy logs: ${proxyLogFile}`);
-      log(`Servers are detached. Use 'killall -9 vite wrangler' to stop them.`);
+      log(`Servers are detached. Use 'bun run dev:stop' to stop them.`);
       
       // Detach processes so they continue running after this script exits
       processes.forEach(proc => {

@@ -27,7 +27,8 @@
     "dev:bg:proxy": "bun ./scripts/start-server.js --only-proxy --interactive",
     "dev:detach": "bun ./scripts/start-server.js",
     "dev:detach:vite": "bun ./scripts/start-server.js --only-vite",
-    "dev:detach:proxy": "bun ./scripts/start-server.js --only-proxy"
+    "dev:detach:proxy": "bun ./scripts/start-server.js --only-proxy",
+    "dev:stop": "bun ./scripts/stop-server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
