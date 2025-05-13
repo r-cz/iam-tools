@@ -16,17 +16,31 @@ bun run dev
 # Start development server with CORS proxy (blocks terminal)
 bun run dev:all
 
-# Start development server and CORS proxy in background (non-blocking)
+# Start development server and CORS proxy in interactive mode
+# Displays server output but allows terminal interaction
 bun run dev:bg
 
-# Start only Vite dev server in background
+# Start only Vite dev server in interactive mode
 bun run dev:bg:vite
 
-# Start only CORS proxy in background
+# Start only CORS proxy in interactive mode
 bun run dev:bg:proxy
+
+# Start development server and CORS proxy fully detached
+# Servers run in background with logs in .logs directory
+bun run dev:detach
+
+# Start only Vite dev server fully detached
+bun run dev:detach:vite
+
+# Start only CORS proxy fully detached
+bun run dev:detach:proxy
 
 # Start only the CORS proxy
 bun run dev:proxy
+
+# Stop all running development servers
+bun run dev:stop
 
 # Build for production
 bun run build

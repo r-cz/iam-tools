@@ -22,9 +22,13 @@
     "test:update": "bun test --update-snapshots --preload ./src/tests/preload.ts",
     "dev:proxy": "wrangler pages dev --port 8788 ./functions",
     "dev:all": "concurrently \"bun run dev\" \"bun run dev:proxy\"",
-    "dev:bg": "bun ./scripts/start-server.js",
-    "dev:bg:vite": "bun ./scripts/start-server.js --only-vite",
-    "dev:bg:proxy": "bun ./scripts/start-server.js --only-proxy"
+    "dev:bg": "bun ./scripts/start-server.js --interactive",
+    "dev:bg:vite": "bun ./scripts/start-server.js --only-vite --interactive",
+    "dev:bg:proxy": "bun ./scripts/start-server.js --only-proxy --interactive",
+    "dev:detach": "bun ./scripts/start-server.js",
+    "dev:detach:vite": "bun ./scripts/start-server.js --only-vite",
+    "dev:detach:proxy": "bun ./scripts/start-server.js --only-proxy",
+    "dev:stop": "bun ./scripts/stop-server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
