@@ -10,6 +10,7 @@ A collection of specialized tools for Identity and Access Management (IAM) devel
 - **Package Manager**: Bun
 - **Routing**: React Router
 - **Testing**: Bun Test + React Testing Library
+- **Deployment**: Cloudflare Pages + Cloudflare Functions
 
 ## Development
 
@@ -20,14 +21,47 @@ bun install
 # Start development server
 bun run dev
 
-# Start development server with CORS proxy
+# Start development server with CORS proxy (blocks terminal)
 bun run dev:all
+
+# Start development server and CORS proxy in interactive mode
+# Displays server output but allows terminal interaction
+bun run dev:bg
+
+# Start only Vite dev server in interactive mode
+bun run dev:bg:vite
+
+# Start only CORS proxy in interactive mode
+bun run dev:bg:proxy
+
+# Start development server and CORS proxy fully detached
+# Servers run in background with logs in .logs directory
+bun run dev:detach
+
+# Start only Vite dev server fully detached
+bun run dev:detach:vite
+
+# Start only CORS proxy fully detached
+bun run dev:detach:proxy
+
+# Start only the CORS proxy
+bun run dev:proxy
+
+# Stop all running development servers
+bun run dev:stop
 
 # Build for production
 bun run build
 
 # Preview production build
 bun run preview
+```
+
+## Maintenance
+
+```bash
+# Lint the codebase
+bun run lint
 
 # Clean the project
 bun run clean       # Standard clean (node_modules, dist)
@@ -68,10 +102,24 @@ The proxy works by:
 
 ### Local Development
 
-For local development, the CORS proxy runs on port 8788. You can start both the Vite development server and the CORS proxy simultaneously with:
+For local development, the CORS proxy runs on port 8788. You can start both the Vite development server and the CORS proxy in several ways:
 
 ```bash
+# Standard mode (blocks terminal):
 bun run dev:all
+
+# Interactive mode (output visible, terminal usable):
+bun run dev:bg          # Both servers
+bun run dev:bg:vite     # Only Vite
+bun run dev:bg:proxy    # Only proxy
+
+# Fully detached mode (runs in background, logs in .logs directory):
+bun run dev:detach      # Both servers
+bun run dev:detach:vite # Only Vite
+bun run dev:detach:proxy # Only proxy
+
+# To stop all servers:
+bun run dev:stop
 ```
 
 To start only the CORS proxy:
@@ -106,6 +154,15 @@ We use a feature-based organization pattern that groups code by functionality:
     - `utils/` - Feature-specific utilities
     - `data/` - Feature-specific data
     - `pages/` - Feature pages (routes)
+  - `src/features/oidcExplorer` - OIDC configuration explorer
+    - `components/` - Feature-specific components
+    - `utils/` - Feature-specific utilities
+    - `data/` - Feature-specific data
+    - `pages/` - Feature pages (routes)
+  - `src/features/oauthPlayground` - OAuth flow testing tool
+    - `components/` - Feature-specific components 
+    - `utils/` - Feature-specific utilities
+    - `pages/` - Feature pages (routes)
   - `src/features/home` - Homepage components
 - `src/components` - Shared components
   - `src/components/layout` - Layout components
@@ -118,6 +175,10 @@ We use a feature-based organization pattern that groups code by functionality:
 - `src/lib` - Utility functions and shared libraries
 - `src/hooks` - Custom React hooks (useIsMobile, useLocalStorage, useDebounce, useClipboard)
 - `src/tests` - Test files following the same structure as the application
+- `functions/` - Cloudflare Functions (backend API)
+  - `functions/_middleware.ts` - Global middleware for all functions
+  - `functions/_routes.json` - Custom routing rules
+  - `functions/api/cors-proxy/` - CORS proxy implementation
 
 See [docs/file-structure.md](docs/file-structure.md) for more details on the codebase organization.
 
@@ -154,7 +215,13 @@ See [OAuth Playground Documentation](docs/feature-guides/oauth-playground.md) fo
 
 ## Deployment
 
-The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch. For more information about the deployment process, see [Deployment Documentation](docs/deployment.md).
+The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch. The deployment process includes:
+
+1. Building the application with `bun run build`
+2. Deploying static assets to Cloudflare's edge network
+3. Deploying Cloudflare Functions alongside the static assets
+
+For more information about the deployment process, see [Deployment Documentation](docs/deployment.md).
 
 ## Documentation
 
@@ -163,4 +230,3 @@ The application is deployed via Cloudflare Pages whenever changes are pushed to 
 - [API Documentation](docs/api.md) - Details about the backend API endpoints
 - [Feature Guides](docs/feature-guides/) - Usage guides for specific features
 - [Contributing Guide](docs/contributing.md) - How to contribute to the project
-
