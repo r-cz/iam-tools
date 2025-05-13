@@ -30,7 +30,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { NavHelp } from "@/components/navigation/nav-help"
+import { NavSettings } from "@/components/navigation/nav-settings"
 
 // Define tree structure for our menu
 const menuTree = [
@@ -160,7 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ))}
       </SidebarContent>
       <SidebarFooter>
-        <NavHelp />
+        <NavSettings />
       </SidebarFooter>
     </Sidebar>
   )

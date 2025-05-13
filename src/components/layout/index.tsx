@@ -1,6 +1,5 @@
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
-import { ThemeToggle } from '@/components/theme';
 import { ThemeMeta } from '@/components/theme';
 import {
   SidebarInset,
@@ -16,7 +15,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { useLocation, Link } from 'react-router-dom'; // <-- Import Link
+import { useLocation, Link } from 'react-router-dom';
 
 export function Layout() {
   const location = useLocation();
@@ -75,7 +74,7 @@ export function Layout() {
               </BreadcrumbList>
             </Breadcrumb>
             <div className="ml-auto">
-              <ThemeToggle />
+              {/* Theme toggle removed as it's now in the settings menu */}
             </div>
           </div>
         </header>

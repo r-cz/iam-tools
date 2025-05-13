@@ -8,15 +8,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { TokenInput } from "./components/TokenInput";
-import { TokenHeader } from "./components/TokenHeader";
-import { TokenPayload } from "./components/TokenPayload";
-import { TokenSignature } from "./components/TokenSignature";
-import { TokenTimeline } from "./components/TokenTimeline";
-import { TokenSize } from "./components/TokenSize";
+import { 
+  TokenInput, 
+  TokenHeader,
+  TokenPayload,
+  TokenSignature,
+  TokenTimeline,
+  TokenSize,
+  TokenHistory 
+} from "./components";
 import { validateToken, determineTokenType } from "./utils/token-validation";
 import type { TokenType, DecodedToken, ValidationResult } from "@/types"; // Point to the shared types directory
 import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
+import { useTokenHistory } from "../../lib/state";
 
 interface TokenInspectorProps {
   initialToken?: string | null;
@@ -31,6 +35,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   const [activeTab, setActiveTab] = useState("payload");
   const [issuerUrl, setIssuerUrl] = useState("");
   const [isDemoToken, setIsDemoToken] = useState(false); // Tracks if the CURRENT decoded token is a demo one
+  
+  // Token history state from the app state provider
+  const { addToken } = useTokenHistory();
 
   // Effect to handle initial token from URL
   useEffect(() => {
@@ -99,6 +106,11 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       const paddedPayload = base64Payload + '='.repeat((4 - base64Payload.length % 4) % 4);
       const header = JSON.parse(atob(paddedHeader));
       const payload = JSON.parse(atob(paddedPayload));
+
+      // Add token to history when it's successfully decoded
+      if (token && token.trim().length > 0) {
+        addToken(token);
+      }
 
       // Determine if it's a demo token
       const demoIssuerUrl = getIssuerBaseUrl();
@@ -229,20 +241,30 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     }
   };
 
+  // Handle token selection from history
+  const handleSelectToken = (selectedToken: string) => {
+    setToken(selectedToken);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Input Card */}
       <Card className="lg:col-span-1">
         <CardContent className="p-5">
-          <TokenInput
-            token={token}
-            setToken={setToken} // Let input component update token state
-            onDecode={() => decodeToken(token)} // Explicitly trigger decode on button click
-            onReset={resetState}
-            onJwksResolved={handleJwksFromExample} // For auto-loading JWKS from example btn
-            initialToken={initialToken} // Pass initial token if present
-          />
+          <div className="space-y-4">
+            {/* Token History Component */}
+            <TokenHistory onSelectToken={handleSelectToken} />
+            
+            {/* Token Input Component */}
+            <TokenInput
+              token={token}
+              setToken={setToken} // Let input component update token state
+              onDecode={() => decodeToken(token)} // Explicitly trigger decode on button click
+              onReset={resetState}
+              onJwksResolved={handleJwksFromExample} // For auto-loading JWKS from example btn
+              initialToken={initialToken} // Pass initial token if present
+            />
+          </div>
         </CardContent>
       </Card>
 

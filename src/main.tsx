@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import './components/navigation/nested-submenu.css'
 import { ThemeProvider } from './components/theme'
+import { AppStateProvider } from './lib/state'
 import { Layout } from './components/layout'
 import { Toaster } from './components/ui/sonner'
 import HomePage from './features/home'
@@ -18,21 +19,23 @@ import ClientCredentialsPage from './features/oauthPlayground/pages/client-crede
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider defaultTheme="system" storageKey="iam-tools-theme">
-      <BrowserRouter>
-        <Toaster position="bottom-right" closeButton richColors />
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<HomePage />} />
-            <Route path="token-inspector" element={<TokenInspectorPage />} />
-            <Route path="oidc-explorer" element={<OidcExplorerPage />} />
-            <Route path="oauth-playground" element={<OAuthPlaygroundPage />} />
-            <Route path="oauth-playground/auth-code-pkce" element={<AuthCodeWithPkcePage />} />
-            <Route path="oauth-playground/client-credentials" element={<ClientCredentialsPage />} />
-          </Route>
-          <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
-          <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />
-        </Routes>
-      </BrowserRouter>
+      <AppStateProvider>
+        <BrowserRouter>
+          <Toaster position="bottom-right" closeButton richColors />
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<HomePage />} />
+              <Route path="token-inspector" element={<TokenInspectorPage />} />
+              <Route path="oidc-explorer" element={<OidcExplorerPage />} />
+              <Route path="oauth-playground" element={<OAuthPlaygroundPage />} />
+              <Route path="oauth-playground/auth-code-pkce" element={<AuthCodeWithPkcePage />} />
+              <Route path="oauth-playground/client-credentials" element={<ClientCredentialsPage />} />
+            </Route>
+            <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
+            <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />
+          </Routes>
+        </BrowserRouter>
+      </AppStateProvider>
     </ThemeProvider>
   </StrictMode>,
 )
