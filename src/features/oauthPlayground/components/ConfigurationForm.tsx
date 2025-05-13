@@ -10,6 +10,8 @@ import { generateCodeVerifier, generateCodeChallenge, generateState } from '../u
 import { proxyFetch } from '@/lib/proxy-fetch';
 import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
 import { toast } from 'sonner';
+import { IssuerHistory } from '@/features/oidcExplorer/components';
+import { useIssuerHistory } from '@/lib/state';
 
 interface ConfigurationFormProps {
   onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void;
@@ -27,6 +29,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false); // Track if endpoints were set by discovery
+  const { addIssuer } = useIssuerHistory();
 
   // Generate PKCE values
   const [codeVerifier, setCodeVerifier] = useState<string>('');
@@ -44,6 +47,18 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       toast.info("Demo mode enabled. A mock OAuth server will be used.");
     }
   }, [isDemoMode]);
+  
+  // Handle selecting an issuer from the history
+  const handleSelectIssuer = (issuerUrl: string) => {
+    setIssuerUrl(issuerUrl);
+    // Clear endpoints when issuer changes
+    setAuthEndpoint('');
+    setTokenEndpoint('');
+    setJwksEndpoint('');
+    setEndpointsLocked(false);
+    // Fetch config from the selected issuer
+    setTimeout(() => fetchOidcConfig(), 0);
+  };
 
   const regeneratePkce = async () => {
     const verifier = generateCodeVerifier();
@@ -79,6 +94,8 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       // Lock endpoints if discovery was successful
       if (config.authorization_endpoint || config.token_endpoint || config.jwks_uri) {
         setEndpointsLocked(true);
+        // Add to issuer history if discovery was successful
+        addIssuer(issuerUrl);
       }
 
       toast.success('OIDC configuration loaded successfully');
@@ -161,7 +178,10 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               <h3 className="text-lg font-medium">Identity Provider Details</h3>
               {/* Issuer URL for Auto-Discovery */}
               <div className="space-y-2">
-                <Label>Issuer URL (for Auto-Discovery)</Label>
+                <div className="flex justify-between items-start">
+                  <Label>Issuer URL (for Auto-Discovery)</Label>
+                  <IssuerHistory onSelectIssuer={handleSelectIssuer} />
+                </div>
                 <div className="flex space-x-2">
                   <Input
                     placeholder="https://example.com"
