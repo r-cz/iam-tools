@@ -1,0 +1,410 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { CodeBlock } from "@/components/ui/code-block";
+import { useAppState } from "@/lib/state";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { signToken } from "@/lib/jwt/sign-token";
+import { DEMO_JWKS } from "@/lib/jwt/demo-key";
+
+interface IntrospectionResponse {
+  active: boolean;
+  scope?: string;
+  client_id?: string;
+  username?: string;
+  token_type?: string;
+  exp?: number;
+  iat?: number;
+  nbf?: number;
+  sub?: string;
+  aud?: string;
+  iss?: string;
+  jti?: string;
+  error?: string;
+  error_description?: string;
+  [key: string]: any;
+}
+
+interface IntrospectionHistoryItem {
+  id: string;
+  url: string;
+  name?: string;
+  createdAt: number;
+  lastUsedAt: number;
+}
+
+export function TokenIntrospection() {
+  const navigate = useNavigate();
+  const { addTokenToHistory } = useAppState();
+  
+  // Endpoint state
+  const [introspectionEndpoint, setIntrospectionEndpoint] = useState("");
+  const [token, setToken] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  
+  // Recent introspection endpoints
+  const [introspectionHistory, setIntrospectionHistory] = useLocalStorage<IntrospectionHistoryItem[]>(
+    "introspection-history",
+    []
+  );
+  
+  // UI state
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<IntrospectionResponse | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Generate a sample introspection response for demo mode
+  const generateDemoIntrospectionResponse = async (): Promise<IntrospectionResponse> => {
+    try {
+      // Create a demo token if none provided
+      let tokenToIntrospect = token;
+      
+      if (!tokenToIntrospect) {
+        // Generate a sample token
+        const currentTime = Math.floor(Date.now() / 1000);
+        const demoClientId = clientId || "demo-client";
+        
+        const tokenPayload = {
+          iss: `${window.location.origin}/oauth-playground/demo`,
+          sub: "demo-user-123",
+          aud: "https://api.example.com/resource",
+          exp: currentTime + 3600, // Expires in 1 hour
+          iat: currentTime - 300, // Issued 5 minutes ago
+          nbf: currentTime - 300, // Not valid before 5 minutes ago
+          scope: "openid profile email api:read",
+          client_id: demoClientId,
+          jti: `demo-${Math.random().toString(36).substring(2, 15)}`,
+          is_demo_token: true
+        };
+        
+        tokenToIntrospect = await signToken(tokenPayload, { kid: DEMO_JWKS.keys[0].kid });
+        setToken(tokenToIntrospect);
+      }
+      
+      // Extract token parts
+      const parts = tokenToIntrospect.split('.');
+      if (parts.length !== 3) {
+        throw new Error("Invalid JWT format");
+      }
+      
+      // Parse the payload
+      const payload = JSON.parse(atob(parts[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // Generate introspection response based on the token
+      return {
+        active: payload.exp ? payload.exp > currentTime : true,
+        scope: payload.scope || "openid profile",
+        client_id: payload.client_id || clientId || "demo-client",
+        token_type: "Bearer",
+        exp: payload.exp,
+        iat: payload.iat,
+        nbf: payload.nbf,
+        sub: payload.sub,
+        aud: payload.aud,
+        iss: payload.iss,
+        jti: payload.jti,
+        username: payload.sub
+      };
+    } catch (error: any) {
+      console.error('Error generating demo introspection response:', error);
+      return {
+        active: false,
+        error: "invalid_token",
+        error_description: error.message || "Failed to introspect token"
+      };
+    }
+  };
+
+  // Add introspection endpoint to history
+  const addEndpointToHistory = (url: string) => {
+    const currentTime = Date.now();
+    const existingIndex = introspectionHistory.findIndex(item => item.url === url);
+    
+    if (existingIndex !== -1) {
+      // Update existing entry
+      const updatedHistory = [...introspectionHistory];
+      updatedHistory[existingIndex] = {
+        ...updatedHistory[existingIndex],
+        lastUsedAt: currentTime
+      };
+      setIntrospectionHistory(updatedHistory);
+    } else {
+      // Add new entry
+      const newItem: IntrospectionHistoryItem = {
+        id: Math.random().toString(36).substring(2, 15),
+        url,
+        createdAt: currentTime,
+        lastUsedAt: currentTime
+      };
+      
+      setIntrospectionHistory([newItem, ...introspectionHistory.slice(0, 9)]);
+    }
+  };
+
+  // Handle endpoint selection from history
+  const handleSelectEndpoint = (url: string) => {
+    setIntrospectionEndpoint(url);
+    setShowHistory(false);
+    
+    // Update the last used timestamp
+    const currentTime = Date.now();
+    const updatedHistory = introspectionHistory.map(item => 
+      item.url === url ? { ...item, lastUsedAt: currentTime } : item
+    );
+    
+    setIntrospectionHistory(updatedHistory);
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setResult(null);
+    
+    if (!token) {
+      setResult({
+        active: false,
+        error: "missing_token",
+        error_description: "Token is required"
+      });
+      setLoading(false);
+      return;
+    }
+    
+    if (isDemoMode) {
+      // Generate demo response
+      const demoResult = await generateDemoIntrospectionResponse();
+      setResult(demoResult);
+      
+      // Add token to history if it's valid
+      if (token && demoResult.active !== false) {
+        addTokenToHistory(token);
+      }
+    } else {
+      // Validate required fields for real request
+      if (!introspectionEndpoint) {
+        setResult({
+          active: false,
+          error: "missing_endpoint",
+          error_description: "Introspection endpoint is required"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Perform real network request
+      try {
+        // Add endpoint to history
+        addEndpointToHistory(introspectionEndpoint);
+        
+        // Create form data for introspection request
+        const params = new URLSearchParams();
+        params.append("token", token);
+        
+        // Add client credentials if provided
+        if (clientId) params.append("client_id", clientId);
+        if (clientSecret) params.append("client_secret", clientSecret);
+        
+        // Make the introspection request
+        const res = await fetch(introspectionEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            ...(clientId && clientSecret ? {
+              "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`
+            } : {})
+          },
+          body: params.toString()
+        });
+        
+        const data = await res.json();
+        setResult(data);
+        
+        // Add token to history if it's valid
+        if (token && data.active !== false) {
+          addTokenToHistory(token);
+        }
+      } catch (err: any) {
+        setResult({
+          active: false,
+          error: "network_error",
+          error_description: err.message || "Network error"
+        });
+      }
+    }
+    
+    setLoading(false);
+  };
+
+  // Handle inspection of token in token inspector
+  const handleInspectToken = () => {
+    if (token) {
+      const inspectUrl = `/token-inspector?token=${encodeURIComponent(token)}`;
+      navigate(inspectUrl);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-6">
+      <Card>
+        <CardContent className="p-5">
+          {/* Demo Mode Switch */}
+          <div className="flex items-center space-x-2 mb-4 p-3 border rounded-md bg-muted/50">
+            <Switch
+              id="demo-mode-switch"
+              checked={isDemoMode}
+              onCheckedChange={setIsDemoMode}
+            />
+            <Label htmlFor="demo-mode-switch" className="mb-0">
+              Demo Mode
+              <p className="text-xs text-muted-foreground font-normal">
+                Generate a simulated introspection response locally without making network requests.
+              </p>
+            </Label>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* Introspection Endpoint Input with History */}
+            <div className="relative">
+              <Label htmlFor="introspection-endpoint" className="mb-1.5 block">
+                Introspection Endpoint
+                {introspectionHistory.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="px-0 py-0 h-auto text-xs"
+                    onClick={() => setShowHistory(!showHistory)}
+                  >
+                    {showHistory ? "Hide Recent" : "Show Recent"}
+                  </Button>
+                )}
+              </Label>
+              <Input
+                id="introspection-endpoint"
+                type="url"
+                value={introspectionEndpoint}
+                onChange={(e) => setIntrospectionEndpoint(e.target.value)}
+                required={!isDemoMode}
+                disabled={isDemoMode}
+                placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/introspect"}
+              />
+              
+              {/* Recent Endpoints Dropdown */}
+              {showHistory && introspectionHistory.length > 0 && (
+                <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
+                  <div className="p-1">
+                    {introspectionHistory.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
+                        onClick={() => handleSelectEndpoint(item.url)}
+                      >
+                        {item.name || new URL(item.url).hostname}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Token Input */}
+            <div>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="token" className="mb-1.5 block">Token to Introspect</Label>
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  className="px-0 py-0 h-auto text-xs"
+                  onClick={handleInspectToken}
+                  disabled={!token}
+                >
+                  View in Token Inspector
+                </Button>
+              </div>
+              <Input
+                id="token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                required
+                placeholder="Enter token to introspect"
+                className="font-mono text-xs"
+              />
+            </div>
+            
+            {/* Client Credentials Section */}
+            <div className="space-y-4 border rounded-md p-3">
+              <h3 className="text-sm font-medium">Client Authentication (Optional)</h3>
+              
+              {/* Client ID Input */}
+              <div>
+                <Label htmlFor="client-id" className="mb-1.5 block">Client ID</Label>
+                <Input
+                  id="client-id"
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  placeholder="Enter Client ID"
+                />
+              </div>
+              
+              {/* Client Secret Input */}
+              <div>
+                <Label htmlFor="client-secret" className="mb-1.5 block">Client Secret</Label>
+                <Input
+                  id="client-secret"
+                  type="password"
+                  value={clientSecret}
+                  onChange={(e) => setClientSecret(e.target.value)}
+                  disabled={isDemoMode}
+                  placeholder={isDemoMode ? "N/A (Demo Mode)" : "Enter Client Secret"}
+                />
+              </div>
+            </div>
+            
+            <Button type="submit" disabled={loading}>
+              {loading ? "Processing..." : (isDemoMode ? "Generate Demo Response" : "Introspect Token")}
+            </Button>
+          </form>
+          
+          {/* Results Section */}
+          {result && (
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="mb-1.5 block">Introspection Result</Label>
+                {isDemoMode && <Badge variant="outline">Demo Response</Badge>}
+              </div>
+              
+              {/* Active/Inactive Status */}
+              {result.active !== undefined && (
+                <Alert variant={result.active ? "default" : "destructive"}>
+                  <AlertDescription>
+                    Token is {result.active ? "active" : "inactive"}
+                    {result.error && `: ${result.error_description || result.error}`}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Full Response */}
+              <CodeBlock
+                code={JSON.stringify(result, null, 2)}
+                language="json"
+                className="text-xs max-h-96 overflow-auto"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default TokenIntrospection;
