@@ -10,10 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/ui/code-block";
 import { useAppState } from "@/lib/state";
 import { History } from "lucide-react";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import { signToken } from "@/lib/jwt/sign-token";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
-import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
+import { proxyFetch } from "@/lib/proxy-fetch";
 
 interface IntrospectionResponse {
   active: boolean;
@@ -50,9 +49,7 @@ export function TokenIntrospection() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showTokenHistory, setShowTokenHistory] = useState(false);
   const [showIssuerHistory, setShowIssuerHistory] = useState(false);
-  
-  // OIDC config for getting introspection endpoint from issuer
-  const { config: oidcConfig, loading: configLoading, fetchConfig } = useOidcConfig();
+  const [configLoading, setConfigLoading] = useState(false);
 
   // Generate a sample introspection response for demo mode
   const generateDemoIntrospectionResponse = async (): Promise<IntrospectionResponse> => {
@@ -127,11 +124,32 @@ export function TokenIntrospection() {
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
     setShowIssuerHistory(false);
+    setConfigLoading(true);
     
-    // Fetch OIDC configuration to get introspection endpoint
-    const config = await fetchConfig(issuerUrl);
-    if (config && config.introspection_endpoint) {
-      setIntrospectionEndpoint(config.introspection_endpoint);
+    try {
+      // Construct the well-known URL
+      const url = new URL(issuerUrl);
+      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`;
+      const wellKnownUrl = new URL(
+        `${basePath}.well-known/openid-configuration`,
+        url.origin
+      ).toString();
+      
+      // Fetch OIDC configuration to get introspection endpoint
+      const response = await proxyFetch(wellKnownUrl);
+      
+      if (response.ok) {
+        const config = await response.json();
+        if (config.introspection_endpoint) {
+          setIntrospectionEndpoint(config.introspection_endpoint);
+        }
+      } else {
+        console.error('Failed to fetch OIDC configuration');
+      }
+    } catch (error) {
+      console.error('Error fetching OIDC config:', error);
+    } finally {
+      setConfigLoading(false);
     }
   };
 
