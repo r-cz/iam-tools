@@ -41,7 +41,7 @@ interface IntrospectionHistoryItem {
 
 export function TokenIntrospection() {
   const navigate = useNavigate();
-  const { addToken } = useAppState();
+  const { addToken, tokenHistory } = useAppState();
   
   // Endpoint state
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState("");
@@ -60,6 +60,7 @@ export function TokenIntrospection() {
   const [result, setResult] = useState<IntrospectionResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showTokenHistory, setShowTokenHistory] = useState(false);
 
   // Generate a sample introspection response for demo mode
   const generateDemoIntrospectionResponse = async (): Promise<IntrospectionResponse> => {
@@ -162,6 +163,12 @@ export function TokenIntrospection() {
     );
     
     setIntrospectionHistory(updatedHistory);
+  };
+
+  // Handle token selection from history
+  const handleSelectToken = (tokenValue: string) => {
+    setToken(tokenValue);
+    setShowTokenHistory(false);
   };
 
   // Handle form submission
@@ -317,10 +324,22 @@ export function TokenIntrospection() {
               )}
             </div>
             
-            {/* Token Input */}
-            <div>
+            {/* Token Input with History */}
+            <div className="relative">
               <div className="flex justify-between items-center">
-                <Label htmlFor="token" className="mb-1.5 block">Token to Introspect</Label>
+                <Label htmlFor="token" className="mb-1.5 block">
+                  Token to Introspect
+                  {tokenHistory.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="px-0 py-0 h-auto text-xs"
+                      onClick={() => setShowTokenHistory(!showTokenHistory)}
+                    >
+                      {showTokenHistory ? "Hide Recent" : "Show Recent"}
+                    </Button>
+                  )}
+                </Label>
                 <Button 
                   type="button" 
                   variant="link" 
@@ -339,6 +358,27 @@ export function TokenIntrospection() {
                 placeholder="Enter token to introspect"
                 className="font-mono text-xs"
               />
+              
+              {/* Recent Tokens Dropdown */}
+              {showTokenHistory && tokenHistory.length > 0 && (
+                <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
+                  <div className="p-1">
+                    {tokenHistory.slice(0, 10).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
+                        onClick={() => handleSelectToken(item.token)}
+                      >
+                        <div className="truncate">{item.name || `Token ${item.id.substring(0, 8)}...`}</div>
+                        {item.issuer && (
+                          <div className="text-xs text-muted-foreground truncate">{item.issuer}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Client Credentials Section */}

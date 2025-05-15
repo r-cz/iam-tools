@@ -3,6 +3,7 @@ import {
   Fingerprint,
   KeyRound,
   Search,
+  SearchCheck,
   FileJson,
   ArrowRight,
   ChevronRight,
@@ -66,7 +67,7 @@ const menuTree = [
           {
             title: "Token Introspection",
             url: "/oauth-playground/introspection",
-            icon: Search
+            icon: SearchCheck
           }
           // More flows will be added here later
         ]
