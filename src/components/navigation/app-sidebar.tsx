@@ -62,6 +62,11 @@ const menuTree = [
             title: "Client Credentials",
             url: "/oauth-playground/client-credentials",
             icon: KeyRound
+          },
+          {
+            title: "Token Introspection",
+            url: "/oauth-playground/introspection",
+            icon: Search
           }
           // More flows will be added here later
         ]
