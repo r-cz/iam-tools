@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/ui/code-block";
 import { useAppState } from "@/lib/state";
+import { History } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { signToken } from "@/lib/jwt/sign-token";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
@@ -282,19 +283,21 @@ export function TokenIntrospection() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Introspection Endpoint Input with History */}
             <div className="relative">
-              <Label htmlFor="introspection-endpoint" className="mb-1.5 block">
-                Introspection Endpoint
+              <div className="flex items-center justify-between mb-1.5">
+                <Label htmlFor="introspection-endpoint">Introspection Endpoint</Label>
                 {introspectionHistory.length > 0 && (
                   <Button
                     type="button"
-                    variant="link"
-                    className="px-0 py-0 h-auto text-xs"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
                     onClick={() => setShowHistory(!showHistory)}
                   >
-                    {showHistory ? "Hide Recent" : "Show Recent"}
+                    <History size={16} />
+                    <span>Recent Endpoints</span>
                   </Button>
                 )}
-              </Label>
+              </div>
               <Input
                 id="introspection-endpoint"
                 type="url"
@@ -327,28 +330,30 @@ export function TokenIntrospection() {
             {/* Token Input with History */}
             <div className="relative">
               <div className="flex justify-between items-center">
-                <Label htmlFor="token" className="mb-1.5 block">
-                  Token to Introspect
+                <Label htmlFor="token">Token to Introspect</Label>
+                <div className="flex items-center gap-2">
                   {tokenHistory.length > 0 && (
                     <Button
                       type="button"
-                      variant="link"
-                      className="px-0 py-0 h-auto text-xs"
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1"
                       onClick={() => setShowTokenHistory(!showTokenHistory)}
                     >
-                      {showTokenHistory ? "Hide Recent" : "Show Recent"}
+                      <History size={16} />
+                      <span>Recent Tokens</span>
                     </Button>
                   )}
-                </Label>
-                <Button 
-                  type="button" 
-                  variant="link" 
-                  className="px-0 py-0 h-auto text-xs"
-                  onClick={handleInspectToken}
-                  disabled={!token}
-                >
-                  View in Token Inspector
-                </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleInspectToken}
+                    disabled={!token}
+                  >
+                    View in Token Inspector
+                  </Button>
+                </div>
               </div>
               <Input
                 id="token"
