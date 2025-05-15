@@ -310,7 +310,7 @@ export function TokenIntrospection() {
             
             {/* Token Input with History */}
             <div className="relative">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center mb-1.5">
                 <Label htmlFor="token">Token to Introspect</Label>
                 <div className="flex items-center gap-2">
                   {tokenHistory.length > 0 && (
