@@ -13,6 +13,7 @@ import { History } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { signToken } from "@/lib/jwt/sign-token";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
+import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
 
 interface IntrospectionResponse {
   active: boolean;
@@ -32,17 +33,9 @@ interface IntrospectionResponse {
   [key: string]: any;
 }
 
-interface IntrospectionHistoryItem {
-  id: string;
-  url: string;
-  name?: string;
-  createdAt: number;
-  lastUsedAt: number;
-}
-
 export function TokenIntrospection() {
   const navigate = useNavigate();
-  const { addToken, tokenHistory } = useAppState();
+  const { addToken, tokenHistory, issuerHistory } = useAppState();
   
   // Endpoint state
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState("");
@@ -50,18 +43,16 @@ export function TokenIntrospection() {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   
-  // Recent introspection endpoints
-  const [introspectionHistory, setIntrospectionHistory] = useLocalStorage<IntrospectionHistoryItem[]>(
-    "introspection-history",
-    []
-  );
   
   // UI state
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<IntrospectionResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [showTokenHistory, setShowTokenHistory] = useState(false);
+  const [showIssuerHistory, setShowIssuerHistory] = useState(false);
+  
+  // OIDC config for getting introspection endpoint from issuer
+  const { config: oidcConfig, loading: configLoading, fetchConfig } = useOidcConfig();
 
   // Generate a sample introspection response for demo mode
   const generateDemoIntrospectionResponse = async (): Promise<IntrospectionResponse> => {
@@ -126,50 +117,22 @@ export function TokenIntrospection() {
     }
   };
 
-  // Add introspection endpoint to history
-  const addEndpointToHistory = (url: string) => {
-    const currentTime = Date.now();
-    const existingIndex = introspectionHistory.findIndex(item => item.url === url);
-    
-    if (existingIndex !== -1) {
-      // Update existing entry
-      const updatedHistory = [...introspectionHistory];
-      updatedHistory[existingIndex] = {
-        ...updatedHistory[existingIndex],
-        lastUsedAt: currentTime
-      };
-      setIntrospectionHistory(updatedHistory);
-    } else {
-      // Add new entry
-      const newItem: IntrospectionHistoryItem = {
-        id: Math.random().toString(36).substring(2, 15),
-        url,
-        createdAt: currentTime,
-        lastUsedAt: currentTime
-      };
-      
-      setIntrospectionHistory([newItem, ...introspectionHistory.slice(0, 9)]);
-    }
-  };
-
-  // Handle endpoint selection from history
-  const handleSelectEndpoint = (url: string) => {
-    setIntrospectionEndpoint(url);
-    setShowHistory(false);
-    
-    // Update the last used timestamp
-    const currentTime = Date.now();
-    const updatedHistory = introspectionHistory.map(item => 
-      item.url === url ? { ...item, lastUsedAt: currentTime } : item
-    );
-    
-    setIntrospectionHistory(updatedHistory);
-  };
 
   // Handle token selection from history
   const handleSelectToken = (tokenValue: string) => {
     setToken(tokenValue);
     setShowTokenHistory(false);
+  };
+  
+  // Handle issuer selection from history
+  const handleSelectIssuer = async (issuerUrl: string) => {
+    setShowIssuerHistory(false);
+    
+    // Fetch OIDC configuration to get introspection endpoint
+    const config = await fetchConfig(issuerUrl);
+    if (config && config.introspection_endpoint) {
+      setIntrospectionEndpoint(config.introspection_endpoint);
+    }
   };
 
   // Handle form submission
@@ -211,8 +174,6 @@ export function TokenIntrospection() {
       
       // Perform real network request
       try {
-        // Add endpoint to history
-        addEndpointToHistory(introspectionEndpoint);
         
         // Create form data for introspection request
         const params = new URLSearchParams();
@@ -285,16 +246,17 @@ export function TokenIntrospection() {
             <div className="relative">
               <div className="flex items-center justify-between mb-1.5">
                 <Label htmlFor="introspection-endpoint">Introspection Endpoint</Label>
-                {introspectionHistory.length > 0 && (
+                {issuerHistory.length > 0 && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-1"
-                    onClick={() => setShowHistory(!showHistory)}
+                    onClick={() => setShowIssuerHistory(!showIssuerHistory)}
+                    disabled={configLoading}
                   >
                     <History size={16} />
-                    <span>Recent Endpoints</span>
+                    <span>Recent Issuers</span>
                   </Button>
                 )}
               </div>
@@ -308,18 +270,19 @@ export function TokenIntrospection() {
                 placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/introspect"}
               />
               
-              {/* Recent Endpoints Dropdown */}
-              {showHistory && introspectionHistory.length > 0 && (
+              {/* Recent Issuers Dropdown */}
+              {showIssuerHistory && issuerHistory.length > 0 && (
                 <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
                   <div className="p-1">
-                    {introspectionHistory.map((item) => (
+                    {issuerHistory.slice(0, 10).map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
-                        onClick={() => handleSelectEndpoint(item.url)}
+                        onClick={() => handleSelectIssuer(item.url)}
                       >
-                        {item.name || new URL(item.url).hostname}
+                        <div className="truncate">{item.name || new URL(item.url).hostname}</div>
+                        <div className="text-xs text-muted-foreground truncate">{item.url}</div>
                       </button>
                     ))}
                   </div>
