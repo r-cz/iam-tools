@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ interface IntrospectionHistoryItem {
 
 export function TokenIntrospection() {
   const navigate = useNavigate();
-  const { addTokenToHistory } = useAppState();
+  const { addToken } = useAppState();
   
   // Endpoint state
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState("");
@@ -187,7 +187,7 @@ export function TokenIntrospection() {
       
       // Add token to history if it's valid
       if (token && demoResult.active !== false) {
-        addTokenToHistory(token);
+        addToken(token);
       }
     } else {
       // Validate required fields for real request
@@ -231,7 +231,7 @@ export function TokenIntrospection() {
         
         // Add token to history if it's valid
         if (token && data.active !== false) {
-          addTokenToHistory(token);
+          addToken(token);
         }
       } catch (err: any) {
         setResult({
