@@ -411,7 +411,10 @@ export function TokenIntrospection() {
               
               {/* Active/Inactive Status */}
               {result.active !== undefined && (
-                <Alert variant={result.active ? "default" : "destructive"}>
+                <Alert 
+                  variant={result.active ? "default" : "destructive"}
+                  className={result.active ? "bg-green-500/10 border-green-500/20 text-green-700" : ""}
+                >
                   <AlertDescription>
                     Token is {result.active ? "active" : "inactive"}
                     {result.error && `: ${result.error_description || result.error}`}
