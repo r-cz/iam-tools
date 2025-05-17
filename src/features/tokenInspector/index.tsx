@@ -21,6 +21,8 @@ import { validateToken, determineTokenType } from "./utils/token-validation";
 import type { TokenType, DecodedToken, ValidationResult } from "@/types"; // Point to the shared types directory
 import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 import { useTokenHistory } from "../../lib/state";
+import { verifySignatureWithRefresh } from "@/lib/jwt/verify-signature-with-refresh";
+import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
 
 interface TokenInspectorProps {
   initialToken?: string | null;
@@ -38,6 +40,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   
   // Token history state from the app state provider
   const { addToken } = useTokenHistory();
+  
+  // OIDC config hook for getting JWKS URI
+  const oidcConfigHook = useOidcConfig();
 
   // Effect to handle initial token from URL
   useEffect(() => {
@@ -56,6 +61,15 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     decodeToken(token, jwks); // Attempt decode with current token and JWKS state
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]); // Rerun when the main token string changes
+  
+  // Effect to fetch OIDC config when issuer changes
+  useEffect(() => {
+    if (issuerUrl && !isDemoToken && !oidcConfigHook.isLoading && !oidcConfigHook.data) {
+      console.log('Fetching OIDC config for issuer:', issuerUrl);
+      oidcConfigHook.fetchConfig(issuerUrl);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issuerUrl, isDemoToken]);
 
 
   const resetState = () => {
@@ -139,22 +153,45 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
 
       if (currentJwks) {
         try {
-          const matchingKey = currentJwks.keys.find(key => key.kid === header.kid);
-          if (!matchingKey) {
-            throw new Error(`No key with ID "${header.kid}" found in the loaded JWKS`);
-          }
-
           // For demo tokens, accept matching kid as valid (due to potential env issues with crypto.sign)
           if (isLikelyDemo) {
-            console.log(`Demo token signature check: Found key ${header.kid}. Marking as valid.`);
-            signatureValid = true;
+            const matchingKey = currentJwks.keys.find(key => key.kid === header.kid);
+            if (matchingKey) {
+              console.log(`Demo token signature check: Found key ${header.kid}. Marking as valid.`);
+              signatureValid = true;
+            } else {
+              throw new Error(`No key with ID "${header.kid}" found in the loaded JWKS`);
+            }
           } else {
-            // For non-demo tokens, perform actual crypto verification
+            // For non-demo tokens, perform actual crypto verification with automatic refresh
             console.log("Attempting cryptographic verification for non-demo token...");
-            const key = await jose.importJWK(matchingKey, header.alg); // Let jose handle alg selection based on JWK
-            await jose.jwtVerify(tokenToDecode, key);
-            signatureValid = true;
-            console.log("Cryptographic verification successful.");
+            
+            // Get the JWKS URI from the OIDC config (if available)
+            let jwksUri = '';
+            
+            // Check if we have OIDC config for this issuer
+            if (oidcConfigHook.data && oidcConfigHook.data.issuer === payload.iss) {
+              jwksUri = oidcConfigHook.data.jwks_uri || '';
+              console.log('Using JWKS URI from OIDC config:', jwksUri);
+            } else if (payload.iss) {
+              // Fallback: construct the JWKS URI (not all providers use standard .well-known/jwks)
+              // Note: This is a guess and might not work for all providers
+              jwksUri = `${payload.iss}/.well-known/jwks`;
+              console.log('Using guessed JWKS URI:', jwksUri);
+            }
+            
+            const result = await verifySignatureWithRefresh(
+              tokenToDecode,
+              jwksUri,
+              currentJwks,
+              (refreshedJwks) => {
+                console.log('JWKS refreshed during verification');
+                setJwks(refreshedJwks);
+              }
+            );
+            
+            signatureValid = result.valid;
+            signatureError = result.error;
           }
         } catch (e: any) {
           console.error('Signature verification error:', e);
@@ -339,6 +376,8 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
                   setIssuerUrl={setIssuerUrl} // Allow resolver to update issuer
                   onJwksResolved={handleJwksResolved} // Function to call when JWKS are resolved/loaded
                   isCurrentTokenDemo={isDemoToken} // Pass the flag indicating if CURRENT token is demo
+                  oidcConfig={oidcConfigHook.data} // Pass OIDC config data
+                  isLoadingOidcConfig={oidcConfigHook.isLoading} // Pass loading state
                 />
               </TabsContent>
 

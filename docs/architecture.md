@@ -65,9 +65,40 @@ The application is deployed to Cloudflare Pages, which provides:
 2. **Cloudflare Functions**: Backend API functionality
 3. **Continuous Deployment**: Automatic deployments from Git
 
+## Caching Strategy
+
+The application implements strategic caching for frequently accessed resources to improve performance and reduce external API calls.
+
+### OIDC Configuration Caching
+
+- **Purpose**: Caches OpenID Connect configuration documents from identity providers
+- **Storage**: In-memory and localStorage
+- **TTL**: 1 hour (memory), 24 hours (storage)
+- **Implementation**: `OidcConfigCache` class in `/lib/cache/oidc-config-cache.ts`
+
+### JWKS Caching
+
+- **Purpose**: Caches JSON Web Key Sets (JWKS) used for token signature verification
+- **Storage**: In-memory and localStorage
+- **TTL**: 5 minutes (memory), 1 hour (storage) - shorter than OIDC config due to key rotation
+- **Implementation**: `JwksCache` class in `/lib/cache/jwks-cache.ts`
+- **Special Features**:
+  - Automatic refresh on validation failure (handles key rotation scenarios)
+  - Integration with `verifySignatureWithRefresh` for seamless key rotation handling
+  - Shared singleton instance for consistent caching across the application
+
+### Cache Management
+
+Both cache implementations support:
+- LRU (Least Recently Used) eviction strategy
+- Maximum entry limits to prevent unbounded growth
+- URL normalization for consistent key management
+- TTL-based expiration
+- Manual cache clearing and specific entry removal
+
 ## Future Architecture Considerations
 
 - **State Management**: As the application grows, consider introducing more structured state management
-- **Caching Strategy**: Implement more sophisticated caching for JWKS and other frequently accessed resources
+- **Enhanced Caching**: Expand caching to other resources like user info endpoints
 - **Offline Support**: Evaluate Progressive Web App (PWA) capabilities for offline functionality
 - **Performance Monitoring**: Add performance tracking for core features
