@@ -46,7 +46,6 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     { name: 'Google', url: 'https://accounts.google.com' },
     { name: 'Microsoft', url: 'https://login.microsoftonline.com/common' },
     { name: 'GitHub', url: 'https://token.actions.githubusercontent.com' },
-    { name: 'Okta (dev-133337)', url: 'https://dev-133337.okta.com' },
     { name: 'Auth0 Demo', url: 'https://samples.auth0.com' },
     { name: 'Salesforce', url: 'https://login.salesforce.com' },
     { name: 'Spotify', url: 'https://accounts.spotify.com' },
