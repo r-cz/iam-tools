@@ -15,6 +15,7 @@ import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
 import { toast } from "sonner";
+import { IssuerHistory } from "./IssuerHistory";
 
 interface IntrospectionResponse {
   active: boolean;
@@ -36,7 +37,7 @@ interface IntrospectionResponse {
 
 export function TokenIntrospection() {
   const navigate = useNavigate();
-  const { addToken, tokenHistory, issuerHistory } = useAppState();
+  const { addToken, tokenHistory } = useAppState();
   
   // Endpoint state
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState("");
@@ -50,7 +51,6 @@ export function TokenIntrospection() {
   const [result, setResult] = useState<IntrospectionResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showTokenHistory, setShowTokenHistory] = useState(false);
-  const [showIssuerHistory, setShowIssuerHistory] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false);
 
@@ -153,7 +153,6 @@ export function TokenIntrospection() {
   
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
-    setShowIssuerHistory(false);
     setConfigLoading(true);
     
     try {
@@ -172,12 +171,15 @@ export function TokenIntrospection() {
         const config = await response.json();
         if (config.introspection_endpoint) {
           setIntrospectionEndpoint(config.introspection_endpoint);
+        } else {
+          // Show error if no introspection endpoint is available
+          toast.error('This issuer does not have an introspection endpoint configured');
         }
       } else {
-        console.error('Failed to fetch OIDC configuration');
+        toast.error('Failed to fetch OIDC configuration');
       }
     } catch (error) {
-      console.error('Error fetching OIDC config:', error);
+      toast.error('Error fetching OIDC configuration: ' + (error as Error).message);
     } finally {
       setConfigLoading(false);
     }
@@ -297,22 +299,14 @@ export function TokenIntrospection() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Introspection Endpoint Input with History */}
-            <div className="relative">
-              <div className="flex items-center justify-between mb-1.5">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
                 <Label htmlFor="introspection-endpoint">Introspection Endpoint</Label>
-                {issuerHistory.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => setShowIssuerHistory(!showIssuerHistory)}
-                    disabled={configLoading || isDemoMode}
-                  >
-                    <History size={16} />
-                    <span>Recent Issuers</span>
-                  </Button>
-                )}
+                <IssuerHistory 
+                  onSelectIssuer={handleSelectIssuer}
+                  configLoading={configLoading}
+                  disabled={isDemoMode}
+                />
               </div>
               <Input
                 id="introspection-endpoint"
@@ -323,25 +317,6 @@ export function TokenIntrospection() {
                 disabled={isDemoMode}
                 placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/introspect"}
               />
-              
-              {/* Recent Issuers Dropdown */}
-              {showIssuerHistory && issuerHistory.length > 0 && (
-                <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
-                  <div className="p-1">
-                    {issuerHistory.slice(0, 10).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
-                        onClick={() => handleSelectIssuer(item.url)}
-                      >
-                        <div className="truncate">{item.name || new URL(item.url).hostname}</div>
-                        <div className="text-xs text-muted-foreground truncate">{item.url}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
             
             {/* Token Input with History */}
