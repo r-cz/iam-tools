@@ -14,6 +14,8 @@ interface TokenSignatureProps {
   setIssuerUrl: (url: string) => void; // Callback to update issuer URL in parent
   onJwksResolved: (jwks: JSONWebKeySet) => void; // Callback when JWKS are loaded/resolved
   isCurrentTokenDemo?: boolean; // Flag indicating if the token being inspected is a demo one
+  oidcConfig?: any; // OIDC configuration from parent
+  isLoadingOidcConfig?: boolean; // OIDC config loading state
 }
 
 export function TokenSignature({
@@ -25,7 +27,9 @@ export function TokenSignature({
   issuerUrl,
   setIssuerUrl,
   onJwksResolved,
-  isCurrentTokenDemo // Use the flag passed from the parent
+  isCurrentTokenDemo, // Use the flag passed from the parent
+  oidcConfig,
+  isLoadingOidcConfig
 }: TokenSignatureProps) {
   const parts = token.split('.');
   // Extract the signature part for display (can be empty if token is malformed)
@@ -82,6 +86,8 @@ export function TokenSignature({
             onJwksResolved={onJwksResolved}
             // Pass down the flag indicating if the current token is a demo token
             isCurrentTokenDemo={isCurrentTokenDemo}
+            oidcConfig={oidcConfig}
+            isLoadingOidcConfig={isLoadingOidcConfig}
           />
         </div>
       </div>

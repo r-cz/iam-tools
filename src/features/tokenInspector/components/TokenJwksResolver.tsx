@@ -1,7 +1,6 @@
 // src/features/tokenInspector/components/TokenJwksResolver.tsx
 
 import React, { useState, useEffect } from "react"; // Added useEffect
-import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig"; // Import new hook
 import { useJwks } from "@/hooks/data-fetching/useJwks"; // Import new hook
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -17,31 +16,34 @@ interface TokenJwksResolverProps {
   setIssuerUrl: (url: string) => void;
   onJwksResolved: (jwks: JSONWebKeySet) => void; // Use specific type
   isCurrentTokenDemo?: boolean; // Flag from parent indicating if the current token is a demo one
+  oidcConfig?: any; // OIDC configuration from parent
+  isLoadingOidcConfig?: boolean; // OIDC config loading state
 }
 
 export function TokenJwksResolver({
   issuerUrl,
   setIssuerUrl,
   onJwksResolved,
-  isCurrentTokenDemo = false // Default to false if not provided
+  isCurrentTokenDemo = false, // Default to false if not provided
+  oidcConfig,
+  isLoadingOidcConfig
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<"automatic" | "manual">("automatic");
   const [manualJwks, setManualJwks] = useState("");
-  // Removed component-level isLoading and error state, now handled by hooks
-  // const [isLoading, setIsLoading] = useState(false);
-  // const [_error, setError] = useState<string | null>(null); // Internal error state, shown via toast
+  const [lastFetchedUri, setLastFetchedUri] = useState<string | null>(null);
 
-  // Instantiate the hooks
-  const oidcConfigHook = useOidcConfig();
+  // Only instantiate the JWKS hook since we're receiving OIDC config from parent
   const jwksHook = useJwks();
 
   // Effect to fetch JWKS when OIDC config is successfully loaded
   useEffect(() => {
-    if (oidcConfigHook.data?.jwks_uri) {
-      console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfigHook.data.jwks_uri}`);
-      jwksHook.fetchJwks(oidcConfigHook.data.jwks_uri);
+    // Only fetch if we have a JWKS URI, aren't currently loading, and haven't already fetched this URI
+    if (oidcConfig?.jwks_uri && !jwksHook.isLoading && oidcConfig.jwks_uri !== lastFetchedUri) {
+      console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfig.jwks_uri}`);
+      setLastFetchedUri(oidcConfig.jwks_uri);
+      jwksHook.fetchJwks(oidcConfig.jwks_uri);
     }
-  }, [oidcConfigHook.data]); // Trigger only when OIDC data changes
+  }, [oidcConfig?.jwks_uri, jwksHook.isLoading, lastFetchedUri]); // Track lastFetchedUri to prevent duplicate fetches
 
   // Effect to handle successful JWKS fetch
   useEffect(() => {
@@ -52,34 +54,34 @@ export function TokenJwksResolver({
       toast.success(
         <div>
           <p><strong>JWKS Fetched Successfully</strong></p>
-          <p>Found {jwksHook.data.keys.length} keys from {oidcConfigHook.data?.jwks_uri || 'source'}</p>
+          <p>Found {jwksHook.data.keys.length} keys from {oidcConfig?.jwks_uri || 'source'}</p>
         </div>,
         { id: 'jwks-fetch-success', duration: 3000 }
       );
       toast.dismiss('jwks-fetch-error'); // Dismiss any previous error toast
     }
-  }, [jwksHook.data, onJwksResolved, oidcConfigHook.data?.jwks_uri]); // Trigger when JWKS data changes
+  }, [jwksHook.data, onJwksResolved, oidcConfig?.jwks_uri]); // Trigger when JWKS data changes
 
-  // Effect to handle errors from either hook
+  // Effect to handle errors from JWKS hook
   useEffect(() => {
-    const error = oidcConfigHook.error || jwksHook.error;
+    const error = jwksHook.error;
     if (error) {
-      console.error("Error fetching OIDC config or JWKS:", error);
+      console.error("Error fetching JWKS:", error);
       const errorMessage = error.message || "Unknown error";
       // Show more informative error toast
       toast.error(
           <div>
-            <p><strong>Error Fetching Data</strong></p>
+            <p><strong>Error Fetching JWKS</strong></p>
             <p>{errorMessage}</p>
             {errorMessage.includes("CORS") && <p className="text-xs mt-1">Try fetching manually or use the Manual Entry tab.</p>}
           </div>,
           { id: 'jwks-fetch-error', duration: 8000 }
         );
     }
-  }, [oidcConfigHook.error, jwksHook.error]);
+  }, [jwksHook.error]);
 
 
-  // Function to initiate the automatic fetching process (now just triggers OIDC fetch)
+  // Function to initiate the automatic fetching process
   const triggerAutomaticFetch = () => {
     // Prevent fetching if it's identified as a demo token
     if (isCurrentTokenDemo) {
@@ -94,10 +96,13 @@ export function TokenJwksResolver({
         return;
     }
 
-    // Trigger the OIDC config fetch using the hook's function
-    console.log(`Initiating automatic fetch for issuer: ${issuerUrl}`);
-    oidcConfigHook.fetchConfig(issuerUrl);
-    // The useEffect hooks above will handle the rest (fetching JWKS, success/error)
+    // If we already have OIDC config with JWKS URI, fetch JWKS directly
+    if (oidcConfig?.jwks_uri) {
+      console.log(`Fetching JWKS directly from: ${oidcConfig.jwks_uri}`);
+      jwksHook.fetchJwks(oidcConfig.jwks_uri, true); // Force refresh
+    } else {
+      toast.info("OIDC configuration not yet loaded. Please wait...");
+    }
   };
 
 
@@ -235,10 +240,10 @@ export function TokenJwksResolver({
             </div>
             <Button
               onClick={triggerAutomaticFetch} // Use the new trigger function
-              disabled={oidcConfigHook.isLoading || jwksHook.isLoading || !issuerUrl || isCurrentTokenDemo} // Use hook loading states
+              disabled={isLoadingOidcConfig || jwksHook.isLoading || !issuerUrl || isCurrentTokenDemo} // Use hook loading states
               className="w-full sm:w-auto"
             >
-              {oidcConfigHook.isLoading || jwksHook.isLoading ? 'Fetching...' : 'Fetch JWKS'}
+              {isLoadingOidcConfig || jwksHook.isLoading ? 'Fetching...' : 'Fetch JWKS'}
             </Button>
           </div>
            <p className="text-xs text-muted-foreground">

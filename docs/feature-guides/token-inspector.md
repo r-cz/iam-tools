@@ -47,6 +47,15 @@ To validate a token's signature:
 4. The tool will fetch the JWKS (if a URI was provided) and validate the signature
 5. The result will show whether the signature is valid or invalid
 
+#### JWKS Caching
+
+The tool implements intelligent JWKS caching to improve performance:
+
+- JWKS are cached for 5 minutes in memory and 1 hour in localStorage
+- If signature validation fails due to key rotation, the tool automatically refreshes the JWKS
+- This ensures that key rotation is handled transparently without manual intervention
+- The cache can be cleared manually through the application settings if needed
+
 ### Common JWKS URIs
 
 The tool provides shortcuts for common identity providers' JWKS URIs, including:
@@ -142,6 +151,8 @@ If signature validation fails:
 2. Check if the token's `kid` (Key ID) matches a key in the JWKS
 3. Ensure the token was signed with the algorithm specified in its header
 4. Verify the token hasn't been tampered with
+
+Note: The tool automatically handles key rotation scenarios. If a key is not found in the cached JWKS, it will automatically fetch fresh keys from the provider.
 
 ### CORS Issues with JWKS URI
 

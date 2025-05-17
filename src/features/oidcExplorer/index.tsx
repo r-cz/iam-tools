@@ -31,6 +31,7 @@ export function OidcExplorer() {
   const [detectionReasons, setDetectionReasons] = useState<string[]>([]);
   const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>('');
   const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('');
+  const [lastFetchedJwksUri, setLastFetchedJwksUri] = useState<string | null>(null);
   
   // Use a ref to track if we've already added this URL to history
   const processedUrls = useRef<Set<string>>(new Set());
@@ -56,12 +57,15 @@ export function OidcExplorer() {
       setProviderName(detectedProvider);
       setDetectionReasons(reasons);
 
-      // Automatically trigger JWKS fetch if URI exists
-      if (config.jwks_uri) {
+      // Automatically trigger JWKS fetch if URI exists and hasn't been fetched already
+      if (config.jwks_uri && config.jwks_uri !== lastFetchedJwksUri) {
         console.log(`OIDC config has jwks_uri, fetching JWKS from: ${config.jwks_uri}`);
+        setLastFetchedJwksUri(config.jwks_uri);
         jwksHook.fetchJwks(config.jwks_uri);
-      } else {
+      } else if (!config.jwks_uri) {
         console.log('OIDC config does not have jwks_uri.');
+      } else {
+        console.log(`JWKS already fetched for URI: ${config.jwks_uri}`);
       }
     }
   }, [oidcConfigHook.data, addIssuer]); // Removed inputIssuerUrl dependency
