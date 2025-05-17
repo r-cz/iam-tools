@@ -10,34 +10,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 bun install
 
-# Start development server
+# Start development server (Vite only)
 bun run dev
 
-# Start development server with CORS proxy (blocks terminal)
+# Start CORS proxy server
+bun run proxy
+
+# Start both Vite and CORS proxy concurrently (blocks terminal)
 bun run dev:all
 
-# Start development server and CORS proxy in interactive mode
-# Displays server output but allows terminal interaction
-bun run dev:bg
-
-# Start only Vite dev server in interactive mode
-bun run dev:bg:vite
-
-# Start only CORS proxy in interactive mode
-bun run dev:bg:proxy
-
-# Start development server and CORS proxy fully detached
-# Servers run in background with logs in .logs directory
-bun run dev:detach
-
-# Start only Vite dev server fully detached
-bun run dev:detach:vite
-
-# Start only CORS proxy fully detached
-bun run dev:detach:proxy
-
-# Start only the CORS proxy
-bun run dev:proxy
+# Start servers detached (background with logs in .logs directory)
+bun run dev:detach          # Both Vite and CORS proxy
+bun run dev:detach:vite     # Only Vite dev server
+bun run dev:detach:proxy    # Only CORS proxy
 
 # Stop all running development servers
 bun run dev:stop
