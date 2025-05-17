@@ -36,6 +36,7 @@ import {
 import { useTheme } from "@/components/theme";
 import { useSettings, useTokenHistory, useIssuerHistory } from "@/lib/state";
 import { oidcConfigCache } from "@/lib/cache/oidc-config-cache";
+import { jwksCache } from "@/lib/cache/jwks-cache";
 import { toast } from "sonner";
 
 export function NavSettings() {
@@ -49,6 +50,7 @@ export function NavSettings() {
     clearTokens();
     clearIssuers();
     oidcConfigCache.clear();
+    jwksCache.clear();
     toast.success("All data cleared", {
       description: "Token history, issuer history, and cache have been cleared."
     });
