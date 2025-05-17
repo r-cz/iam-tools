@@ -15,7 +15,7 @@ import {
   ConfigDisplay, 
   JwksDisplay, 
   ProviderInfo,
-  IssuerHistory 
+  IssuerHistory
 } from "./components";
 import { detectProvider } from "./utils/config-helpers";
 import { useIssuerHistory } from "../../lib/state";
@@ -180,6 +180,7 @@ export function OidcExplorer() {
               )}
             </TabsContent>
           )}
+
         </Tabs>
       )}
     </div>

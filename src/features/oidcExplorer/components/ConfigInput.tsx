@@ -36,10 +36,22 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
 
   // Real-world public issuers for the random button
   const realWorldIssuers = [
+    // Original examples
     { name: 'Chick-fil-A', url: 'https://login.my.chick-fil-a.com' },
     { name: 'Southwest', url: 'https://secure.southwest.com' },
     { name: 'FedEx', url: 'https://auth.fedex.com' },
     { name: 'Delta Airlines', url: 'https://signin.delta.com' },
+    
+    // Popular identity providers
+    { name: 'Google', url: 'https://accounts.google.com' },
+    { name: 'Microsoft', url: 'https://login.microsoftonline.com/common' },
+    { name: 'GitHub', url: 'https://token.actions.githubusercontent.com' },
+    { name: 'Auth0 Demo', url: 'https://samples.auth0.com' },
+    { name: 'Salesforce', url: 'https://login.salesforce.com' },
+    { name: 'Spotify', url: 'https://accounts.spotify.com' },
+    { name: 'Discord', url: 'https://discord.com' },
+    { name: 'Apple', url: 'https://appleid.apple.com' },
+    { name: 'Cloudflare', url: 'https://cloudflareaccess.com' },
   ];
 
   // Removed handleExampleClick function
