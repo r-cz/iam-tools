@@ -51,9 +51,11 @@ This will start:
 
 ### Available Scripts
 
-- `bun run dev` - Start the development server
+- `bun run dev` - Start the development server (Vite only)
+- `bun run proxy` - Start the CORS proxy server
 - `bun run dev:all` - Start both the development server and CORS proxy
-- `bun run dev:proxy` - Start only the CORS proxy
+- `bun run dev:detach` - Start both servers in background
+- `bun run dev:stop` - Stop all running servers
 - `bun run build` - Build the application for production
 - `bun run preview` - Preview the production build
 - `bun test` - Run the test suite
