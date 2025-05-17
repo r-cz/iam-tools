@@ -19,11 +19,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IssuerHistoryItem } from '@/lib/state/types';
-import { useAppState } from '@/lib/state';
+import { useIssuerHistory } from '@/lib/state';
 
 interface IssuerHistoryProps {
   onSelectIssuer: (issuerUrl: string) => void;
-  configLoading: boolean;
+  configLoading?: boolean;
   disabled?: boolean;
 }
 
@@ -54,8 +54,12 @@ function truncateUrl(url: string, maxLength: number = 40): string {
   }
 }
 
-export function IssuerHistory({ onSelectIssuer, configLoading, disabled }: IssuerHistoryProps) {
-  const { issuerHistory, removeIssuer, updateIssuer, clearIssuers } = useAppState();
+/**
+ * Shared component for displaying a history of recently used OIDC issuer URLs
+ * Used across OIDC Explorer, OAuth Playground, and Token Inspector features
+ */
+export function IssuerHistory({ onSelectIssuer, configLoading = false, disabled = false }: IssuerHistoryProps) {
+  const { issuerHistory, removeIssuer, updateIssuer, clearIssuers } = useIssuerHistory();
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editName, setEditName] = React.useState('');
   

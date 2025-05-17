@@ -14,9 +14,9 @@ import {
   ConfigInput, 
   ConfigDisplay, 
   JwksDisplay, 
-  ProviderInfo,
-  IssuerHistory
+  ProviderInfo
 } from "./components";
+import { IssuerHistory } from "@/components/common";
 import { detectProvider } from "./utils/config-helpers";
 import { useIssuerHistory } from "../../lib/state";
 

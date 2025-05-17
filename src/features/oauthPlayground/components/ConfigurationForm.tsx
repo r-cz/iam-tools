@@ -10,7 +10,7 @@ import { generateCodeVerifier, generateCodeChallenge, generateState } from '../u
 import { proxyFetch } from '@/lib/proxy-fetch';
 import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
 import { toast } from 'sonner';
-import { IssuerHistory } from '@/features/oidcExplorer/components';
+import { IssuerHistory } from '@/components/common';
 import { useIssuerHistory } from '@/lib/state';
 
 interface ConfigurationFormProps {

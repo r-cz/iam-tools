@@ -8,6 +8,10 @@ import { Switch } from "@/components/ui/switch"; // Import Switch
 import { signToken } from "@/lib/jwt/sign-token"; // Import signing function
 import { DEMO_JWKS } from "@/lib/jwt/demo-key"; // Import demo JWKS for kid
 import { CodeBlock } from "@/components/ui/code-block"; // Import CodeBlock
+import { IssuerHistory } from "@/components/common";
+import { useIssuerHistory } from "@/lib/state";
+import { proxyFetch } from "@/lib/proxy-fetch";
+import { toast } from "sonner";
 
 interface TokenResponse {
   access_token?: string;
@@ -21,6 +25,7 @@ interface TokenResponse {
 
 export function ClientCredentialsFlow() {
   const navigate = useNavigate(); // Instantiate useNavigate
+  const { addIssuer } = useIssuerHistory();
   const [tokenEndpoint, setTokenEndpoint] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -28,6 +33,43 @@ export function ClientCredentialsFlow() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TokenResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false); // Add state for demo mode
+  const [configLoading, setConfigLoading] = useState(false);
+
+  // Handle issuer selection from history
+  const handleSelectIssuer = async (issuerUrl: string) => {
+    setConfigLoading(true);
+    
+    try {
+      // Construct the well-known URL
+      const url = new URL(issuerUrl);
+      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`;
+      const wellKnownUrl = new URL(
+        `${basePath}.well-known/openid-configuration`,
+        url.origin
+      ).toString();
+      
+      // Fetch OIDC configuration to get token endpoint
+      const response = await proxyFetch(wellKnownUrl);
+      
+      if (response.ok) {
+        const config = await response.json();
+        if (config.token_endpoint) {
+          setTokenEndpoint(config.token_endpoint);
+          // Add issuer to history
+          addIssuer(issuerUrl);
+        } else {
+          // Show error if no token endpoint is available
+          toast.error('This issuer does not have a token endpoint configured');
+        }
+      } else {
+        toast.error('Failed to fetch OIDC configuration');
+      }
+    } catch (error) {
+      toast.error('Error fetching OIDC configuration: ' + (error as Error).message);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
 
   const generateDemoAccessToken = async (): Promise<TokenResponse> => {
     try {
@@ -133,16 +175,23 @@ export function ClientCredentialsFlow() {
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Token Endpoint Input (Disabled in Demo Mode) */}
-            <div>
-              <Label htmlFor="token-endpoint" className="mb-1.5 block">Token Endpoint</Label>
+            {/* Token Endpoint Input with History (Disabled in Demo Mode) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="token-endpoint">Token Endpoint</Label>
+                <IssuerHistory 
+                  onSelectIssuer={handleSelectIssuer}
+                  configLoading={configLoading}
+                  disabled={isDemoMode}
+                />
+              </div>
               <Input
                 id="token-endpoint"
                 type="url"
                 value={tokenEndpoint}
                 onChange={(e) => setTokenEndpoint(e.target.value)}
-                required={!isDemoMode} // Not required in demo mode
-                disabled={isDemoMode} // Disable in demo mode
+                required={!isDemoMode}
+                disabled={isDemoMode}
                 placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/token"}
               />
             </div>
