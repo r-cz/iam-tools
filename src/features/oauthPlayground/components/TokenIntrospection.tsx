@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/ui/code-block";
 import { useAppState } from "@/lib/state";
-import { History } from "lucide-react";
+import { History, CheckCircle, XCircle } from "lucide-react";
 import { signToken } from "@/lib/jwt/sign-token";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 import { proxyFetch } from "@/lib/proxy-fetch";
+import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
+import { toast } from "sonner";
 
 interface IntrospectionResponse {
   active: boolean;
@@ -50,6 +52,34 @@ export function TokenIntrospection() {
   const [showTokenHistory, setShowTokenHistory] = useState(false);
   const [showIssuerHistory, setShowIssuerHistory] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
+  const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false);
+
+  // Auto-fill demo token when demo mode is enabled
+  useEffect(() => {
+    const loadDemoToken = async () => {
+      if (isDemoMode) {
+        if (!token) {
+          setIsLoadingDemoToken(true);
+          try {
+            const demoToken = await generateFreshToken();
+            setToken(demoToken);
+            toast.success("Demo token loaded");
+          } catch (error) {
+            console.error("Error loading demo token:", error);
+            toast.error("Failed to load demo token");
+          } finally {
+            setIsLoadingDemoToken(false);
+          }
+        }
+        // Also set a default client ID for demo mode
+        if (!clientId) {
+          setClientId("demo-client");
+        }
+      }
+    };
+    
+    loadDemoToken();
+  }, [isDemoMode]);
 
   // Generate a sample introspection response for demo mode
   const generateDemoIntrospectionResponse = async (): Promise<IntrospectionResponse> => {
@@ -250,12 +280,18 @@ export function TokenIntrospection() {
               id="demo-mode-switch"
               checked={isDemoMode}
               onCheckedChange={setIsDemoMode}
+              disabled={isLoadingDemoToken}
             />
             <Label htmlFor="demo-mode-switch" className="mb-0">
               Demo Mode
               <p className="text-xs text-muted-foreground font-normal">
                 Generate a simulated introspection response locally without making network requests.
               </p>
+              {isLoadingDemoToken && (
+                <p className="text-xs text-muted-foreground font-normal mt-1">
+                  Loading demo token...
+                </p>
+              )}
             </Label>
           </div>
 
@@ -406,7 +442,9 @@ export function TokenIntrospection() {
             <div className="mt-6 space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="mb-1.5 block">Introspection Result</Label>
-                {isDemoMode && <Badge variant="outline">Demo Response</Badge>}
+                {isDemoMode && (
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-700 hover:bg-blue-500/10">Demo Response</Badge>
+                )}
               </div>
               
               {/* Active/Inactive Status */}
@@ -415,6 +453,7 @@ export function TokenIntrospection() {
                   variant={result.active ? "default" : "destructive"}
                   className={result.active ? "bg-green-500/10 border-green-500/20 text-green-700" : ""}
                 >
+                  {result.active ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                   <AlertDescription>
                     Token is {result.active ? "active" : "inactive"}
                     {result.error && `: ${result.error_description || result.error}`}
