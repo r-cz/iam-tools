@@ -51,7 +51,6 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     { name: 'Spotify', url: 'https://accounts.spotify.com' },
     { name: 'Discord', url: 'https://discord.com' },
     { name: 'Apple', url: 'https://appleid.apple.com' },
-    { name: 'Cloudflare', url: 'https://cloudflareaccess.com' },
   ];
 
   // Removed handleExampleClick function
