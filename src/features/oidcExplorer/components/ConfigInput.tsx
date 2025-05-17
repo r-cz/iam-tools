@@ -45,14 +45,14 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     // Popular identity providers
     { name: 'Google', url: 'https://accounts.google.com' },
     { name: 'Microsoft', url: 'https://login.microsoftonline.com/common' },
-    { name: 'GitHub', url: 'https://github.com' },
-    { name: 'Okta Demo', url: 'https://demo.okta.com' },
+    { name: 'GitHub', url: 'https://token.actions.githubusercontent.com' },
+    { name: 'Okta (dev-133337)', url: 'https://dev-133337.okta.com' },
     { name: 'Auth0 Demo', url: 'https://samples.auth0.com' },
-    { name: 'AWS Cognito', url: 'https://cognito-idp.us-east-1.amazonaws.com' },
     { name: 'Salesforce', url: 'https://login.salesforce.com' },
-    { name: 'LinkedIn', url: 'https://www.linkedin.com' },
     { name: 'Spotify', url: 'https://accounts.spotify.com' },
     { name: 'Discord', url: 'https://discord.com' },
+    { name: 'Apple', url: 'https://appleid.apple.com' },
+    { name: 'Twitch', url: 'https://id.twitch.tv' },
   ];
 
   // Removed handleExampleClick function
