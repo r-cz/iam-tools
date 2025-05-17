@@ -12,6 +12,7 @@ The OAuth Playground is a feature that allows users to test and explore OAuth 2.
 - Step-by-step flow visualization
 - PKCE code generation and verification
 - Integration with the Token Inspector for examining received tokens
+- Token introspection (RFC 7662) with demo mode support
 
 ## How to Use
 
@@ -35,7 +36,34 @@ The Client Credentials flow is designed for server-to-server and machine-to-mach
 
 This flow is useful for testing API integrations and service accounts that require direct access to protected resources without user interaction.
 
-1. **Select Flow**: Choose the OAuth flow you want to test (currently only Authorization Code with PKCE is supported).
+### Token Introspection
+
+The Token Introspection feature allows you to inspect and validate access tokens according to RFC 7662. This tool helps you:
+
+1. **Configuration**:
+   - Enter the introspection endpoint URL for your Identity Provider
+   - Provide the token you want to introspect
+   - Add client credentials if required by your IdP
+
+2. **Demo Mode**:
+   - Toggle demo mode to test introspection without making real API calls
+   - Auto-fills demo tokens when enabled
+   - Generates simulated introspection responses locally
+
+3. **Introspection Response**:
+   - View the full introspection response in JSON format
+   - See whether the token is active or inactive
+   - Review key claims like scope, expiration, issued at time
+   - RFC 7662 claim explanations are provided for better understanding
+
+4. **Integration**:
+   - Recent tokens from other OAuth flows are available for quick access
+   - Navigate directly to the Token Inspector for deeper JWT analysis
+   - Copy introspection responses for debugging purposes
+
+### General Usage Steps
+
+1. **Select Flow**: Choose the OAuth flow you want to test from the available options.
 
 2. **Configuration**:
    - **Real IdP Mode**: Enter your IdP issuer URL for auto-discovery or manually configure endpoints.
@@ -99,8 +127,8 @@ In demo mode, the OAuth Playground:
 Future enhancements to the OAuth Playground include:
 
 - Support for additional OAuth flows (Implicit, etc.)
-- Advanced token introspection and validation
 - Custom claim configuration for demo mode
 - Support for confidential clients with client secret
 - Refresh token flow demonstration
 - OAuth 2.1 support
+- Extended introspection features (revocation, token metadata)

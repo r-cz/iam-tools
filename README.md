@@ -210,6 +210,7 @@ Test and explore OAuth 2.0 flows interactively:
 - Test with your own IdP or use a demo mode with a simulated identity provider
 - Generate PKCE parameters, build authorization requests, and exchange codes for tokens
 - Visualize the complete OAuth flow for learning and debugging
+- Token introspection (RFC 7662) with demo mode support and claim explanations
 
 See [OAuth Playground Documentation](docs/feature-guides/oauth-playground.md) for detailed usage instructions.
 
