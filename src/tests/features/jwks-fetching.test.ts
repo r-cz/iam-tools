@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import { describe, expect, test, beforeEach, afterEach, mock } from 'bun:test';
 import { proxyFetch } from '../../lib/proxy-fetch';
 
 describe('JWKS Fetching Logic', () => {
@@ -6,7 +6,8 @@ describe('JWKS Fetching Logic', () => {
   const testIssuerUrl = 'https://example.com/identity';
   
   // Store original fetch
-  const originalFetch = globalThis.fetch;
+  const originalFetch = global.fetch;
+  const mockFetch = mock(); // Use Bun's built-in mock function
   
   // Mock responses
   const mockOidcConfig = {
@@ -31,39 +32,40 @@ describe('JWKS Fetching Logic', () => {
   
   // Setup mock fetch
   beforeEach(() => {
-    globalThis.fetch = async (url: string | URL | Request) => {
+    global.fetch = mockFetch as unknown as typeof fetch;
+    
+    // Mock responses based on URL
+    mockFetch.mockImplementation(async (url: string | URL | Request, options?: RequestInit) => {
       const urlString = url instanceof URL ? url.toString() : 
                       typeof url === 'string' ? url : url.url;
       
       if (urlString.includes('openid-configuration')) {
-        return {
-          ok: true,
+        return new Response(JSON.stringify(mockOidcConfig), {
           status: 200,
           statusText: 'OK',
-          json: () => Promise.resolve(mockOidcConfig)
-        } as Response;
+          headers: { 'Content-Type': 'application/json' }
+        });
       } 
       else if (urlString.includes('jwks.json')) {
-        return {
-          ok: true,
+        return new Response(JSON.stringify(mockJwks), {
           status: 200,
           statusText: 'OK',
-          json: () => Promise.resolve(mockJwks)
-        } as Response;
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
       
-      return {
-        ok: false,
+      return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
         statusText: 'Not Found',
-        json: () => Promise.resolve({ error: 'Not found' })
-      } as Response;
-    };
+        headers: { 'Content-Type': 'application/json' }
+      });
+    });
   });
   
   // Restore original fetch
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    global.fetch = originalFetch;
+    mockFetch.mockClear();
   });
 
   test('should fetch and parse OpenID configuration', async () => {
@@ -110,14 +112,13 @@ describe('JWKS Fetching Logic', () => {
   });
 
   test('should handle invalid configuration response', async () => {
-    // Override fetch just for this test
-    globalThis.fetch = async () => {
-      return {
-        ok: false,
+    // Override mock for this specific test
+    mockFetch.mockImplementation(async () => {
+      return new Response(null, {
         status: 404,
         statusText: 'Not Found'
-      } as Response;
-    };
+      });
+    });
     
     const configUrl = `${testIssuerUrl}/.well-known/openid-configuration`;
     const response = await proxyFetch(configUrl);
@@ -126,27 +127,27 @@ describe('JWKS Fetching Logic', () => {
   });
 
   test('should handle configuration without jwks_uri', async () => {
-    // Override fetch for this test
-    globalThis.fetch = async (url) => {
+    // Override mock for this test
+    mockFetch.mockImplementation(async (url) => {
       const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
       
       if (urlString.includes('openid-configuration')) {
-        return {
-          ok: true,
+        return new Response(JSON.stringify({
+          issuer: testIssuerUrl,
+          // No jwks_uri included
+          token_endpoint: `${testIssuerUrl}/oauth2/token`
+        }), {
           status: 200,
-          json: () => Promise.resolve({
-            issuer: testIssuerUrl,
-            // No jwks_uri included
-            token_endpoint: `${testIssuerUrl}/oauth2/token`
-          })
-        } as Response;
+          statusText: 'OK',
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
       
-      return {
-        ok: false,
-        status: 404
-      } as Response;
-    };
+      return new Response(null, {
+        status: 404,
+        statusText: 'Not Found'
+      });
+    });
     
     const configUrl = `${testIssuerUrl}/.well-known/openid-configuration`;
     const response = await proxyFetch(configUrl);
@@ -158,9 +159,9 @@ describe('JWKS Fetching Logic', () => {
 
   test('should handle network errors', async () => {
     // Setup mock to throw error
-    globalThis.fetch = async () => {
+    mockFetch.mockImplementation(async () => {
       throw new Error('Network error');
-    };
+    });
     
     // Use try-catch instead of expecting the error to propagate
     const configUrl = `${testIssuerUrl}/.well-known/openid-configuration`;
