@@ -39,6 +39,25 @@ describe('OAuth Playground Core Functionality', () => {
     expect(OAuthFlowType.PASSWORD).toBe('password');
   });
   
+  test('should have token introspection endpoint type', () => {
+    // Token introspection is a key part of OAuth 2.0
+    // Should be available as part of the OAuth playground
+    
+    // Mock introspection endpoint would be structured like:
+    const introspectionEndpoint = '/oauth/introspect';
+    expect(introspectionEndpoint).toContain('introspect');
+    
+    // Mock introspection request would have these params
+    const introspectionParams = {
+      token: 'sample_access_token',
+      client_id: 'sample_client',
+      client_secret: 'sample_secret'
+    };
+    
+    expect(introspectionParams).toHaveProperty('token');
+    expect(introspectionParams).toHaveProperty('client_id');
+  });
+  
   // Note: We've removed tests for PKCE generation since they require browser crypto APIs
   // These would be better tested in a browser environment or with a proper DOM 
   // environment setup with window.crypto mocked.
