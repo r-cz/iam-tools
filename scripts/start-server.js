@@ -130,7 +130,7 @@ const startProxy = () => {
   // Create log file stream
   const proxyLogStream = interactive ? 'pipe' : fs.openSync(proxyLogFile, 'a');
   
-  const proxy = spawn('bun', ['run', 'dev:proxy'], {
+  const proxy = spawn('bun', ['run', 'proxy'], {
     stdio: interactive ? 'pipe' : ['ignore', proxyLogStream, proxyLogStream],
     detached: true,
   });
