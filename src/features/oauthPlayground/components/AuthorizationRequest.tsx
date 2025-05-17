@@ -64,7 +64,14 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
         params.set('scope', config.scopes.join(' '));
       }
       
-      setAuthUrl(`${baseUrl}?${params.toString()}`);
+      const constructedUrl = `${baseUrl}?${params.toString()}`;
+      try {
+        const sanitizedUrl = new URL(constructedUrl);
+        setAuthUrl(sanitizedUrl.toString());
+      } catch (error) {
+        console.error('Invalid authorization URL:', error);
+        setAuthUrl('');
+      }
     };
     
     buildAuthorizationUrl();
@@ -92,7 +99,11 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
     // Check if popup was blocked
     if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {
       // Popup was blocked, try redirecting instead
-      window.location.href = authUrl;
+      if (authUrl) {
+        window.location.href = authUrl;
+      } else {
+        console.error('Authorization URL is invalid or empty.');
+      }
     }
   };
   
