@@ -15,7 +15,7 @@ import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
 import { toast } from "sonner";
-import { IssuerHistory } from "./IssuerHistory";
+import { IssuerHistory } from "@/components/common";
 
 interface IntrospectionResponse {
   active: boolean;
