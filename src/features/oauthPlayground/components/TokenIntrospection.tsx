@@ -172,12 +172,15 @@ export function TokenIntrospection() {
         const config = await response.json();
         if (config.introspection_endpoint) {
           setIntrospectionEndpoint(config.introspection_endpoint);
+        } else {
+          // Show error if no introspection endpoint is available
+          toast.error('This issuer does not have an introspection endpoint configured');
         }
       } else {
-        console.error('Failed to fetch OIDC configuration');
+        toast.error('Failed to fetch OIDC configuration');
       }
     } catch (error) {
-      console.error('Error fetching OIDC config:', error);
+      toast.error('Error fetching OIDC configuration: ' + (error as Error).message);
     } finally {
       setConfigLoading(false);
     }
