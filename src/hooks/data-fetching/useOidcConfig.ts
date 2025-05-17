@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { proxyFetch } from '@/lib/proxy-fetch';
+import { oidcConfigCache } from '@/lib/cache/oidc-config-cache';
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'; // Assuming types exist here
 
 interface UseOidcConfigResult {
@@ -43,6 +44,15 @@ export function useOidcConfig(): UseOidcConfigResult {
       return;
     }
 
+    // Check cache first
+    const cachedConfig = oidcConfigCache.get(issuerUrl);
+    if (cachedConfig) {
+      console.log('Using cached OIDC configuration for:', issuerUrl);
+      setData(cachedConfig);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -61,6 +71,11 @@ export function useOidcConfig(): UseOidcConfigResult {
       }
 
       const configData: OidcConfiguration = await response.json();
+      
+      // Store in cache for future use
+      oidcConfigCache.set(issuerUrl, configData);
+      console.log('Cached OIDC configuration for:', issuerUrl);
+      
       setData(configData);
     } catch (err) {
       console.error('Error fetching OIDC config:', err);
