@@ -97,15 +97,4 @@ describe('OidcConfigCache', () => {
     expect(cache.get('https://example.com')).toBeNull();
   });
 
-  test('should warm cache with multiple configurations', async () => {
-    const configs = [
-      { url: 'https://one.com', config: { ...mockConfig, issuer: 'https://one.com' } },
-      { url: 'https://two.com', config: { ...mockConfig, issuer: 'https://two.com' } },
-    ];
-    
-    await cache.warmCache(configs);
-    
-    expect(cache.get('https://one.com')?.issuer).toBe('https://one.com');
-    expect(cache.get('https://two.com')?.issuer).toBe('https://two.com');
-  });
 });

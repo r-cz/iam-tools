@@ -15,8 +15,7 @@ import {
   ConfigDisplay, 
   JwksDisplay, 
   ProviderInfo,
-  IssuerHistory,
-  CacheManager 
+  IssuerHistory
 } from "./components";
 import { detectProvider } from "./utils/config-helpers";
 import { useIssuerHistory } from "../../lib/state";
@@ -145,14 +144,13 @@ export function OidcExplorer() {
       {/* Display the configuration and JWKS using Tabs */}
       {!isLoading && oidcConfigHook.data && (
         <Tabs defaultValue="config" className="w-full">
-          <TabsList className={oidcConfigHook.data.jwks_uri ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="config">Configuration</TabsTrigger>
             {oidcConfigHook.data.jwks_uri && (
               <TabsTrigger value="jwks" disabled={!jwksHook.data}>
                 JWKS
               </TabsTrigger>
             )}
-            <TabsTrigger value="cache">Cache</TabsTrigger>
           </TabsList>
 
           {/* Configuration Tab Content */}
@@ -183,10 +181,6 @@ export function OidcExplorer() {
             </TabsContent>
           )}
 
-          {/* Cache Tab Content */}
-          <TabsContent value="cache" className="mt-4">
-            <CacheManager />
-          </TabsContent>
         </Tabs>
       )}
     </div>

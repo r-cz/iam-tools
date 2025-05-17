@@ -3,4 +3,3 @@ export * from './ConfigInput';
 export * from './JwksDisplay';
 export * from './ProviderInfo';
 export * from './IssuerHistory';
-export * from './CacheManager';

@@ -122,12 +122,6 @@ export class OidcConfigCache {
     };
   }
 
-  // Pre-populate cache with popular providers
-  async warmCache(popularConfigs: Array<{ url: string; config: OidcConfiguration }>): Promise<void> {
-    for (const { url, config } of popularConfigs) {
-      this.set(url, config);
-    }
-  }
 
   // Private helper methods
   private normalizeUrl(url: string): string {

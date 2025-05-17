@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useTheme } from "@/components/theme";
 import { useSettings, useTokenHistory, useIssuerHistory } from "@/lib/state";
+import { oidcConfigCache } from "@/lib/cache/oidc-config-cache";
 import { toast } from "sonner";
 
 export function NavSettings() {
@@ -47,8 +48,9 @@ export function NavSettings() {
   const handleClearAllHistory = () => {
     clearTokens();
     clearIssuers();
-    toast.success("All history cleared", {
-      description: "Token and issuer history has been cleared."
+    oidcConfigCache.clear();
+    toast.success("All data cleared", {
+      description: "Token history, issuer history, and cache have been cleared."
     });
   };
 
@@ -125,7 +127,7 @@ export function NavSettings() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             
-            {/* History Settings */}
+            {/* Storage Settings */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="flex items-center gap-2">
                 <Save className="h-4 w-4" />
@@ -144,13 +146,13 @@ export function NavSettings() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             
-            {/* Clear History */}
+            {/* Clear Data */}
             <DropdownMenuItem 
               className="flex items-center gap-2 text-destructive focus:text-destructive"
               onClick={handleClearAllHistory}
             >
               <Trash className="h-4 w-4" />
-              <span>Clear All History</span>
+              <span>Clear All Data</span>
             </DropdownMenuItem>
             
             {/* Reset Settings */}
