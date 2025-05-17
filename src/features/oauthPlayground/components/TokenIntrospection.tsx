@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/ui/code-block";
 import { useAppState } from "@/lib/state";
@@ -307,7 +307,7 @@ export function TokenIntrospection() {
                     size="sm"
                     className="flex items-center gap-1"
                     onClick={() => setShowIssuerHistory(!showIssuerHistory)}
-                    disabled={configLoading}
+                    disabled={configLoading || isDemoMode}
                   >
                     <History size={16} />
                     <span>Recent Issuers</span>
@@ -356,6 +356,7 @@ export function TokenIntrospection() {
                       size="sm"
                       className="flex items-center gap-1"
                       onClick={() => setShowTokenHistory(!showTokenHistory)}
+                      disabled={isDemoMode}
                     >
                       <History size={16} />
                       <span>Recent Tokens</span>
@@ -467,6 +468,108 @@ export function TokenIntrospection() {
                 language="json"
                 className="text-xs max-h-96 overflow-auto"
               />
+              
+              {/* Key Claims Explained (RFC 7662) */}
+              <div className="mt-6 space-y-4">
+                <h3 className="text-sm font-semibold">Key Claims Explained</h3>
+                
+                {/* Active Claim - Always show */}
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center">
+                        <span className="font-mono text-sm font-medium">active</span>
+                        <Badge variant="outline" className="ml-2 text-xs">REQUIRED</Badge>
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-mono">{String(result.active)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>Boolean indicator of whether the token is currently active.</p>
+                      <p className="opacity-80">
+                        <a href="https://datatracker.ietf.org/doc/html/rfc7662#section-2.2" target="_blank" rel="noopener noreferrer" className="underline">RFC 7662 §2.2</a> - Required for all introspection responses
+                      </p>
+                    </div>
+                    
+                    {result.active === false && result.error && (
+                      <Alert variant="destructive" className="mt-2">
+                        <AlertTitle>Inactive Reason</AlertTitle>
+                        <AlertDescription>{result.error_description || result.error}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Expiration Claim */}
+                {result.exp && (
+                  <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center">
+                          <span className="font-mono text-sm font-medium">exp</span>
+                          {result.exp * 1000 < Date.now() && (
+                            <Badge variant="destructive" className="ml-2">Expired</Badge>
+                          )}
+                        </div>
+                        <div className="text-sm">
+                          <div>
+                            <div className="text-muted-foreground text-xs">
+                              {new Date(result.exp * 1000).toLocaleString()}
+                            </div>
+                            <div className="font-mono mt-1">{result.exp}</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>Integer timestamp (seconds since Unix epoch) indicating when this token expires.</p>
+                        <p className="opacity-80">
+                          <a href="https://datatracker.ietf.org/doc/html/rfc7662#section-2.2" target="_blank" rel="noopener noreferrer" className="underline">RFC 7662 §2.2</a>
+                        </p>
+                      </div>
+                      
+                      {result.exp * 1000 < Date.now() && (
+                        <Alert variant="destructive" className="mt-2">
+                          <AlertTitle>Token Expired</AlertTitle>
+                          <AlertDescription>
+                            This token expired on {new Date(result.exp * 1000).toLocaleString()}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Issued At Claim */}
+                {result.iat && (
+                  <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center">
+                          <span className="font-mono text-sm font-medium">iat</span>
+                        </div>
+                        <div className="text-sm">
+                          <div>
+                            <div className="text-muted-foreground text-xs">
+                              {new Date(result.iat * 1000).toLocaleString()}
+                            </div>
+                            <div className="font-mono mt-1">{result.iat}</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>Integer timestamp (seconds since Unix epoch) indicating when this token was issued.</p>
+                        <p className="opacity-80">
+                          <a href="https://datatracker.ietf.org/doc/html/rfc7662#section-2.2" target="_blank" rel="noopener noreferrer" className="underline">RFC 7662 §2.2</a>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
