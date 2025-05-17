@@ -18,34 +18,19 @@ A collection of specialized tools for Identity and Access Management (IAM) devel
 # Install dependencies
 bun install
 
-# Start development server
+# Start development server (Vite only)
 bun run dev
 
-# Start development server with CORS proxy (blocks terminal)
+# Start CORS proxy server
+bun run proxy
+
+# Start both development server and CORS proxy (blocks terminal)
 bun run dev:all
 
-# Start development server and CORS proxy in interactive mode
-# Displays server output but allows terminal interaction
-bun run dev:bg
-
-# Start only Vite dev server in interactive mode
-bun run dev:bg:vite
-
-# Start only CORS proxy in interactive mode
-bun run dev:bg:proxy
-
-# Start development server and CORS proxy fully detached
-# Servers run in background with logs in .logs directory
-bun run dev:detach
-
-# Start only Vite dev server fully detached
-bun run dev:detach:vite
-
-# Start only CORS proxy fully detached
-bun run dev:detach:proxy
-
-# Start only the CORS proxy
-bun run dev:proxy
+# Start servers detached (runs in background with logs in .logs directory)
+bun run dev:detach      # Both Vite and proxy
+bun run dev:detach:vite # Only Vite
+bun run dev:detach:proxy # Only proxy
 
 # Stop all running development servers
 bun run dev:stop
@@ -105,16 +90,11 @@ The proxy works by:
 For local development, the CORS proxy runs on port 8788. You can start both the Vite development server and the CORS proxy in several ways:
 
 ```bash
-# Standard mode (blocks terminal):
+# Start both servers (blocks terminal):
 bun run dev:all
 
-# Interactive mode (output visible, terminal usable):
-bun run dev:bg          # Both servers
-bun run dev:bg:vite     # Only Vite
-bun run dev:bg:proxy    # Only proxy
-
-# Fully detached mode (runs in background, logs in .logs directory):
-bun run dev:detach      # Both servers
+# Start servers detached (runs in background, logs in .logs directory):
+bun run dev:detach      # Both Vite and proxy
 bun run dev:detach:vite # Only Vite
 bun run dev:detach:proxy # Only proxy
 
@@ -125,7 +105,7 @@ bun run dev:stop
 To start only the CORS proxy:
 
 ```bash
-bun run dev:proxy
+bun run proxy
 ```
 
 ## Adding shadcn Components
@@ -210,6 +190,7 @@ Test and explore OAuth 2.0 flows interactively:
 - Test with your own IdP or use a demo mode with a simulated identity provider
 - Generate PKCE parameters, build authorization requests, and exchange codes for tokens
 - Visualize the complete OAuth flow for learning and debugging
+- Token introspection (RFC 7662) with demo mode support and claim explanations
 
 See [OAuth Playground Documentation](docs/feature-guides/oauth-playground.md) for detailed usage instructions.
 
