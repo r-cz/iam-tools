@@ -90,7 +90,7 @@ export function OidcExplorer() {
       // Automatically fetch config for the last issuer URL
       oidcConfigHook.fetchConfig(lastIssuerUrl);
     }
-  }, [lastIssuerUrl]);
+  }, [lastIssuerUrl, currentIssuerUrl, setInputIssuerUrl, oidcConfigHook]);
   
   // Effect for successful OIDC config fetch
   useEffect(() => {
@@ -133,7 +133,19 @@ export function OidcExplorer() {
         console.log(`JWKS already fetched for URI: ${config.jwks_uri}`);
       }
     }
-  }, [oidcConfigHook.data, addIssuer, setLastIssuerUrl, recentJwks]); 
+  }, [
+    oidcConfigHook.data, 
+    addIssuer, 
+    setLastIssuerUrl, 
+    recentJwks, 
+    inputIssuerUrl, 
+    lastFetchedJwksUri, 
+    setProviderName, 
+    setDetectionReasons, 
+    setCurrentIssuerUrl, 
+    setLastFetchedJwksUri,
+    jwksHook
+  ]); 
 
   // Effect for successful JWKS fetch
   useEffect(() => {
@@ -164,7 +176,7 @@ export function OidcExplorer() {
       // Reset provider name on error
       setProviderName(null);
     }
-  }, [oidcConfigHook.error, jwksHook.error]);
+  }, [oidcConfigHook.error, jwksHook.error, setProviderName]);
 
   // Handle fetch request from ConfigInput or IssuerHistory
   const handleFetchConfig = (issuerUrl: string) => {
