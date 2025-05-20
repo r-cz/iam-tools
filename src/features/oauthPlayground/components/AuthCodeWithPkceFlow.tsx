@@ -6,24 +6,28 @@ import AuthorizationRequest from './AuthorizationRequest';
 import TokenExchange from './TokenExchange';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useOAuthPlayground } from '@/lib/state';
 
 export function AuthCodeWithPkceFlow() {
   const location = useLocation();
+  
+  // Get state from global state
+  const { 
+    activeConfig, 
+    activeConfigId, 
+    lastFlowType, 
+    lastDemoMode, 
+    addConfig, 
+    updateConfig, 
+    setActiveConfig 
+  } = useOAuthPlayground();
+  
+  // Local component state
   const [activeTab, setActiveTab] = useState<string>('config');
   const [config, setConfig] = useState<OAuthConfig | null>(null);
   const [pkce, setPkce] = useState<PkceParams | null>(null);
   const [authCode, setAuthCode] = useState<string | null>(null);
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null);
-  
-  // Persistent storage for flow state
-  const [storedState, setStoredState] = useLocalStorage<{
-    config?: OAuthConfig;
-    pkce?: PkceParams;
-    authCode?: string;
-    tokenResponse?: TokenResponse;
-    activeTab?: string;
-  }>('oauth_playground_state', {});
   
   // Flag to track if initial load is complete
   const initialLoadComplete = useRef(false);
@@ -42,45 +46,112 @@ export function AuthCodeWithPkceFlow() {
       const savedPkce = localStorage.getItem('oauth_playground_pkce');
       
       if (savedConfig && savedPkce) {
-        setConfig(JSON.parse(savedConfig));
+        const parsedConfig = JSON.parse(savedConfig);
+        setConfig(parsedConfig);
         setPkce(JSON.parse(savedPkce));
         setActiveTab('token');
+        
+        // Ensure the config is saved in global state
+        if (parsedConfig) {
+          addConfig({
+            clientId: parsedConfig.clientId,
+            redirectUri: parsedConfig.redirectUri,
+            scopes: parsedConfig.scopes,
+            issuerUrl: parsedConfig.issuerUrl,
+            flowType: 'authorization_code_pkce',
+            demoMode: !!parsedConfig.demoMode,
+            name: parsedConfig.demoMode 
+              ? 'Demo Config' 
+              : `${parsedConfig.clientId} @ ${parsedConfig.issuerUrl || 'Unknown Issuer'}`
+          });
+        }
       }
-    } else {
-      // Load from persistent storage if available
-      if (storedState.config) setConfig(storedState.config);
-      if (storedState.pkce) setPkce(storedState.pkce);
-      if (storedState.authCode) setAuthCode(storedState.authCode);
-      if (storedState.tokenResponse) setTokenResponse(storedState.tokenResponse);
-      if (storedState.activeTab) setActiveTab(storedState.activeTab);
+    } else if (activeConfig) {
+      // Load from active config in global state
+      setConfig({
+        issuerUrl: activeConfig.issuerUrl,
+        clientId: activeConfig.clientId,
+        redirectUri: activeConfig.redirectUri,
+        scopes: activeConfig.scopes,
+        demoMode: activeConfig.demoMode,
+        // Need to load these from localStorage or they'll be undefined
+        authEndpoint: undefined,
+        tokenEndpoint: undefined,
+        jwksEndpoint: undefined
+      });
+      
+      // Try to load endpoints from localStorage if we have an active config
+      try {
+        const savedConfig = localStorage.getItem('oauth_playground_config');
+        if (savedConfig) {
+          const parsedConfig = JSON.parse(savedConfig);
+          
+          // Only use the endpoints from localStorage, keep the rest from global state
+          setConfig(current => {
+            if (!current) return null;
+            return {
+              ...current,
+              authEndpoint: parsedConfig.authEndpoint,
+              tokenEndpoint: parsedConfig.tokenEndpoint,
+              jwksEndpoint: parsedConfig.jwksEndpoint,
+            };
+          });
+        }
+        
+        // If we have PKCE params saved, load them
+        const savedPkce = localStorage.getItem('oauth_playground_pkce');
+        if (savedPkce) {
+          setPkce(JSON.parse(savedPkce));
+        }
+        
+        // If we have an auth code saved, load it
+        const savedAuthCode = localStorage.getItem('oauth_playground_auth_code');
+        if (savedAuthCode) {
+          setAuthCode(savedAuthCode);
+          setActiveTab('token');
+        }
+        
+        // If we have a token response saved, load it
+        const savedTokenResponse = localStorage.getItem('oauth_playground_token_response');
+        if (savedTokenResponse) {
+          setTokenResponse(JSON.parse(savedTokenResponse));
+        }
+      } catch (error) {
+        console.error('Error loading saved state from localStorage:', error);
+      }
     }
     
     // Mark initial load as complete
     initialLoadComplete.current = true;
-  // Only depend on location.state, not on storedState
-  }, [location.state]);
+  }, [location.state, activeConfig, addConfig]);
   
-  // Save state changes to storage
-  // Using useEffect to batch updates and avoid saving on every render
-  const saveToStorage = () => {
-    // Only save if initial load is complete
-    if (!initialLoadComplete.current) return;
-    
-    setStoredState({
-      config: config || undefined,
-      pkce: pkce || undefined,
-      authCode: authCode || undefined,
-      tokenResponse: tokenResponse || undefined,
-      activeTab
-    });
-  };
-  
-  // Save state changes when component unmounts
+  // Save config to localStorage whenever it changes
   useEffect(() => {
-    return () => {
-      saveToStorage();
-    };
-  }, []);
+    if (config) {
+      localStorage.setItem('oauth_playground_config', JSON.stringify(config));
+    }
+  }, [config]);
+  
+  // Save PKCE to localStorage whenever it changes
+  useEffect(() => {
+    if (pkce) {
+      localStorage.setItem('oauth_playground_pkce', JSON.stringify(pkce));
+    }
+  }, [pkce]);
+  
+  // Save auth code to localStorage whenever it changes
+  useEffect(() => {
+    if (authCode) {
+      localStorage.setItem('oauth_playground_auth_code', authCode);
+    }
+  }, [authCode]);
+  
+  // Save token response to localStorage whenever it changes
+  useEffect(() => {
+    if (tokenResponse) {
+      localStorage.setItem('oauth_playground_token_response', JSON.stringify(tokenResponse));
+    }
+  }, [tokenResponse]);
   
   // Handle configuration completion
   const handleConfigComplete = (newConfig: OAuthConfig, newPkce: PkceParams) => {
@@ -88,37 +159,38 @@ export function AuthCodeWithPkceFlow() {
     setPkce(newPkce);
     setActiveTab('auth');
     
-    // Save to storage when advancing to next step
-    setTimeout(saveToStorage, 0);
+    // Save to global state
+    addConfig({
+      clientId: newConfig.clientId,
+      redirectUri: newConfig.redirectUri,
+      scopes: newConfig.scopes || [],
+      issuerUrl: newConfig.issuerUrl,
+      flowType: 'authorization_code_pkce',
+      demoMode: !!newConfig.demoMode,
+      name: newConfig.demoMode 
+        ? 'Demo Config' 
+        : `${newConfig.clientId} @ ${newConfig.issuerUrl || 'Unknown Issuer'}`
+    });
   };
   
   // Handle authorization completion
   const handleAuthorizationComplete = (code: string) => {
     setAuthCode(code);
     setActiveTab('token');
-    
-    // Save to storage when advancing to next step
-    setTimeout(saveToStorage, 0);
   };
   
   // Handle token exchange completion
   const handleTokenExchangeComplete = (response: TokenResponse) => {
     setTokenResponse(response);
-    
-    // Save to storage when advancing to next step
-    setTimeout(saveToStorage, 0);
   };
   
   // Determine which tabs should be enabled
   const isAuthTabEnabled = !!config && !!pkce;
   const isTokenTabEnabled = isAuthTabEnabled && !!authCode;
   
-  // Save state when tab changes
+  // Handle tab change
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    
-    // Save to storage when changing tabs
-    setTimeout(saveToStorage, 0);
   };
   
   return (
@@ -139,7 +211,11 @@ export function AuthCodeWithPkceFlow() {
             </TabsList>
             
             <TabsContent value="config">
-              <ConfigurationForm onConfigComplete={handleConfigComplete} />
+              <ConfigurationForm 
+                onConfigComplete={handleConfigComplete} 
+                initialConfig={activeConfig}
+                lastDemoMode={lastDemoMode}
+              />
             </TabsContent>
             
             <TabsContent value="auth">

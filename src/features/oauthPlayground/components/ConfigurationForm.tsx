@@ -1,52 +1,73 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-// Removed Tabs imports
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge'; // Import Badge
+import { Badge } from '@/components/ui/badge';
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce';
 import { proxyFetch } from '@/lib/proxy-fetch';
-import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
+import { OAuthConfig, PkceParams, OAuthConfigHistoryItem } from '../utils/types';
 import { toast } from 'sonner';
 import { IssuerHistory } from '@/components/common';
-import { useIssuerHistory } from '@/lib/state';
+import { useIssuerHistory, useOAuthPlayground } from '@/lib/state';
 
 interface ConfigurationFormProps {
   onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void;
+  initialConfig?: OAuthConfigHistoryItem;
+  lastDemoMode?: boolean;
 }
 
-export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) {
-  // Removed flowType state
-  const [issuerUrl, setIssuerUrl] = useState<string>('');
+export function ConfigurationForm({ onConfigComplete, initialConfig, lastDemoMode }: ConfigurationFormProps) {
+  // Get state from global state
+  const { updateFlowPreferences } = useOAuthPlayground();
+  const { addIssuer } = useIssuerHistory();
+  
+  // Form state
+  const [issuerUrl, setIssuerUrl] = useState<string>(initialConfig?.issuerUrl || '');
   const [authEndpoint, setAuthEndpoint] = useState<string>('');
   const [tokenEndpoint, setTokenEndpoint] = useState<string>('');
   const [jwksEndpoint, setJwksEndpoint] = useState<string>('');
-  const [clientId, setClientId] = useState<string>('');
-  const [redirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`); // Removed setRedirectUri
-  const [scopes, setScopes] = useState<string>('openid profile email');
+  const [clientId, setClientId] = useState<string>(initialConfig?.clientId || '');
+  const [redirectUri] = useState<string>(initialConfig?.redirectUri || `${window.location.origin}/oauth-playground/callback`);
+  
+  // Initialize scopes from initial config or default
+  const initialScopes = initialConfig?.scopes?.join(' ') || 'openid profile email';
+  const [scopes, setScopes] = useState<string>(initialScopes);
+  
+  // Loading and demo mode states
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
-  const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false); // Track if endpoints were set by discovery
-  const { addIssuer } = useIssuerHistory();
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(lastDemoMode ?? false);
+  const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false);
 
   // Generate PKCE values
   const [codeVerifier, setCodeVerifier] = useState<string>('');
   const [codeChallenge, setCodeChallenge] = useState<string>('');
   const [state, setState] = useState<string>('');
 
+  // Generate initial PKCE values on mount
   useEffect(() => {
-    // Generate initial PKCE values
     regeneratePkce();
   }, []);
 
-  // Add useEffect to show toast when demo mode is enabled
+  // Show toast when demo mode is enabled
   useEffect(() => {
     if (isDemoMode) {
       toast.info("Demo mode enabled. A mock OAuth server will be used.");
     }
   }, [isDemoMode]);
+  
+  // Try to fetch config if we have an initial issuer URL
+  useEffect(() => {
+    if (initialConfig?.issuerUrl && !authEndpoint && !tokenEndpoint) {
+      // Delay to avoid immediate fetch on mount
+      const timer = setTimeout(() => {
+        fetchOidcConfig();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [initialConfig?.issuerUrl]);
   
   // Handle selecting an issuer from the history
   const handleSelectIssuer = (issuerUrl: string) => {
@@ -87,7 +108,6 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       const config = await response.json();
 
       if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
-      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
       if (config.token_endpoint) setTokenEndpoint(config.token_endpoint);
       if (config.jwks_uri) setJwksEndpoint(config.jwks_uri);
       
@@ -126,8 +146,10 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       return;
     }
 
+    // Update flow preferences in global state
+    updateFlowPreferences('authorization_code_pkce', isDemoMode);
+
     const config: OAuthConfig = {
-      // Removed flowType property
       issuerUrl: isDemoMode ? undefined : issuerUrl,
       authEndpoint: isDemoMode ? undefined : authEndpoint,
       tokenEndpoint: isDemoMode ? undefined : tokenEndpoint,
@@ -164,7 +186,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               checked={isDemoMode}
               onCheckedChange={setIsDemoMode}
             />
-            <Label htmlFor="demo-mode-switch" className="mb-0"> {/* Remove bottom margin from label */}
+            <Label htmlFor="demo-mode-switch" className="mb-0">
               Demo Mode
               <p className="text-xs text-muted-foreground font-normal">
                 Use a simulated Identity Provider for testing
@@ -252,8 +274,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               </div>
             </div>
           ) : (
-            // Removed the empty div that previously held the static message
-            null // Or simply remove the entire else block if nothing else goes here
+            null
           )}
 
           {/* Common Configuration */}
@@ -275,8 +296,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
             <Label>Redirect URI</Label>
             <Input
               value={redirectUri}
-              readOnly // Make the input read-only
-              // onChange removed
+              readOnly
             />
             <p className="text-sm text-muted-foreground">
               {isDemoMode
