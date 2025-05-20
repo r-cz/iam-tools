@@ -10,7 +10,7 @@ import {
   OidcExplorerState,
   TokenInspectorState
 } from './types';
-import { STORAGE_KEYS } from './constants';
+import { STORAGE_KEYS, STATE_VERSION } from './constants';
 import { 
   addTokenToHistory, 
   addIssuerToHistory,
@@ -27,6 +27,96 @@ import {
   clearOAuthConfigHistory,
   updateOAuthFlowPreferences
 } from './utils';
+
+/**
+ * Helper to migrate data when schema changes
+ */
+function migrateState<T>(key: string, value: T, version: string): T {
+  // Get the stored version metadata
+  const storedVersion = localStorage.getItem(`${key}-version`);
+  
+  if (!storedVersion || storedVersion !== version) {
+    console.log(`Migrating state for ${key} from ${storedVersion || 'unknown'} to ${version}`);
+    
+    // Perform migrations based on version differences
+    if (key === STORAGE_KEYS.USER_SETTINGS) {
+      const settings = value as any;
+      // Add any missing fields from default settings
+      const newSettings = {
+        ...initialAppState.settings,
+        ...settings,
+        // Ensure new properties are always set with default values
+        preserveStateAcrossTools: settings.preserveStateAcrossTools ?? true
+      };
+      
+      // Update the version after migration
+      localStorage.setItem(`${key}-version`, version);
+      
+      return newSettings as unknown as T;
+    }
+    
+    // Add more migrations for other storage keys as needed
+    // For example:
+    if (key === STORAGE_KEYS.TOKEN_INSPECTOR_STATE && (!storedVersion || storedVersion < "1.1")) {
+      // Cast to any to allow property access
+      const state = value as any;
+      const newState = {
+        ...initialAppState.tokenInspector,
+        ...state,
+        // Always add/overwrite with the new properties
+        validationPreferences: {
+          ...initialAppState.tokenInspector.validationPreferences,
+          ...(state?.validationPreferences || {})
+        },
+        displayPreferences: {
+          ...initialAppState.tokenInspector.displayPreferences,
+          ...(state?.displayPreferences || {})
+        }
+      };
+      
+      // Update the version after migration
+      localStorage.setItem(`${key}-version`, version);
+      
+      return newState as unknown as T;
+    }
+    
+    if (key === STORAGE_KEYS.OIDC_EXPLORER_STATE && (!storedVersion || storedVersion < "1.1")) {
+      const state = value as any;
+      const newState = {
+        ...initialAppState.oidcExplorer,
+        ...state,
+        displayPreferences: {
+          ...initialAppState.oidcExplorer.displayPreferences,
+          ...(state?.displayPreferences || {})
+        }
+      };
+      
+      // Update the version after migration
+      localStorage.setItem(`${key}-version`, version);
+      
+      return newState as unknown as T;
+    }
+    
+    if (key === STORAGE_KEYS.OAUTH_STATE && (!storedVersion || storedVersion < "1.1")) {
+      const state = value as any;
+      const newState = {
+        ...initialAppState.oauth,
+        ...state,
+        configs: state?.configs || []
+      };
+      
+      // Update the version after migration
+      localStorage.setItem(`${key}-version`, version);
+      
+      return newState as unknown as T;
+    }
+    
+    // For any other keys, just update the version
+    localStorage.setItem(`${key}-version`, version);
+  }
+  
+  return value;
+}
 
 // Context type
 interface AppStateContextType {
@@ -126,35 +216,41 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   // Use individual storage keys for better performance and separation of concerns
   const [tokenHistory, setTokenHistory] = useLocalStorage<TokenHistoryItem[]>(
     STORAGE_KEYS.TOKEN_HISTORY,
-    initialAppState.tokenHistory
+    initialAppState.tokenHistory,
+    (stored) => migrateState(STORAGE_KEYS.TOKEN_HISTORY, stored, STATE_VERSION)
   );
   
   const [issuerHistory, setIssuerHistory] = useLocalStorage<IssuerHistoryItem[]>(
     STORAGE_KEYS.ISSUER_HISTORY,
-    initialAppState.issuerHistory
+    initialAppState.issuerHistory,
+    (stored) => migrateState(STORAGE_KEYS.ISSUER_HISTORY, stored, STATE_VERSION)
   );
   
   const [settings, setSettings] = useLocalStorage<UserSettings>(
     STORAGE_KEYS.USER_SETTINGS,
-    initialAppState.settings
+    initialAppState.settings,
+    (stored) => migrateState(STORAGE_KEYS.USER_SETTINGS, stored, STATE_VERSION)
   );
   
   // New state for Token Inspector
   const [tokenInspector, setTokenInspector] = useLocalStorage<TokenInspectorState>(
     STORAGE_KEYS.TOKEN_INSPECTOR_STATE,
-    initialAppState.tokenInspector
+    initialAppState.tokenInspector,
+    (stored) => migrateState(STORAGE_KEYS.TOKEN_INSPECTOR_STATE, stored, STATE_VERSION)
   );
   
   // New state for OAuth Playground
   const [oauth, setOAuth] = useLocalStorage<OAuthState>(
     STORAGE_KEYS.OAUTH_STATE,
-    initialAppState.oauth
+    initialAppState.oauth,
+    (stored) => migrateState(STORAGE_KEYS.OAUTH_STATE, stored, STATE_VERSION)
   );
   
   // New state for OIDC Explorer
   const [oidcExplorer, setOidcExplorer] = useLocalStorage<OidcExplorerState>(
     STORAGE_KEYS.OIDC_EXPLORER_STATE,
-    initialAppState.oidcExplorer
+    initialAppState.oidcExplorer,
+    (stored) => migrateState(STORAGE_KEYS.OIDC_EXPLORER_STATE, stored, STATE_VERSION)
   );
 
   // Token history methods
@@ -206,10 +302,16 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   // Settings methods
   const updateSettings = useCallback((updates: Partial<UserSettings>) => {
     setSettings(current => ({ ...current, ...updates }));
+    
+    // Update the version
+    localStorage.setItem(`${STORAGE_KEYS.USER_SETTINGS}-version`, STATE_VERSION);
   }, [setSettings]);
 
   const resetSettings = useCallback(() => {
     setSettings(initialAppState.settings);
+    
+    // Update the version
+    localStorage.setItem(`${STORAGE_KEYS.USER_SETTINGS}-version`, STATE_VERSION);
   }, [setSettings]);
   
   // Token Inspector methods
@@ -225,6 +327,9 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       ...current,
       ...updates
     }));
+    
+    // Update the version
+    localStorage.setItem(`${STORAGE_KEYS.TOKEN_INSPECTOR_STATE}-version`, STATE_VERSION);
   }, [setTokenInspector]);
   
   // OAuth Playground methods
@@ -267,6 +372,9 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   
   const updateOAuthPreferences = useCallback((flowType: string, demoMode: boolean) => {
     setOAuth(current => updateOAuthFlowPreferences(current, flowType, demoMode));
+    
+    // Update the version
+    localStorage.setItem(`${STORAGE_KEYS.OAUTH_STATE}-version`, STATE_VERSION);
   }, [setOAuth]);
   
   // OIDC Explorer methods
@@ -298,6 +406,9 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
         ...prefs
       }
     }));
+    
+    // Update the version
+    localStorage.setItem(`${STORAGE_KEYS.OIDC_EXPLORER_STATE}-version`, STATE_VERSION);
   }, [setOidcExplorer]);
 
   // Construct the context value
