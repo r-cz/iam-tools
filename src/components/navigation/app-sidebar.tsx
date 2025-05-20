@@ -8,7 +8,6 @@ import {
   ArrowRight,
   ChevronRight,
   FlaskConical,
-  UserCircle,
   UserRoundSearch
 } from "lucide-react"
 import { Link } from 'react-router-dom';
