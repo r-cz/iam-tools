@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PageContainer, PageHeader } from '@/components/page';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink, ArrowRight, Lock, Key, SearchCheck, UserCircle } from 'lucide-react';
+import { ExternalLink, ArrowRight, Lock, Key, SearchCheck, UserRoundSearch } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
@@ -35,7 +35,7 @@ export function OAuthPlaygroundPage() {
       id: 'userinfo',
       title: 'UserInfo Endpoint',
       description: 'Access user profile information using an access token with proper scopes.',
-      icon: UserCircle,
+      icon: UserRoundSearch,
       url: '/oauth-playground/userinfo',
       active: true,
     },

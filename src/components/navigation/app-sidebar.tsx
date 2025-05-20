@@ -8,7 +8,7 @@ import {
   ArrowRight,
   ChevronRight,
   FlaskConical,
-  UserCircle
+  UserRoundSearch
 } from "lucide-react"
 import { Link } from 'react-router-dom';
 
@@ -73,7 +73,7 @@ const menuTree = [
           {
             title: "UserInfo",
             url: "/oauth-playground/userinfo",
-            icon: UserCircle
+            icon: UserRoundSearch
           }
           // More flows will be added here later
         ]
