@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
 import { useJwks } from "@/hooks/data-fetching/useJwks";
 import {
@@ -19,6 +19,7 @@ import {
 import { IssuerHistory } from "@/components/common";
 import { detectProvider } from "./utils/config-helpers";
 import { useIssuerHistory, useOidcExplorer } from "../../lib/state";
+import { useSelectiveState } from "@/hooks"; // Import the selective state hook
 
 export function OidcExplorer() {
   // Instantiate hooks
@@ -34,13 +35,49 @@ export function OidcExplorer() {
     updateDisplayPreferences 
   } = useOidcExplorer();
 
-  // Local state for derived/UI data
-  const [providerName, setProviderName] = useState<string | null>(null);
-  const [detectionReasons, setDetectionReasons] = useState<string[]>([]);
-  const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>('');
-  const [inputIssuerUrl, setInputIssuerUrl] = useState<string>(lastIssuerUrl || '');
-  const [lastFetchedJwksUri, setLastFetchedJwksUri] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("config");
+  // Use selective state for local state persistence between page navigations
+  const [explorerState, setExplorerState] = useSelectiveState({
+    key: 'oidc-explorer-page-state',
+    initialValue: {
+      providerName: null as string | null,
+      detectionReasons: [] as string[],
+      currentIssuerUrl: '',
+      inputIssuerUrl: lastIssuerUrl || '',
+      lastFetchedJwksUri: null as string | null,
+      activeTab: "config"
+    },
+    // We should exclude any state that shouldn't persist across sessions
+    excludeKeys: []
+  });
+
+  // Destructure state and create setter functions for cleaner code
+  const {
+    providerName,
+    detectionReasons,
+    currentIssuerUrl,
+    inputIssuerUrl,
+    lastFetchedJwksUri,
+    activeTab
+  } = explorerState;
+
+  // Create setter functions
+  const setProviderName = (value: string | null) => 
+    setExplorerState(prev => ({ ...prev, providerName: value }));
+  
+  const setDetectionReasons = (value: string[]) => 
+    setExplorerState(prev => ({ ...prev, detectionReasons: value }));
+  
+  const setCurrentIssuerUrl = (value: string) => 
+    setExplorerState(prev => ({ ...prev, currentIssuerUrl: value }));
+  
+  const setInputIssuerUrl = (value: string) => 
+    setExplorerState(prev => ({ ...prev, inputIssuerUrl: value }));
+  
+  const setLastFetchedJwksUri = (value: string | null) => 
+    setExplorerState(prev => ({ ...prev, lastFetchedJwksUri: value }));
+  
+  const setActiveTab = (value: string) => 
+    setExplorerState(prev => ({ ...prev, activeTab: value }));
   
   // Use a ref to track if we've already added this URL to history
   const processedUrls = useRef<Set<string>>(new Set());

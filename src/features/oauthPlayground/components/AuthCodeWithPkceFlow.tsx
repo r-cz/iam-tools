@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { OAuthConfig, PkceParams, TokenResponse } from '../utils/types';
 import ConfigurationForm from './ConfigurationForm';
@@ -7,6 +7,7 @@ import TokenExchange from './TokenExchange';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOAuthPlayground } from '@/lib/state';
+import { useSelectiveState } from '@/hooks';
 
 export function AuthCodeWithPkceFlow() {
   const location = useLocation();
@@ -18,51 +19,87 @@ export function AuthCodeWithPkceFlow() {
     addConfig 
   } = useOAuthPlayground();
   
-  // Local component state
-  const [activeTab, setActiveTab] = useState<string>('config');
-  const [config, setConfig] = useState<OAuthConfig | null>(null);
-  const [pkce, setPkce] = useState<PkceParams | null>(null);
-  const [authCode, setAuthCode] = useState<string | null>(null);
-  const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null);
+  // Use selective state for persistent state between page navigations
+  const [oauthState, setOauthState] = useSelectiveState({
+    key: 'oauth-playground-state',
+    initialValue: {
+      activeTab: 'config',
+      config: null as OAuthConfig | null,
+      pkce: null as PkceParams | null,
+      authCode: null as string | null,
+      tokenResponse: null as TokenResponse | null
+    },
+    // We don't exclude any fields as all of them should persist
+    excludeKeys: []
+  });
+
+  // Destructure state for easier access
+  const { activeTab, config, pkce, authCode } = oauthState;
+  // tokenResponse is used in the handleTokenExchangeComplete
+
+  // Create setter functions
+  const setActiveTab = (value: string) => 
+    setOauthState(prev => ({ ...prev, activeTab: value }));
+  
+  const setConfig = (value: OAuthConfig | null) => 
+    setOauthState(prev => ({ ...prev, config: value }));
+  
+  const setPkce = (value: PkceParams | null) => 
+    setOauthState(prev => ({ ...prev, pkce: value }));
+  
+  const setAuthCode = (value: string | null) => 
+    setOauthState(prev => ({ ...prev, authCode: value }));
+  
+  const setTokenResponse = (value: TokenResponse | null) => 
+    setOauthState(prev => ({ ...prev, tokenResponse: value }));
   
   // Flag to track if initial load is complete
   const initialLoadComplete = useRef(false);
   
-  // Initialize from location state (returning from callback) or stored state
+  // Initialize from location state (returning from callback)
+  // Note: We don't need to load from localStorage as the selective state hook handles that
   useEffect(() => {
     // Only run this effect once
     if (initialLoadComplete.current) return;
     
     // Check if we have a code from the location state
     if (location.state?.code) {
+      // If we have a code from the auth callback
       setAuthCode(location.state.code);
+      setActiveTab('token');
       
-      // Load saved config and PKCE from localStorage
-      const savedConfig = localStorage.getItem('oauth_playground_config');
-      const savedPkce = localStorage.getItem('oauth_playground_pkce');
-      
-      if (savedConfig && savedPkce) {
-        const parsedConfig = JSON.parse(savedConfig);
-        setConfig(parsedConfig);
-        setPkce(JSON.parse(savedPkce));
-        setActiveTab('token');
+      // If we have a config but no saved config in selective state
+      if (!config && activeConfig) {
+        const newConfig: OAuthConfig = {
+          issuerUrl: activeConfig.issuerUrl,
+          clientId: activeConfig.clientId,
+          redirectUri: activeConfig.redirectUri,
+          scopes: activeConfig.scopes,
+          demoMode: activeConfig.demoMode,
+          // Global state doesn't have endpoints, so set to undefined
+          authEndpoint: undefined,
+          tokenEndpoint: undefined,
+          jwksEndpoint: undefined
+        };
+        
+        setConfig(newConfig);
         
         // Ensure the config is saved in global state
-        if (parsedConfig) {
-          addConfig({
-            clientId: parsedConfig.clientId,
-            redirectUri: parsedConfig.redirectUri,
-            scopes: parsedConfig.scopes,
-            issuerUrl: parsedConfig.issuerUrl,
-            flowType: 'authorization_code_pkce',
-            demoMode: !!parsedConfig.demoMode,
-            name: parsedConfig.demoMode 
-              ? 'Demo Config' 
-              : `${parsedConfig.clientId} @ ${parsedConfig.issuerUrl || 'Unknown Issuer'}`
-          });
-        }
+        addConfig({
+          clientId: newConfig.clientId,
+          redirectUri: newConfig.redirectUri,
+          scopes: newConfig.scopes || [],
+          issuerUrl: newConfig.issuerUrl,
+          flowType: 'authorization_code_pkce',
+          demoMode: !!newConfig.demoMode,
+          name: newConfig.demoMode 
+            ? 'Demo Config' 
+            : `${newConfig.clientId} @ ${newConfig.issuerUrl || 'Unknown Issuer'}`
+        });
       }
-    } else if (activeConfig) {
+    } 
+    // If we have an active config but no config in our selective state
+    else if (!config && activeConfig) {
       // Load from active config in global state
       setConfig({
         issuerUrl: activeConfig.issuerUrl,
@@ -70,84 +107,19 @@ export function AuthCodeWithPkceFlow() {
         redirectUri: activeConfig.redirectUri,
         scopes: activeConfig.scopes,
         demoMode: activeConfig.demoMode,
-        // Need to load these from localStorage or they'll be undefined
+        // Global state doesn't have endpoints, so set to undefined
         authEndpoint: undefined,
         tokenEndpoint: undefined,
         jwksEndpoint: undefined
       });
-      
-      // Try to load endpoints from localStorage if we have an active config
-      try {
-        const savedConfig = localStorage.getItem('oauth_playground_config');
-        if (savedConfig) {
-          const parsedConfig = JSON.parse(savedConfig);
-          
-          // Only use the endpoints from localStorage, keep the rest from global state
-          setConfig(current => {
-            if (!current) return null;
-            return {
-              ...current,
-              authEndpoint: parsedConfig.authEndpoint,
-              tokenEndpoint: parsedConfig.tokenEndpoint,
-              jwksEndpoint: parsedConfig.jwksEndpoint,
-            };
-          });
-        }
-        
-        // If we have PKCE params saved, load them
-        const savedPkce = localStorage.getItem('oauth_playground_pkce');
-        if (savedPkce) {
-          setPkce(JSON.parse(savedPkce));
-        }
-        
-        // If we have an auth code saved, load it
-        const savedAuthCode = localStorage.getItem('oauth_playground_auth_code');
-        if (savedAuthCode) {
-          setAuthCode(savedAuthCode);
-          setActiveTab('token');
-        }
-        
-        // If we have a token response saved, load it
-        const savedTokenResponse = localStorage.getItem('oauth_playground_token_response');
-        if (savedTokenResponse) {
-          setTokenResponse(JSON.parse(savedTokenResponse));
-        }
-      } catch (error) {
-        console.error('Error loading saved state from localStorage:', error);
-      }
     }
     
     // Mark initial load as complete
     initialLoadComplete.current = true;
-  }, [location.state, activeConfig, addConfig]);
+  }, [location.state, activeConfig, addConfig, config, setConfig, setAuthCode, setActiveTab]);
   
-  // Save config to localStorage whenever it changes
-  useEffect(() => {
-    if (config) {
-      localStorage.setItem('oauth_playground_config', JSON.stringify(config));
-    }
-  }, [config]);
-  
-  // Save PKCE to localStorage whenever it changes
-  useEffect(() => {
-    if (pkce) {
-      localStorage.setItem('oauth_playground_pkce', JSON.stringify(pkce));
-    }
-  }, [pkce]);
-  
-  // Save auth code to localStorage whenever it changes
-  useEffect(() => {
-    if (authCode) {
-      localStorage.setItem('oauth_playground_auth_code', authCode);
-    }
-  }, [authCode]);
-  
-  // Save token response to localStorage whenever it changes
-  useEffect(() => {
-    if (tokenResponse) {
-      localStorage.setItem('oauth_playground_token_response', JSON.stringify(tokenResponse));
-    }
-  }, [tokenResponse]);
+  // No need for separate effects to save to localStorage
+  // The useSelectiveState hook handles that automatically
   
   // Handle configuration completion
   const handleConfigComplete = (newConfig: OAuthConfig, newPkce: PkceParams) => {

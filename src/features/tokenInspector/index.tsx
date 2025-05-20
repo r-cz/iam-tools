@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import * as jose from "jose";
 import {
   Card,
@@ -23,20 +23,67 @@ import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 import { useTokenHistory, useTokenInspector } from "../../lib/state";
 import { verifySignatureWithRefresh } from "@/lib/jwt/verify-signature-with-refresh";
 import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
+import { useSelectiveState } from "@/hooks"; // Import the selective state hook
 
 interface TokenInspectorProps {
   initialToken?: string | null;
 }
 
 export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
-  const [token, setToken] = useState(initialToken || "");
-  const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null); // Holds the currently loaded JWKS
-  const [decodedToken, setDecodedToken] = useState<DecodedToken | null>(null);
-  const [tokenType, setTokenType] = useState<TokenType>("unknown"); // Default to unknown
-  const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
-  const [issuerUrl, setIssuerUrl] = useState("");
-  const [isDemoToken, setIsDemoToken] = useState(false); // Tracks if the CURRENT decoded token is a demo one
+  // Use selective state for persistence between page navigations
+  const [tokenInspectorState, setTokenInspectorState] = useSelectiveState({
+    key: 'token-inspector-page-state',
+    initialValue: {
+      token: initialToken || "",
+      jwks: null as jose.JSONWebKeySet | null,
+      decodedToken: null as DecodedToken | null,
+      tokenType: "unknown" as TokenType,
+      validationResults: [] as ValidationResult[],
+      issuerUrl: "",
+      isDemoToken: false,
+      activeTab: "",
+    },
+    // These should not be persisted between sessions
+    excludeKeys: ['validationResults']
+  });
+
+  // Destructure state and create setter functions for cleaner code
+  const {
+    token,
+    jwks, 
+    decodedToken,
+    tokenType,
+    validationResults,
+    issuerUrl,
+    isDemoToken,
+    activeTab
+  } = tokenInspectorState;
+
+  // Create setter functions
+  const setToken = (newToken: string) => 
+    setTokenInspectorState(prev => ({ ...prev, token: newToken }));
   
+  const setJwks = (newJwks: jose.JSONWebKeySet | null) => 
+    setTokenInspectorState(prev => ({ ...prev, jwks: newJwks }));
+  
+  const setDecodedToken = (newDecodedToken: DecodedToken | null) => 
+    setTokenInspectorState(prev => ({ ...prev, decodedToken: newDecodedToken }));
+  
+  const setTokenType = (newTokenType: TokenType) => 
+    setTokenInspectorState(prev => ({ ...prev, tokenType: newTokenType }));
+  
+  const setValidationResults = (newValidationResults: ValidationResult[]) => 
+    setTokenInspectorState(prev => ({ ...prev, validationResults: newValidationResults }));
+  
+  const setIssuerUrl = (newIssuerUrl: string) => 
+    setTokenInspectorState(prev => ({ ...prev, issuerUrl: newIssuerUrl }));
+  
+  const setIsDemoToken = (newIsDemoToken: boolean) => 
+    setTokenInspectorState(prev => ({ ...prev, isDemoToken: newIsDemoToken }));
+  
+  const setActiveTab = (newActiveTab: string) => 
+    setTokenInspectorState(prev => ({ ...prev, activeTab: newActiveTab }));
+
   // Global state from AppState
   const { addToken } = useTokenHistory();
   const { 
@@ -47,18 +94,24 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     updatePreferences 
   } = useTokenInspector();
 
-  // Use state from global preferences
-  const [activeTab, setActiveTab] = useState(displayPreferences.defaultTab);
+  // Initialize activeTab from preferences if not already set
+  useEffect(() => {
+    if (!activeTab && displayPreferences.defaultTab) {
+      setActiveTab(displayPreferences.defaultTab);
+    }
+  }, [activeTab, displayPreferences.defaultTab]);
   
   // OIDC config hook for getting JWKS URI
   const oidcConfigHook = useOidcConfig();
 
+  // Get token history
+  const { tokenHistory } = useTokenHistory();
+  
   // Effect to handle initial token from URL or active token from global state
   useEffect(() => {
     // Check if we should use an active token from global state
     if (activeTokenId && !initialToken) {
       console.log('Using active token from global state:', activeTokenId);
-      const { tokenHistory } = useTokenHistory();
       const activeTokenObj = tokenHistory.find(t => t.id === activeTokenId);
       if (activeTokenObj && activeTokenObj.token !== token) {
         setToken(activeTokenObj.token);
@@ -73,7 +126,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     }
    // Intentionally run only when activeTokenId or initialToken prop changes
    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTokenId, initialToken]);
+  }, [activeTokenId, initialToken, tokenHistory]);
 
   // Effect to decode token whenever the 'token' state changes
   useEffect(() => {
@@ -97,25 +150,34 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
 
   // Effect to update active tab when preferences change
   useEffect(() => {
-    setActiveTab(displayPreferences.defaultTab);
-  }, [displayPreferences.defaultTab]);
+    if (displayPreferences.defaultTab !== activeTab && !decodedToken) {
+      // Only update the tab if we don't have a decoded token (to not interrupt user viewing)
+      setActiveTab(displayPreferences.defaultTab);
+    }
+  }, [displayPreferences.defaultTab, activeTab, decodedToken]);
 
   const resetState = () => {
     console.log("Resetting Token Inspector state.");
-    setToken(""); // Clear token input state
-    setDecodedToken(null);
-    setValidationResults([]);
-    setActiveTab(displayPreferences.defaultTab);
-    setIsDemoToken(false);
-    setJwks(null); // Reset loaded JWKS
-    setIssuerUrl("");
+    // Reset all state at once
+    setTokenInspectorState({
+      token: "",
+      jwks: null,
+      decodedToken: null,
+      tokenType: "unknown",
+      validationResults: [],
+      issuerUrl: "",
+      isDemoToken: false,
+      activeTab: displayPreferences.defaultTab
+    });
+    
     setActiveTokenId(undefined); // Clear active token in global state
-     // Clear token from URL if it was present
-     if (initialToken) {
-         const url = new URL(window.location.href);
-         url.searchParams.delete('token');
-         window.history.replaceState({}, '', url.toString());
-     }
+    
+    // Clear token from URL if it was present
+    if (initialToken) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('token');
+      window.history.replaceState({}, '', url.toString());
+    }
   };
 
   // Callback for TokenInput when an example token is generated
@@ -242,7 +304,6 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
 
       // Store the current token ID as active in global state
       // Find the token ID in history
-      const { tokenHistory } = useTokenHistory();
       const tokenItem = tokenHistory.find(t => t.token === tokenToDecode);
       if (tokenItem) {
         setActiveTokenId(tokenItem.id);
