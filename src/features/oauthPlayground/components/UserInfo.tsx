@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { proxyFetch } from "@/lib/proxy-fetch";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { User, History } from "lucide-react";
+import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
 
 interface UserInfoResponse {
   sub?: string;
@@ -61,6 +62,30 @@ export function UserInfo() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
   const [showTokenHistory, setShowTokenHistory] = useState(false);
+  const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false);
+  
+  // Auto-fill demo token when demo mode is enabled
+  useEffect(() => {
+    const loadDemoToken = async () => {
+      if (isDemoMode) {
+        if (!accessToken) {
+          setIsLoadingDemoToken(true);
+          try {
+            const demoToken = await generateFreshToken();
+            setAccessToken(demoToken);
+            toast.success("Demo token loaded");
+          } catch (error) {
+            console.error("Error loading demo token:", error);
+            toast.error("Failed to load demo token");
+          } finally {
+            setIsLoadingDemoToken(false);
+          }
+        }
+      }
+    };
+    
+    loadDemoToken();
+  }, [isDemoMode, accessToken]);
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
@@ -222,12 +247,18 @@ export function UserInfo() {
               id="demo-mode-switch"
               checked={isDemoMode}
               onCheckedChange={setIsDemoMode}
+              disabled={isLoadingDemoToken}
             />
             <Label htmlFor="demo-mode-switch" className="mb-0">
               Demo Mode
               <p className="text-xs text-muted-foreground font-normal">
                 Generate a simulated UserInfo response locally instead of calling the endpoint.
               </p>
+              {isLoadingDemoToken && (
+                <p className="text-xs text-muted-foreground font-normal mt-1">
+                  Loading demo token...
+                </p>
+              )}
             </Label>
           </div>
 
