@@ -115,7 +115,7 @@ export function UserInfo() {
         preferred_username: "demouser",
         email: "demo@example.com",
         email_verified: true,
-        picture: "https://i.pravatar.cc/150?u=demo@example.com",
+        picture: "https://notion-avatar.app/api/svg/eyJmYWNlIjowLCJub3NlIjoxMCwibW91dGgiOjAsImV5ZXMiOjksImV5ZWJyb3dzIjoyLCJnbGFzc2VzIjowLCJoYWlyIjoxMCwiYWNjZXNzb3JpZXMiOjAsImRldGFpbHMiOjAsImJlYXJkIjoxLCJmbGlwIjowLCJjb2xvciI6InJnYmEoMjU1LCAwLCAwLCAwKSIsInNoYXBlIjoibm9uZSJ9",
         locale: "en-US",
         updated_at: Math.floor(Date.now() / 1000) - 86400, // 1 day ago
         zoneinfo: "America/Los_Angeles",
