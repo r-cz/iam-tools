@@ -143,25 +143,25 @@ export function UserInfo() {
     setLoading(true);
     setResult(null);
 
-    if (!accessToken) {
-      setResult({
-        error: "missing_token",
-        error_description: "Access token is required"
-      });
-      setLoading(false);
-      return;
-    }
-
     if (isDemoMode) {
       // Generate demo userinfo
       const demoResult = generateDemoUserInfo();
       setResult(demoResult);
       
-      // Add the token to history (even in demo mode)
+      // Add the token to history (only if provided in demo mode)
       if (accessToken) {
         addToken(accessToken);
       }
     } else {
+      // In non-demo mode, token is required
+      if (!accessToken) {
+        setResult({
+          error: "missing_token",
+          error_description: "Access token is required"
+        });
+        setLoading(false);
+        return;
+      }
       // Validate required fields for real request
       if (!userInfoEndpoint) {
         setResult({
@@ -286,8 +286,8 @@ export function UserInfo() {
                 id="access-token"
                 value={accessToken}
                 onChange={(e) => setAccessToken(e.target.value)}
-                required
-                placeholder="Enter your access token"
+                required={!isDemoMode}
+                placeholder={isDemoMode ? "Optional in demo mode" : "Enter your access token"}
                 className="font-mono text-xs"
               />
               
