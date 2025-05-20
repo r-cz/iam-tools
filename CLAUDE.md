@@ -163,3 +163,27 @@ When adding a new feature:
 - Tests are located in `src/tests/` and follow a structure mirroring the main application
 - Tests focus on component behavior and user interactions
 - When adding new functionality, write tests that verify the feature works as expected
+
+## Puppeteer Testing
+
+When using Puppeteer for testing the application:
+
+### Button Selectors
+- Primary buttons: Use `.bg-primary` to select main action buttons (e.g., "Fetch Config", "Inspect Token")
+- Secondary buttons: Use `.bg-secondary` for secondary actions
+- Text matching: Use JS with `Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Button Text'))`
+
+### Input Fields
+- Use `input[placeholder="placeholder text"]` to target input fields
+
+### Navigation
+- Use `a[href="/route-path"]` to select navigation links
+
+### Form Submission
+- Target the submit button with `.bg-primary` within the form context
+
+### Tips
+- The application uses shadcn/ui components with Tailwind CSS
+- Button states use classes like `bg-primary`, `bg-secondary`, `bg-accent`
+- For conditional rendering, check if elements exist before interacting
+- For loading states, add delays or observe DOM changes
