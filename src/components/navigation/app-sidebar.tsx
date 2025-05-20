@@ -7,7 +7,8 @@ import {
   FileJson,
   ArrowRight,
   ChevronRight,
-  FlaskConical
+  FlaskConical,
+  UserCircle
 } from "lucide-react"
 import { Link } from 'react-router-dom';
 
@@ -68,6 +69,11 @@ const menuTree = [
             title: "Token Introspection",
             url: "/oauth-playground/introspection",
             icon: SearchCheck
+          },
+          {
+            title: "UserInfo",
+            url: "/oauth-playground/userinfo",
+            icon: UserCircle
           }
           // More flows will be added here later
         ]

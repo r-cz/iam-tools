@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PageContainer, PageHeader } from '@/components/page';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink, ArrowRight, Lock, Key, SearchCheck } from 'lucide-react';
+import { ExternalLink, ArrowRight, Lock, Key, SearchCheck, UserCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
@@ -29,6 +29,14 @@ export function OAuthPlaygroundPage() {
       description: 'Verify the state and validity of OAuth tokens against an introspection endpoint.',
       icon: SearchCheck,
       url: '/oauth-playground/introspection',
+      active: true,
+    },
+    {
+      id: 'userinfo',
+      title: 'UserInfo Endpoint',
+      description: 'Access user profile information using an access token with proper scopes.',
+      icon: UserCircle,
+      url: '/oauth-playground/userinfo',
       active: true,
     },
     {
