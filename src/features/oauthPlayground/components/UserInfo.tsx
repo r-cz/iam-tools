@@ -7,11 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CodeBlock } from "@/components/ui/code-block";
 import { IssuerHistory } from "@/components/common";
-import { useIssuerHistory } from "@/lib/state";
+import { useIssuerHistory, useAppState } from "@/lib/state";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { User } from "lucide-react";
+import { User, History } from "lucide-react";
 
 interface UserInfoResponse {
   sub?: string;
@@ -49,6 +49,7 @@ interface UserInfoResponse {
 export function UserInfo() {
   const navigate = useNavigate();
   const { addIssuer } = useIssuerHistory();
+  const { addToken, tokenHistory } = useAppState();
 
   // Form state
   const [userInfoEndpoint, setUserInfoEndpoint] = useState("");
@@ -59,6 +60,7 @@ export function UserInfo() {
   const [result, setResult] = useState<UserInfoResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
+  const [showTokenHistory, setShowTokenHistory] = useState(false);
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
@@ -94,6 +96,12 @@ export function UserInfo() {
     } finally {
       setConfigLoading(false);
     }
+  };
+
+  // Handle token selection from history
+  const handleSelectToken = (tokenValue: string) => {
+    setAccessToken(tokenValue);
+    setShowTokenHistory(false);
   };
 
   const generateDemoUserInfo = (): UserInfoResponse => {
@@ -148,6 +156,11 @@ export function UserInfo() {
       // Generate demo userinfo
       const demoResult = generateDemoUserInfo();
       setResult(demoResult);
+      
+      // Add the token to history (even in demo mode)
+      if (accessToken) {
+        addToken(accessToken);
+      }
     } else {
       // Validate required fields for real request
       if (!userInfoEndpoint) {
@@ -175,6 +188,11 @@ export function UserInfo() {
 
         const data = await res.json();
         setResult(data);
+        
+        // Add the token to history if request was successful
+        if (accessToken) {
+          addToken(accessToken);
+        }
       } catch (err: any) {
         setResult({
           error: "request_failed",
@@ -235,19 +253,34 @@ export function UserInfo() {
               />
             </div>
             
-            {/* Access Token Input */}
-            <div>
+            {/* Access Token Input with History */}
+            <div className="relative">
               <div className="flex justify-between items-center mb-1.5">
                 <Label htmlFor="access-token">Access Token</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleInspectToken}
-                  disabled={!accessToken}
-                >
-                  View in Token Inspector
-                </Button>
+                <div className="flex items-center gap-2">
+                  {tokenHistory.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1"
+                      onClick={() => setShowTokenHistory(!showTokenHistory)}
+                      disabled={isDemoMode}
+                    >
+                      <History size={16} />
+                      <span>Recent Tokens</span>
+                    </Button>
+                  )}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleInspectToken}
+                    disabled={!accessToken}
+                  >
+                    View in Token Inspector
+                  </Button>
+                </div>
               </div>
               <Input
                 id="access-token"
@@ -257,6 +290,27 @@ export function UserInfo() {
                 placeholder="Enter your access token"
                 className="font-mono text-xs"
               />
+              
+              {/* Recent Tokens Dropdown */}
+              {showTokenHistory && tokenHistory.length > 0 && (
+                <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
+                  <div className="p-1">
+                    {tokenHistory.slice(0, 10).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
+                        onClick={() => handleSelectToken(item.token)}
+                      >
+                        <div className="truncate">{item.name || `Token ${item.id.substring(0, 8)}...`}</div>
+                        {item.issuer && (
+                          <div className="text-xs text-muted-foreground truncate">{item.issuer}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
             <Button type="submit" disabled={loading}>
