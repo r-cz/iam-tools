@@ -18,24 +18,43 @@ import {
 } from "./components";
 import { IssuerHistory } from "@/components/common";
 import { detectProvider } from "./utils/config-helpers";
-import { useIssuerHistory } from "../../lib/state";
+import { useIssuerHistory, useOidcExplorer } from "../../lib/state";
 
 export function OidcExplorer() {
   // Instantiate hooks
   const oidcConfigHook = useOidcConfig();
   const jwksHook = useJwks();
   const { addIssuer } = useIssuerHistory();
+  const { 
+    lastIssuerUrl, 
+    recentJwks, 
+    displayPreferences, 
+    setLastIssuerUrl, 
+    updateRecentJwks, 
+    updateDisplayPreferences 
+  } = useOidcExplorer();
 
   // Local state for derived/UI data
   const [providerName, setProviderName] = useState<string | null>(null);
   const [detectionReasons, setDetectionReasons] = useState<string[]>([]);
   const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>('');
-  const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('');
+  const [inputIssuerUrl, setInputIssuerUrl] = useState<string>(lastIssuerUrl || '');
   const [lastFetchedJwksUri, setLastFetchedJwksUri] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("config");
   
   // Use a ref to track if we've already added this URL to history
   const processedUrls = useRef<Set<string>>(new Set());
 
+  // Effect to load last issuer URL from global state
+  useEffect(() => {
+    if (lastIssuerUrl && !currentIssuerUrl) {
+      console.log('Using last issuer URL from global state:', lastIssuerUrl);
+      setInputIssuerUrl(lastIssuerUrl);
+      // Automatically fetch config for the last issuer URL
+      oidcConfigHook.fetchConfig(lastIssuerUrl);
+    }
+  }, [lastIssuerUrl]);
+  
   // Effect for successful OIDC config fetch
   useEffect(() => {
     if (oidcConfigHook.data) {
@@ -50,6 +69,8 @@ export function OidcExplorer() {
         // Mark as processed to prevent re-adding
         processedUrls.current.add(inputIssuerUrl);
         addIssuer(inputIssuerUrl);
+        // Store in global state
+        setLastIssuerUrl(inputIssuerUrl);
       }
 
       // Detect provider and reasons
@@ -57,8 +78,15 @@ export function OidcExplorer() {
       setProviderName(detectedProvider);
       setDetectionReasons(reasons);
 
-      // Automatically trigger JWKS fetch if URI exists and hasn't been fetched already
-      if (config.jwks_uri && config.jwks_uri !== lastFetchedJwksUri) {
+      // Check if we already have cached JWKS for this issuer
+      const cachedJwks = config.issuer ? recentJwks[config.issuer] : null;
+      if (cachedJwks && cachedJwks.keys && cachedJwks.keys.length > 0) {
+        console.log(`Using cached JWKS for issuer: ${config.issuer}`);
+        // Use the cached JWKS (simulating a fetch)
+        jwksHook.setData(cachedJwks.keys);
+      } 
+      // Otherwise, automatically trigger JWKS fetch if URI exists and hasn't been fetched already
+      else if (config.jwks_uri && config.jwks_uri !== lastFetchedJwksUri) {
         console.log(`OIDC config has jwks_uri, fetching JWKS from: ${config.jwks_uri}`);
         setLastFetchedJwksUri(config.jwks_uri);
         jwksHook.fetchJwks(config.jwks_uri);
@@ -68,18 +96,24 @@ export function OidcExplorer() {
         console.log(`JWKS already fetched for URI: ${config.jwks_uri}`);
       }
     }
-  }, [oidcConfigHook.data, addIssuer]); // Removed inputIssuerUrl dependency
+  }, [oidcConfigHook.data, addIssuer, setLastIssuerUrl, recentJwks]); 
 
   // Effect for successful JWKS fetch
   useEffect(() => {
-    if (jwksHook.data) {
+    if (jwksHook.data && oidcConfigHook.data) {
       console.log('JWKS loaded via hook:', jwksHook.data);
+      
+      // Cache the JWKS in global state
+      if (oidcConfigHook.data.issuer) {
+        updateRecentJwks(oidcConfigHook.data.issuer, jwksHook.data);
+      }
+      
       toast.success('Successfully fetched JWKS', {
-        description: `Found ${jwksHook.data.keys.length} keys`,
+        description: `Found ${jwksHook.data.length} keys`,
         duration: 5000,
       });
     }
-  }, [jwksHook.data]);
+  }, [jwksHook.data, oidcConfigHook.data, updateRecentJwks]);
 
   // Effect for handling errors from either hook
   useEffect(() => {
@@ -101,10 +135,24 @@ export function OidcExplorer() {
     oidcConfigHook.fetchConfig(issuerUrl);
   };
 
+  // Handle tab change and save preference
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // Could potentially save tab preference to global state here if needed
+  };
+
   // Combine loading states
   const isLoading = oidcConfigHook.isLoading || jwksHook.isLoading;
   // Combine error states
   const error = oidcConfigHook.error || jwksHook.error;
+
+  // Handle display preference changes
+  const handleDisplayPreferenceChange = (showOptionalFields: boolean, groupByCategory: boolean) => {
+    updateDisplayPreferences({
+      showOptionalFields,
+      groupByCategory
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -119,6 +167,7 @@ export function OidcExplorer() {
             <ConfigInput
               onFetchRequested={handleFetchConfig}
               isLoading={isLoading}
+              initialIssuerUrl={lastIssuerUrl}
             />
           </div>
         </CardContent>
@@ -147,7 +196,11 @@ export function OidcExplorer() {
 
       {/* Display the configuration and JWKS using Tabs */}
       {!isLoading && oidcConfigHook.data && (
-        <Tabs defaultValue="config" className="w-full">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={handleTabChange} 
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="config">Configuration</TabsTrigger>
             {oidcConfigHook.data.jwks_uri && (
@@ -159,7 +212,11 @@ export function OidcExplorer() {
 
           {/* Configuration Tab Content */}
           <TabsContent value="config" className="mt-4 space-y-6">
-            <ConfigDisplay config={oidcConfigHook.data} />
+            <ConfigDisplay 
+              config={oidcConfigHook.data} 
+              displayPreferences={displayPreferences}
+              onDisplayPreferencesChange={handleDisplayPreferenceChange}
+            />
             {providerName && (
               <ProviderInfo
                 providerName={providerName}

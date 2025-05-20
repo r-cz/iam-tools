@@ -1,23 +1,25 @@
-import React, { useState } from 'react'; // Removed useEffect
-// Removed hook import: import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ShuffleIcon } from "lucide-react";
-// No OIDC types needed here anymore
-// import { OidcConfiguration } from '../utils/types';
 
 interface ConfigInputProps {
-  onFetchRequested: (issuerUrl: string) => void; // Renamed prop
-  isLoading: boolean; // Added back isLoading prop
+  onFetchRequested: (issuerUrl: string) => void;
+  isLoading: boolean;
+  initialIssuerUrl?: string;
 }
 
-export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
-  const [issuerUrl, setIssuerUrl] = useState('');
-  // Removed hook instantiation
-
-  // Removed useEffect hooks
+export function ConfigInput({ onFetchRequested, isLoading, initialIssuerUrl }: ConfigInputProps) {
+  const [issuerUrl, setIssuerUrl] = useState(initialIssuerUrl || '');
+  
+  // Effect to update local state when initialIssuerUrl changes (from global state)
+  useEffect(() => {
+    if (initialIssuerUrl && initialIssuerUrl !== issuerUrl) {
+      setIssuerUrl(initialIssuerUrl);
+    }
+  }, [initialIssuerUrl]);
 
   const handleFetchConfig = () => {
     if (!issuerUrl) return;
@@ -31,8 +33,6 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
       handleFetchConfig();
     }
   };
-
-  // Removed exampleIssuers array
 
   // Real-world public issuers for the random button
   const realWorldIssuers = [
@@ -52,8 +52,6 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     { name: 'Discord', url: 'https://discord.com' },
     { name: 'Apple', url: 'https://appleid.apple.com' },
   ];
-
-  // Removed handleExampleClick function
 
   const handleRandomExample = () => {
     const randomIndex = Math.floor(Math.random() * realWorldIssuers.length);
@@ -108,7 +106,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
               type="text"
               value={issuerUrl}
               onChange={(e) => setIssuerUrl(e.target.value)}
-              onKeyDown={handleKeyDown} // Ensure this prop uses the correctly defined function
+              onKeyDown={handleKeyDown}
               placeholder="https://example.com/identity"
               className="pr-10"
             />
@@ -125,7 +123,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
           </div>
           <Button
             onClick={handleFetchConfig}
-            disabled={isLoading || !issuerUrl} // Use prop isLoading state
+            disabled={isLoading || !issuerUrl}
             className="sm:w-auto w-full"
           >
             {isLoading ? 'Fetching...' : 'Fetch Config'}

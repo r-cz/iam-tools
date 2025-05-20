@@ -12,30 +12,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   CheckCircle2, 
   XCircle, 
   Link,
   Copy,
-  ClipboardCheck 
+  ClipboardCheck,
+  Settings
 } from 'lucide-react';
 import { useClipboard } from '@/hooks/use-clipboard';
 
-
 import { OidcConfiguration } from '../utils/types';
 import { endpointDescriptions } from '../data/common-endpoints';
+import { OidcExplorerState } from '@/lib/state/types';
 
 interface ConfigDisplayProps {
   config: OidcConfiguration;
-  // onJwksClick: () => void; // Removed unused prop
+  displayPreferences: OidcExplorerState['displayPreferences'];
+  onDisplayPreferencesChange: (
+    showOptionalFields: boolean, 
+    groupByCategory: boolean
+  ) => void;
 }
 
-export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwksClick from destructuring
+export function ConfigDisplay({ 
+  config, 
+  displayPreferences,
+  onDisplayPreferencesChange 
+}: ConfigDisplayProps) {
   const [view, setView] = useState<'formatted' | 'raw'>('formatted');
   const { copy, copied } = useClipboard();
   
   // We'll use this to track the currently copied text
   const [copiedText, setCopiedText] = useState<string>('');
+
+  // Destructure display preferences for easier access
+  const { showOptionalFields, groupByCategory } = displayPreferences;
   
   /**
    * Format a long property name to be more readable
@@ -200,6 +214,11 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
     const description = getEndpointDescription(key);
     const required = endpointDescriptions[key]?.required;
     
+    // Skip optional fields if showOptionalFields is false and the field is not required
+    if (!showOptionalFields && !required && key !== 'issuer') {
+      return null;
+    }
+    
     // Get a friendly formatted property name
     const displayName = endpointDescriptions[key]?.name || formatPropertyName(key);
     
@@ -239,10 +258,32 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
   return (
     <Card>
       <CardHeader>
-        <CardTitle>OpenID Configuration</CardTitle>
-        <CardDescription>
-          Discovered from: <code className="text-xs">{config.issuer}/.well-known/openid-configuration</code>
-        </CardDescription>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>OpenID Configuration</CardTitle>
+            <CardDescription>
+              Discovered from: <code className="text-xs">{config.issuer}/.well-known/openid-configuration</code>
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="show-optional" 
+                checked={showOptionalFields}
+                onCheckedChange={(checked) => onDisplayPreferencesChange(checked, groupByCategory)}
+              />
+              <Label htmlFor="show-optional" className="text-xs">Show optional fields</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="group-category" 
+                checked={groupByCategory}
+                onCheckedChange={(checked) => onDisplayPreferencesChange(showOptionalFields, checked)}
+              />
+              <Label htmlFor="group-category" className="text-xs">Group by category</Label>
+            </div>
+          </div>
+        </div>
       </CardHeader>
       
       <CardContent>
@@ -262,135 +303,116 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
               {renderConfigItem('issuer')}
             </div>
             
-            <Separator />
-            
-            {/* Endpoints section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Endpoints</h3>
-              <div className="space-y-4">
-                {endpoints.filter(key => key in config).map(key => {
-                  // Special treatment for jwks_uri
-                  if (key === 'jwks_uri') {
-                    return (
-                      <div key={key} className="py-3 first:pt-0 last:pb-0">
-                        <div className="flex flex-wrap justify-between gap-2 mb-1">
-                          <div className="flex items-start gap-2">
-                            <span className="mt-1">
-                              <Link className="h-4 w-4 text-blue-600" />
-                            </span>
-                            <h4 className="font-medium break-words">
-                              {endpointDescriptions[key]?.name || formatPropertyName(key)}
-                              {endpointDescriptions[key]?.required && <span className="text-red-500 ml-1">*</span>}
-                            </h4>
-                          </div>
-                        </div>
-                        
-                        {getEndpointDescription(key) && <div className="mb-2">{getEndpointDescription(key)}</div>}
-                        
-                        <div className="mt-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <code className="text-sm break-all">{config.jwks_uri}</code>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 px-2 text-xs"
-                                onClick={() => {
-                                  copy(config.jwks_uri || '');
-                                  setCopiedText(config.jwks_uri || '');
-                                }}
-                                disabled={copied && copiedText === config.jwks_uri}
-                              >
-                                {copied && copiedText === config.jwks_uri ? (
-                                  <>
-                                    <ClipboardCheck className="h-3 w-3 mr-1" />
-                                    Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    Copy
-                                  </>
-                                )}
-                              </Button>
-                              {/* Removed Fetch JWKS button */}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
+            {/* Use a "flat" display if groupByCategory is false */}
+            {!groupByCategory ? (
+              <div>
+                <Separator />
+                <h3 className="text-lg font-semibold my-3">Configuration Properties</h3>
+                <div className="space-y-4">
+                  {Object.keys(config)
+                    .filter(key => key !== 'issuer')
+                    .sort()
+                    .map(key => {
+                      if (key === 'jwks_uri') {
+                        return renderJwksUriItem(key, config);
+                      }
+                      return renderConfigItem(
+                        key, 
+                        key.endsWith('_endpoint') || key.endsWith('_uri') 
+                          ? <Link className="h-4 w-4 text-blue-600" />
+                          : undefined
+                      );
+                    })
                   }
-                  
-                  return renderConfigItem(key, <Link className="h-4 w-4 text-blue-600" />);
-                })}
+                </div>
               </div>
-            </div>
-            
-            <Separator />
-            
-            {/* Supported features section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Supported Features</h3>
-              <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {supportedFeatures.filter(key => key in config).map(key => (
-                  renderConfigItem(key)
-                ))}
-              </div>
-            </div>
-            
-            <Separator />
-            
-            {/* Boolean features section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Feature Support</h3>
-              <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {booleanFeatures.filter(key => key in config).map(key => (
-                  renderConfigItem(key)
-                ))}
-              </div>
-            </div>
-            
-            {/* Misc section - only show if any fields are present */}
-            {miscFeatures.some(key => key in config) && (
+            ) : (
+              // Otherwise use the grouped display
               <>
                 <Separator />
+                
+                {/* Endpoints section */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Additional Information</h3>
+                  <h3 className="text-lg font-semibold mb-3">Endpoints</h3>
                   <div className="space-y-4">
-                    {miscFeatures.filter(key => key in config).map(key => (
+                    {endpoints.filter(key => key in config).map(key => {
+                      // Special treatment for jwks_uri
+                      if (key === 'jwks_uri') {
+                        return renderJwksUriItem(key, config);
+                      }
+                      
+                      return renderConfigItem(key, <Link className="h-4 w-4 text-blue-600" />);
+                    })}
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                {/* Supported features section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Supported Features</h3>
+                  <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {supportedFeatures.filter(key => key in config).map(key => (
                       renderConfigItem(key)
                     ))}
                   </div>
                 </div>
-              </>
-            )}
-            
-            {/* Unknown/custom fields */}
-            {Object.keys(config)
-              .filter(key => 
-                !['issuer'].includes(key) && 
-                !endpoints.includes(key) && 
-                !supportedFeatures.includes(key) && 
-                !booleanFeatures.includes(key) && 
-                !miscFeatures.includes(key)
-              )
-              .length > 0 && (
-              <>
+                
                 <Separator />
+                
+                {/* Boolean features section */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Provider-Specific Extensions</h3>
-                  <div className="space-y-4">
-                    {Object.keys(config)
-                      .filter(key => 
-                        !['issuer'].includes(key) && 
-                        !endpoints.includes(key) && 
-                        !supportedFeatures.includes(key) && 
-                        !booleanFeatures.includes(key) && 
-                        !miscFeatures.includes(key)
-                      )
-                      .map(key => renderConfigItem(key))}
+                  <h3 className="text-lg font-semibold mb-3">Feature Support</h3>
+                  <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {booleanFeatures.filter(key => key in config).map(key => (
+                      renderConfigItem(key)
+                    ))}
                   </div>
                 </div>
+                
+                {/* Misc section - only show if any fields are present */}
+                {miscFeatures.some(key => key in config) && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Additional Information</h3>
+                      <div className="space-y-4">
+                        {miscFeatures.filter(key => key in config).map(key => (
+                          renderConfigItem(key)
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {/* Unknown/custom fields */}
+                {Object.keys(config)
+                  .filter(key => 
+                    !['issuer'].includes(key) && 
+                    !endpoints.includes(key) && 
+                    !supportedFeatures.includes(key) && 
+                    !booleanFeatures.includes(key) && 
+                    !miscFeatures.includes(key)
+                  )
+                  .length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Provider-Specific Extensions</h3>
+                      <div className="space-y-4">
+                        {Object.keys(config)
+                          .filter(key => 
+                            !['issuer'].includes(key) && 
+                            !endpoints.includes(key) && 
+                            !supportedFeatures.includes(key) && 
+                            !booleanFeatures.includes(key) && 
+                            !miscFeatures.includes(key)
+                          )
+                          .map(key => renderConfigItem(key))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -413,4 +435,67 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
       </CardFooter>
     </Card>
   );
+
+  // Helper function to render JWKS URI item (extracted for reuse)
+  function renderJwksUriItem(key: string, config: OidcConfiguration) {
+    const description = getEndpointDescription(key);
+    const required = endpointDescriptions[key]?.required;
+    
+    // Skip optional fields if showOptionalFields is false and the field is not required
+    if (!showOptionalFields && !required) {
+      return null;
+    }
+    
+    // Get a friendly formatted property name
+    const displayName = endpointDescriptions[key]?.name || formatPropertyName(key);
+    
+    return (
+      <div key={key} className="py-3 first:pt-0 last:pb-0">
+        <div className="flex flex-wrap justify-between gap-2 mb-1">
+          <div className="flex items-start gap-2">
+            <span className="mt-1">
+              <Link className="h-4 w-4 text-blue-600" />
+            </span>
+            <h4 className="font-medium break-words">
+              {displayName}
+              {required && <span className="text-red-500 ml-1">*</span>}
+            </h4>
+          </div>
+        </div>
+        
+        {description && <div className="mb-2">{description}</div>}
+        
+        <div className="mt-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="text-sm break-all">{config.jwks_uri}</code>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  copy(config.jwks_uri || '');
+                  setCopiedText(config.jwks_uri || '');
+                }}
+                disabled={copied && copiedText === config.jwks_uri}
+              >
+                {copied && copiedText === config.jwks_uri ? (
+                  <>
+                    <ClipboardCheck className="h-3 w-3 mr-1" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </>
+                )}
+              </Button>
+              {/* JWKS is now loaded automatically */}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
