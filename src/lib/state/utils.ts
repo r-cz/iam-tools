@@ -1,5 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import { TokenHistoryItem, IssuerHistoryItem } from './types';
+import { 
+  TokenHistoryItem, 
+  IssuerHistoryItem, 
+  OAuthConfigHistoryItem,
+  OAuthState
+} from './types';
 import { DEFAULT_MAX_HISTORY_ITEMS } from './constants';
 
 /**
@@ -126,6 +131,50 @@ export function addIssuerToHistory(
 }
 
 /**
+ * Add an OAuth config to history, maintaining max size
+ * @param history Current OAuth config history
+ * @param config Config data to add
+ * @param maxItems Maximum history items to keep
+ * @returns Updated OAuth config history
+ */
+export function addOAuthConfigToHistory(
+  history: OAuthConfigHistoryItem[],
+  config: Omit<OAuthConfigHistoryItem, 'id' | 'createdAt' | 'lastUsedAt'>,
+  maxItems: number = DEFAULT_MAX_HISTORY_ITEMS
+): OAuthConfigHistoryItem[] {
+  // Generate a unique identifier for this config
+  const configKey = `${config.clientId}|${config.redirectUri}|${config.issuerUrl || 'demo'}`;
+  
+  // Check if similar config already exists in history
+  const existingIndex = history.findIndex(item => 
+    `${item.clientId}|${item.redirectUri}|${item.issuerUrl || 'demo'}` === configKey
+  );
+  const timestamp = Date.now();
+  
+  if (existingIndex >= 0) {
+    // Update existing config's lastUsedAt and potentially other fields
+    const updatedHistory = [...history];
+    updatedHistory[existingIndex] = {
+      ...updatedHistory[existingIndex],
+      ...config,
+      lastUsedAt: timestamp,
+    };
+    return updatedHistory;
+  }
+  
+  // Add new config to history
+  const newItem: OAuthConfigHistoryItem = {
+    id: generateId(),
+    ...config,
+    createdAt: timestamp,
+    lastUsedAt: timestamp,
+  };
+  
+  // Add new item and limit history size
+  return [newItem, ...history].slice(0, maxItems);
+}
+
+/**
  * Update a token item in history
  * @param history Current token history
  * @param id Token ID to update
@@ -160,6 +209,23 @@ export function updateIssuerInHistory(
 }
 
 /**
+ * Update an OAuth config in history
+ * @param history Current OAuth config history
+ * @param id Config ID to update
+ * @param updates Partial updates to apply
+ * @returns Updated OAuth config history
+ */
+export function updateOAuthConfigInHistory(
+  history: OAuthConfigHistoryItem[],
+  id: string,
+  updates: Partial<OAuthConfigHistoryItem>
+): OAuthConfigHistoryItem[] {
+  return history.map(item => 
+    item.id === id ? { ...item, ...updates } : item
+  );
+}
+
+/**
  * Remove a token from history
  * @param history Current token history
  * @param id Token ID to remove
@@ -186,6 +252,38 @@ export function removeIssuerFromHistory(
 }
 
 /**
+ * Remove an OAuth config from history
+ * @param history Current OAuth config history
+ * @param id Config ID to remove
+ * @returns Updated OAuth config history
+ */
+export function removeOAuthConfigFromHistory(
+  history: OAuthConfigHistoryItem[],
+  id: string
+): OAuthConfigHistoryItem[] {
+  return history.filter(item => item.id !== id);
+}
+
+/**
+ * Update OAuth flow preferences
+ * @param state Current OAuth state
+ * @param flowType Flow type to set
+ * @param demoMode Demo mode to set
+ * @returns Updated OAuth state
+ */
+export function updateOAuthFlowPreferences(
+  state: OAuthState,
+  flowType: string,
+  demoMode: boolean
+): OAuthState {
+  return {
+    ...state,
+    lastFlowType: flowType,
+    lastDemoMode: demoMode,
+  };
+}
+
+/**
  * Clear token history
  * @returns Empty token history
  */
@@ -198,5 +296,13 @@ export function clearTokenHistory(): TokenHistoryItem[] {
  * @returns Empty issuer history
  */
 export function clearIssuerHistory(): IssuerHistoryItem[] {
+  return [];
+}
+
+/**
+ * Clear OAuth config history
+ * @returns Empty OAuth config history
+ */
+export function clearOAuthConfigHistory(): OAuthConfigHistoryItem[] {
   return [];
 }
