@@ -6,11 +6,13 @@ type SetValue<T> = React.Dispatch<React.SetStateAction<T>>;
  * Hook for persistent state using localStorage
  * @param key The localStorage key to store the value under
  * @param initialValue The initial value to use if no value exists in storage
+ * @param migrationFn Optional function to migrate data when schema changes
  * @returns A stateful value and a function to update it (like useState)
  */
 export function useLocalStorage<T>(
   key: string,
-  initialValue: T
+  initialValue: T,
+  migrationFn?: (storedValue: any) => T
 ): [T, SetValue<T>] {
   // Get stored value from localStorage or use initialValue
   const readValue = React.useCallback((): T => {
@@ -20,12 +22,19 @@ export function useLocalStorage<T>(
 
     try {
       const item = window.localStorage.getItem(key);
-      return item ? (JSON.parse(item) as T) : initialValue;
+      let parsedItem = item ? (JSON.parse(item) as T) : initialValue;
+      
+      // Apply migration function if provided
+      if (migrationFn && item) {
+        parsedItem = migrationFn(parsedItem);
+      }
+      
+      return parsedItem;
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
-  }, [initialValue, key]);
+  }, [initialValue, key, migrationFn]);
 
   // State to store our value
   const [storedValue, setStoredValue] = React.useState<T>(readValue);

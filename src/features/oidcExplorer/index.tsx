@@ -83,7 +83,7 @@ export function OidcExplorer() {
       if (cachedJwks && cachedJwks.keys && cachedJwks.keys.length > 0) {
         console.log(`Using cached JWKS for issuer: ${config.issuer}`);
         // Use the cached JWKS (simulating a fetch)
-        jwksHook.setData(cachedJwks.keys);
+        jwksHook.setData({ keys: cachedJwks.keys });
       } 
       // Otherwise, automatically trigger JWKS fetch if URI exists and hasn't been fetched already
       else if (config.jwks_uri && config.jwks_uri !== lastFetchedJwksUri) {
@@ -104,12 +104,12 @@ export function OidcExplorer() {
       console.log('JWKS loaded via hook:', jwksHook.data);
       
       // Cache the JWKS in global state
-      if (oidcConfigHook.data.issuer) {
-        updateRecentJwks(oidcConfigHook.data.issuer, jwksHook.data);
+      if (oidcConfigHook.data.issuer && jwksHook.data?.keys) {
+        updateRecentJwks(oidcConfigHook.data.issuer, jwksHook.data.keys);
       }
       
       toast.success('Successfully fetched JWKS', {
-        description: `Found ${jwksHook.data.length} keys`,
+        description: `Found ${jwksHook.data?.keys?.length || 0} keys`,
         duration: 5000,
       });
     }
@@ -231,8 +231,8 @@ export function OidcExplorer() {
             <TabsContent value="jwks" className="mt-4">
               {jwksHook.data ? (
                 <JwksDisplay
-                  jwks={jwksHook.data as any}
-                  jwksUri={oidcConfigHook.data.jwks_uri!}
+                  jwks={jwksHook.data}
+                  jwksUri={oidcConfigHook.data.jwks_uri || ''}
                 />
               ) : (
                 <div className="text-center text-muted-foreground py-8">

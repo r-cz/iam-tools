@@ -8,6 +8,7 @@ interface UseJwksResult {
   isLoading: boolean;
   error: Error | null;
   fetchJwks: (url: string, forceRefresh?: boolean) => Promise<void>;
+  setData: (data: JSONWebKeySet) => void;
 }
 
 /**
@@ -115,6 +116,6 @@ export function useJwks(): UseJwksResult {
     }
   };
 
-  // Provide a function to trigger fetching manually
-  return { data, isLoading, error, fetchJwks };
+  // Provide a function to trigger fetching manually and allow setting data directly
+  return { data, isLoading, error, fetchJwks, setData };
 }

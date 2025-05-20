@@ -16,21 +16,23 @@ import { Key, Info, AlertCircle } from 'lucide-react';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { Button } from '@/components/ui/button';
 import { Jwks, JwksKey } from '../utils/types';
+import { JSONWebKeySet } from 'jose';
 
 interface JwksDisplayProps {
-  jwks: Jwks;
+  jwks: Jwks | JSONWebKeySet;
   jwksUri: string;
 }
 
 export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
   const [view, setView] = useState<'formatted' | 'raw'>('formatted');
+  const keysArray = Array.isArray(jwks.keys) ? jwks.keys : [];
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(
-    jwks.keys.length > 0 ? jwks.keys[0].kid : null
+    keysArray.length > 0 && keysArray[0].kid ? keysArray[0].kid : null
   );
   const { copy, copied } = useClipboard();
 
   // Get the selected key
-  const selectedKey = jwks.keys.find(key => key.kid === selectedKeyId) || null;
+  const selectedKey = keysArray.find(key => key.kid === selectedKeyId) || null;
 
   const getKeyTypeLabel = (kty: string) => {
     switch(kty) {
@@ -272,7 +274,7 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
           <TabsContent value="formatted">
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-3">Keys ({jwks.keys.length})</h3>
+              <h3 className="text-lg font-semibold mb-3">Keys ({keysArray.length})</h3>
               
               <Table>
                 <TableHeader>
@@ -284,11 +286,11 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {jwks.keys.map((key) => (
+                  {keysArray.map((key) => (
                     <TableRow 
                       key={key.kid} 
                       className={`cursor-pointer hover:bg-muted/30 ${key.kid === selectedKeyId ? 'bg-muted/50' : ''}`}
-                      onClick={() => setSelectedKeyId(key.kid)}
+                      onClick={() => setSelectedKeyId(key.kid || null)}
                     >
                       <TableCell className="font-mono text-sm">{key.kid}</TableCell>
                       <TableCell>
@@ -318,7 +320,7 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
             
             <Separator />
             
-            {selectedKey && renderKeyDetails(selectedKey)}
+            {selectedKey && renderKeyDetails(selectedKey as JwksKey)}
           </div>
         </TabsContent>
         

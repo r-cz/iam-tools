@@ -45,9 +45,6 @@ export function TokenPayload({
     "scope", "scp", "roles", "groups", "entitlements"
   ];
   
-  // Keep track of validation results
-  const validationClaimIds = validationResults.map(result => result.claim);
-
   // Check if token is expired
   const isExpired = payload.exp && typeof payload.exp === 'number' && 
                    payload.exp * 1000 < Date.now();
@@ -238,6 +235,9 @@ export function TokenPayload({
   const filteredOtherClaims = isExpired && !showExpiredClaims
     ? [] // Hide all other claims for expired tokens when showExpiredClaims is false
     : otherClaims;
+    
+  // Commenting out unused variable
+  // const validationClaimIds = validationResults.map(result => result.claim);
 
   return (
     <div className="space-y-4">

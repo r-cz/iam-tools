@@ -14,12 +14,8 @@ export function AuthCodeWithPkceFlow() {
   // Get state from global state
   const { 
     activeConfig, 
-    activeConfigId, 
-    lastFlowType, 
     lastDemoMode, 
-    addConfig, 
-    updateConfig, 
-    setActiveConfig 
+    addConfig 
   } = useOAuthPlayground();
   
   // Local component state

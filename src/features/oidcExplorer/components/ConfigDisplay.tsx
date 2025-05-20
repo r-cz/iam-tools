@@ -19,8 +19,7 @@ import {
   XCircle, 
   Link,
   Copy,
-  ClipboardCheck,
-  Settings
+  ClipboardCheck
 } from 'lucide-react';
 import { useClipboard } from '@/hooks/use-clipboard';
 
