@@ -20,7 +20,7 @@ import {
 import { validateToken, determineTokenType } from "./utils/token-validation";
 import type { TokenType, DecodedToken, ValidationResult } from "@/types"; // Point to the shared types directory
 import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
-import { useTokenHistory } from "../../lib/state";
+import { useTokenHistory, useTokenInspector } from "../../lib/state";
 import { verifySignatureWithRefresh } from "@/lib/jwt/verify-signature-with-refresh";
 import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
 
@@ -34,53 +34,82 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   const [decodedToken, setDecodedToken] = useState<DecodedToken | null>(null);
   const [tokenType, setTokenType] = useState<TokenType>("unknown"); // Default to unknown
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
-  const [activeTab, setActiveTab] = useState("payload");
   const [issuerUrl, setIssuerUrl] = useState("");
   const [isDemoToken, setIsDemoToken] = useState(false); // Tracks if the CURRENT decoded token is a demo one
   
-  // Token history state from the app state provider
+  // Global state from AppState
   const { addToken } = useTokenHistory();
+  const { 
+    activeTokenId, 
+    displayPreferences, 
+    validationPreferences, 
+    setActiveTokenId, 
+    updatePreferences 
+  } = useTokenInspector();
+
+  // Use state from global preferences
+  const [activeTab, setActiveTab] = useState(displayPreferences.defaultTab);
   
   // OIDC config hook for getting JWKS URI
   const oidcConfigHook = useOidcConfig();
 
-  // Effect to handle initial token from URL
+  // Effect to handle initial token from URL or active token from global state
   useEffect(() => {
-    if (initialToken && token !== initialToken) { // Process only if initialToken exists and hasn't been processed
+    // Check if we should use an active token from global state
+    if (activeTokenId && !initialToken) {
+      console.log('Using active token from global state:', activeTokenId);
+      const { tokenHistory } = useTokenHistory();
+      const activeTokenObj = tokenHistory.find(t => t.id === activeTokenId);
+      if (activeTokenObj && activeTokenObj.token !== token) {
+        setToken(activeTokenObj.token);
+        // Decode will happen via the useEffect watching `token` state below
+      }
+    }
+    // Handle initial token from URL (this takes precedence over active token)
+    else if (initialToken && token !== initialToken) { 
       console.log('Processing initial token from URL parameter:', initialToken.substring(0,10)+'...');
       setToken(initialToken); // Set the token state
       // Decode will happen via the useEffect watching `token` state below
     }
-   // Intentionally run only when initialToken prop changes
+   // Intentionally run only when activeTokenId or initialToken prop changes
    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialToken]);
+  }, [activeTokenId, initialToken]);
 
   // Effect to decode token whenever the 'token' state changes
   useEffect(() => {
     console.log("Token state changed, attempting decode...");
-    decodeToken(token, jwks); // Attempt decode with current token and JWKS state
+    if (token) {
+      if (validationPreferences.autoValidate) {
+        decodeToken(token, jwks); // Attempt decode with current token and JWKS state
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]); // Rerun when the main token string changes
   
   // Effect to fetch OIDC config when issuer changes
   useEffect(() => {
-    if (issuerUrl && !isDemoToken && !oidcConfigHook.isLoading && !oidcConfigHook.data) {
+    if (issuerUrl && !isDemoToken && !oidcConfigHook.isLoading && !oidcConfigHook.data && validationPreferences.autoFetchJwks) {
       console.log('Fetching OIDC config for issuer:', issuerUrl);
       oidcConfigHook.fetchConfig(issuerUrl);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issuerUrl, isDemoToken]);
 
+  // Effect to update active tab when preferences change
+  useEffect(() => {
+    setActiveTab(displayPreferences.defaultTab);
+  }, [displayPreferences.defaultTab]);
 
   const resetState = () => {
     console.log("Resetting Token Inspector state.");
     setToken(""); // Clear token input state
     setDecodedToken(null);
     setValidationResults([]);
-    setActiveTab("payload");
+    setActiveTab(displayPreferences.defaultTab);
     setIsDemoToken(false);
     setJwks(null); // Reset loaded JWKS
     setIssuerUrl("");
+    setActiveTokenId(undefined); // Clear active token in global state
      // Clear token from URL if it was present
      if (initialToken) {
          const url = new URL(window.location.href);
@@ -130,7 +159,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       const demoIssuerUrl = getIssuerBaseUrl();
       // Check explicit claim first, then check issuer matching our known demo issuer URL
       const isLikelyDemo = payload.is_demo_token === true ||
-                           (payload.iss && typeof payload.iss === 'string' && payload.iss === demoIssuerUrl);
+                         (payload.iss && typeof payload.iss === 'string' && payload.iss === demoIssuerUrl);
       setIsDemoToken(isLikelyDemo); // Update state based on CURRENT token
       console.log('Decoded token. Is Demo:', isLikelyDemo, 'Issuer:', payload.iss);
 
@@ -211,6 +240,14 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       });
       setValidationResults(validationResults);
 
+      // Store the current token ID as active in global state
+      // Find the token ID in history
+      const { tokenHistory } = useTokenHistory();
+      const tokenItem = tokenHistory.find(t => t.token === tokenToDecode);
+      if (tokenItem) {
+        setActiveTokenId(tokenItem.id);
+      }
+
     } catch (err: any) {
       console.error("Token decoding/validation failed:", err);
       setDecodedToken(null); // Clear decoded state on error
@@ -241,6 +278,20 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
        await decodeToken(decodedToken.raw, resolvedJwks); // Pass current token and new JWKS
      }
    };
+
+  // Handler for tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Update global preferences if this is a user-initiated change
+    if (tab !== displayPreferences.defaultTab) {
+      updatePreferences({
+        displayPreferences: {
+          ...displayPreferences,
+          defaultTab: tab
+        }
+      });
+    }
+  };
 
   // Helper function for rendering signature status badge
   const getSignatureStatusBadge = () => {
@@ -342,7 +393,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
             </div>
 
             {/* Tabs for Decoded Content */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">
                 <TabsTrigger value="header" className="flex-1 min-w-fit">Header</TabsTrigger>
                 <TabsTrigger value="payload" className="flex-1 min-w-fit">Payload</TabsTrigger>
@@ -362,6 +413,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
                   payload={decodedToken.payload}
                   tokenType={tokenType}
                   validationResults={validationResults.filter(r => !r.claim.startsWith('header.'))}
+                  showExpiredClaims={displayPreferences.showExpiredClaims}
                 />
               </TabsContent>
 

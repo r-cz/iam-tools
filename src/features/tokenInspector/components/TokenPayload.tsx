@@ -6,19 +6,35 @@ import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useTokenInspector } from "@/lib/state";
 
 interface TokenPayloadProps {
   payload: any;
   tokenType: TokenType;
   validationResults: ValidationResult[];
+  showExpiredClaims?: boolean;
 }
 
 export function TokenPayload({ 
   payload, 
   tokenType,
-  validationResults 
+  validationResults,
+  showExpiredClaims = true // default to true for backward compatibility
 }: TokenPayloadProps) {
   const [showAll, setShowAll] = useState(false);
+  const { updatePreferences, displayPreferences } = useTokenInspector();
+  
+  // Toggle show expired claims
+  const toggleShowExpiredClaims = () => {
+    updatePreferences({
+      displayPreferences: {
+        ...displayPreferences,
+        showExpiredClaims: !showExpiredClaims
+      }
+    });
+  };
   
   // Claims to show first based on token type
   const standardClaims = tokenType === "id_token" ? [
@@ -30,7 +46,11 @@ export function TokenPayload({
   ];
   
   // Keep track of validation results
-  validationResults.map(result => result.claim);
+  const validationClaimIds = validationResults.map(result => result.claim);
+
+  // Check if token is expired
+  const isExpired = payload.exp && typeof payload.exp === 'number' && 
+                   payload.exp * 1000 < Date.now();
 
   // Categorize claims
   const commonClaims = Object.keys(payload).filter(key => 
@@ -46,11 +66,13 @@ export function TokenPayload({
     // Format timestamps as human-readable dates
     if (["exp", "iat", "auth_time", "nbf"].includes(key) && 
         typeof value === "number") {
+      const isExpired = key === "exp" && value * 1000 < Date.now();
       return (
         <div>
           <span className="font-mono">{value}</span>
-          <span className="ml-2 text-muted-foreground">
+          <span className={`ml-2 ${isExpired ? 'text-red-500' : 'text-muted-foreground'}`}>
             ({new Date(value * 1000).toLocaleString()})
+            {isExpired && ' (Expired)'}
           </span>
         </div>
       );
@@ -208,6 +230,15 @@ export function TokenPayload({
     );
   };
 
+  // Filter claims if token is expired and showExpiredClaims is false
+  const filteredCommonClaims = isExpired && !showExpiredClaims 
+    ? commonClaims.filter(key => key === "exp" || key === "iat") // Only show exp and iat claims for expired tokens
+    : commonClaims;
+
+  const filteredOtherClaims = isExpired && !showExpiredClaims
+    ? [] // Hide all other claims for expired tokens when showExpiredClaims is false
+    : otherClaims;
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -216,15 +247,33 @@ export function TokenPayload({
         </div>
       </div>
       
+      {/* Settings for expired tokens */}
+      {isExpired && (
+        <div className="flex items-center justify-between rounded-lg border bg-amber-500/10 border-amber-500/20 p-3 mb-2">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-amber-700">Token is expired</p>
+            <p className="text-xs text-amber-600">This token expired {new Date(payload.exp * 1000).toLocaleString()}</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="show-expired" 
+              checked={showExpiredClaims}
+              onCheckedChange={toggleShowExpiredClaims}
+            />
+            <Label htmlFor="show-expired">Show all claims</Label>
+          </div>
+        </div>
+      )}
+      
       <div className="space-y-3">
         <h3 className="text-md font-medium">{tokenType === "id_token" ? "Common OIDC Claims" : "Common OAuth/JWT Claims"}</h3>
         
         <div className="grid grid-cols-1 gap-3">
-          {commonClaims.map(key => renderClaim(key, payload[key]))}
+          {filteredCommonClaims.map(key => renderClaim(key, payload[key]))}
         </div>
       </div>
       
-      {otherClaims.length > 0 && (
+      {filteredOtherClaims.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-md font-medium">Additional Claims</h3>
@@ -233,12 +282,12 @@ export function TokenPayload({
               variant="ghost"
               size="sm"
             >
-              {showAll ? 'Show Less' : `Show All (${otherClaims.length})`}
+              {showAll ? 'Show Less' : `Show All (${filteredOtherClaims.length})`}
             </Button>
           </div>
           
           <div className="grid grid-cols-1 gap-3">
-            {(showAll ? otherClaims : otherClaims.slice(0, 3)).map(key => 
+            {(showAll ? filteredOtherClaims : filteredOtherClaims.slice(0, 3)).map(key => 
               renderClaim(key, payload[key])
             )}
           </div>
