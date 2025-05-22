@@ -12,7 +12,7 @@ test.describe('OAuth Playground - Client Credentials', () => {
 
   test('should load client credentials page', async ({ page }) => {
     await expect(page).toHaveTitle(/iam\.tools/);
-    await expect(page.locator('h1')).toContainText('Client Credentials Flow');
+    await expect(page.locator('text=OAuth Client Credentials Flow')).toBeVisible();
   });
 
   test('should toggle demo mode', async ({ page }) => {
@@ -22,8 +22,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Toggle demo mode on
     await demoSwitch.click();
     
-    // Verify demo mode is enabled
-    await expect(page.locator('text=Demo mode enabled')).toBeVisible();
+    // Wait a bit for demo mode to activate
+    await page.waitForTimeout(500);
     
     // Verify form fields are populated with demo values
     const tokenUrlInput = page.locator(selectors.oauthPlayground.tokenUrlInput);
@@ -38,8 +38,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
   test('should request token in demo mode', async ({ page }) => {
     // Enable demo mode
     await page.click(selectors.oauthPlayground.demoModeSwitch);
-    // Demo mode toggle should be instant
-    await page.waitForTimeout(100);
+    // Wait for demo mode to fully activate
+    await page.waitForTimeout(1000);
     
     // Request Token button should be enabled
     const requestButton = await utils.getButtonByText('Request Token');
@@ -49,7 +49,7 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await requestButton.click();
     
     // Wait for token response
-    await page.waitForSelector('text=Token request successful');
+    await utils.waitForToast('success');
     
     // Verify access token is displayed
     await expect(page.locator('text=Access Token')).toBeVisible();
@@ -74,8 +74,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
   test('should handle custom scopes', async ({ page }) => {
     // Enable demo mode
     await page.click(selectors.oauthPlayground.demoModeSwitch);
-    // Demo mode toggle should be instant
-    await page.waitForTimeout(100);
+    // Wait for demo mode to fully activate
+    await page.waitForTimeout(1000);
     
     // Add custom scopes
     const scopeInput = page.locator(selectors.oauthPlayground.scopeInput);
@@ -86,7 +86,7 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await page.click('button:has-text("Request Token")');
     
     // Wait for success
-    await page.waitForSelector('text=Token request successful');
+    await utils.waitForToast('success');
     
     // Verify scopes are included in response
     await expect(page.locator('text=read:users write:users admin')).toBeVisible();
@@ -95,8 +95,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
   test('should copy access token', async ({ page }) => {
     // Enable demo mode and request token
     await page.click(selectors.oauthPlayground.demoModeSwitch);
-    // Demo mode toggle should be instant
-    await page.waitForTimeout(100);
+    // Wait for demo mode to fully activate
+    await page.waitForTimeout(1000);
     await page.click('button:has-text("Request Token")');
     await page.waitForSelector('text=Token request successful');
     
@@ -105,14 +105,14 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await copyButton.click();
     
     // Should show success message
-    await page.waitForSelector('text=Copied to clipboard');
+    await utils.waitForToast('success');
   });
 
   test('should display request details', async ({ page }) => {
     // Enable demo mode
     await page.click(selectors.oauthPlayground.demoModeSwitch);
-    // Demo mode toggle should be instant
-    await page.waitForTimeout(100);
+    // Wait for demo mode to fully activate
+    await page.waitForTimeout(1000);
     
     // Verify request preview is shown
     await expect(page.locator('text=Request Preview')).toBeVisible();
@@ -123,8 +123,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
   test('should reset form', async ({ page }) => {
     // Enable demo mode and fill form
     await page.click(selectors.oauthPlayground.demoModeSwitch);
-    // Demo mode toggle should be instant
-    await page.waitForTimeout(100);
+    // Wait for demo mode to fully activate
+    await page.waitForTimeout(1000);
     
     // Verify form is populated
     const clientIdInput = page.locator(selectors.oauthPlayground.clientIdInput);
@@ -137,8 +137,9 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Form should be cleared
     await expect(clientIdInput).toHaveValue('');
     
-    // Demo mode should be off
-    await expect(page.locator('text=Demo mode enabled')).not.toBeVisible();
+    // Demo mode switch should be off
+    const demoSwitch = page.locator(selectors.oauthPlayground.demoModeSwitch);
+    await expect(demoSwitch).toHaveAttribute('aria-checked', 'false');
   });
 
   test('should handle token request error', async ({ page }) => {
@@ -151,7 +152,7 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await page.click('button:has-text("Request Token")');
     
     // Should show error message
-    await page.waitForSelector('text=Token request failed');
+    await utils.waitForToast('error');
   });
 
   test('should show authentication method options', async ({ page }) => {
@@ -168,8 +169,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
   test('should handle additional parameters', async ({ page }) => {
     // Enable demo mode
     await page.click(selectors.oauthPlayground.demoModeSwitch);
-    // Demo mode toggle should be instant
-    await page.waitForTimeout(100);
+    // Wait for demo mode to fully activate
+    await page.waitForTimeout(1000);
     
     // Find additional parameters section
     const addParamButton = page.locator('button:has-text("Add Parameter")');

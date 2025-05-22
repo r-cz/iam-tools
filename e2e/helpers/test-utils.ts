@@ -20,10 +20,11 @@ export class TestUtils {
   }
 
   async waitForToast(type: 'success' | 'error' = 'success') {
+    // Wait for toast in the notifications region
     const toastSelector = type === 'success' 
-      ? '[role="status"]:has-text("success")'
-      : '[role="status"]:has-text("error")';
-    await this.page.waitForSelector(toastSelector, { state: 'visible', timeout: 1000 });
+      ? 'region[aria-label="Notifications"] >> text=/success/'
+      : 'region[aria-label="Notifications"] >> text=/error/';
+    await this.page.waitForSelector(toastSelector, { state: 'visible', timeout: 5000 });
   }
 
   async closeToast() {

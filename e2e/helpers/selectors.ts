@@ -47,7 +47,7 @@ export const selectors = {
     demoModeSwitch: '[role="switch"]',
     authUrlInput: 'input[placeholder*="example.com/authorize"]',
     tokenUrlInput: 'input[placeholder*="example.com/token"]',
-    clientIdInput: 'input[placeholder="Your client ID"]',
+    clientIdInput: 'input[placeholder*="client"]',
     clientSecretInput: 'input[placeholder="Your client secret"]',
     scopeInput: 'input[placeholder*="openid"]',
     startAuthButton: 'button:has-text("Continue to Authorization")',

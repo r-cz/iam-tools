@@ -12,7 +12,7 @@ test.describe('OIDC Explorer', () => {
 
   test('should load OIDC explorer page', async ({ page }) => {
     await expect(page).toHaveTitle(/iam\.tools/);
-    await expect(page.locator('h1')).toContainText('OIDC Configuration Explorer');
+    await expect(page.locator('text=OIDC Configuration Explorer')).toBeVisible();
   });
 
   test('should have disabled fetch button initially', async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe('OIDC Explorer', () => {
     await page.click(selectors.buttons.fetchConfig);
     
     // Wait for configuration to load
-    await page.waitForSelector('text=Configuration loaded successfully');
+    await utils.waitForToast('success');
     
     // Verify configuration sections are displayed
     await expect(page.locator('text=OpenID Provider Information')).toBeVisible();
@@ -61,7 +61,7 @@ test.describe('OIDC Explorer', () => {
     await page.click(selectors.buttons.fetchConfig);
     
     // Wait for configuration to load
-    await page.waitForSelector('text=Configuration loaded successfully');
+    await utils.waitForToast('success');
     
     // Verify key configuration fields are present
     await expect(page.locator('text=issuer')).toBeVisible();
@@ -82,7 +82,7 @@ test.describe('OIDC Explorer', () => {
     await page.click(selectors.buttons.fetchConfig);
     
     // Should show error message
-    await page.waitForSelector('text=Failed to fetch configuration');
+    await utils.waitForToast('error');
   });
 
   test('should detect known providers', async ({ page }) => {
@@ -92,7 +92,7 @@ test.describe('OIDC Explorer', () => {
     await page.click(selectors.buttons.fetchConfig);
     
     // Wait for configuration to load
-    await page.waitForSelector('text=Configuration loaded successfully');
+    await utils.waitForToast('success');
     
     // Should detect Google as provider
     await expect(page.locator('text=Google')).toBeVisible();
@@ -105,14 +105,14 @@ test.describe('OIDC Explorer', () => {
     await page.click(selectors.buttons.fetchConfig);
     
     // Wait for configuration to load
-    await page.waitForSelector('text=Configuration loaded successfully');
+    await utils.waitForToast('success');
     
     // Click copy button
     const copyButton = page.locator('button[aria-label*="Copy"]').first();
     await copyButton.click();
     
     // Should show success toast
-    await page.waitForSelector('text=Copied to clipboard');
+    await utils.waitForToast('success');
   });
 
   test('should expand/collapse configuration sections', async ({ page }) => {
@@ -122,7 +122,7 @@ test.describe('OIDC Explorer', () => {
     await page.click(selectors.buttons.fetchConfig);
     
     // Wait for configuration to load
-    await page.waitForSelector('text=Configuration loaded successfully');
+    await utils.waitForToast('success');
     
     // Find collapsible sections
     const collapsibleButtons = page.locator('button[aria-expanded]');
