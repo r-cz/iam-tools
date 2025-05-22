@@ -27,6 +27,7 @@ dist-ssr
 # Playwright
 playwright-report
 e2e/test-results
+e2e/test-report
 /playwright/.cache/
 
 # Cloudflare Wrangler
