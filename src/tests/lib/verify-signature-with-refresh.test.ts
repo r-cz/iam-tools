@@ -20,8 +20,16 @@ global.localStorage = {
   }
 } as any;
 
+// Mock response type
+interface MockResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  json?: () => Promise<any>;
+}
+
 // Create a mockable proxyFetch function
-const mockProxyFetch = mock(() => {
+const mockProxyFetch = mock((): Promise<MockResponse> => {
   return Promise.resolve({
     ok: false,
     status: 404,
@@ -32,6 +40,17 @@ const mockProxyFetch = mock(() => {
 // Mock the proxyFetch module
 mock.module('@/lib/proxy-fetch', () => ({
   proxyFetch: mockProxyFetch
+}));
+
+// Mock jwtVerify to avoid actual crypto operations in tests
+const mockJwtVerify = mock(async () => {
+  throw new Error('Signature verification failed');
+});
+
+// Mock jose module
+mock.module('jose', () => ({
+  jwtVerify: mockJwtVerify,
+  JSONWebKeySet: {} // Type definition
 }));
 
 describe('verifySignatureWithRefresh', () => {
@@ -67,6 +86,23 @@ describe('verifySignatureWithRefresh', () => {
   beforeEach(() => {
     // Clear the cache before each test
     jwksCache.clear();
+    
+    // Reset mocks
+    mockProxyFetch.mockReset();
+    mockJwtVerify.mockReset();
+    
+    // Default mock implementations
+    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found'
+      });
+    });
+    
+    mockJwtVerify.mockImplementation(async () => {
+      throw new Error('Signature verification failed');
+    });
   });
 
   test('should return error when no keys found in JWKS', async () => {
@@ -113,9 +149,11 @@ describe('verifySignatureWithRefresh', () => {
     let refreshCalled = false;
     
     // Mock the proxyFetch to return the rotated JWKS
-    mockProxyFetch.mockImplementation(() => {
+    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
       return Promise.resolve({
         ok: true,
+        status: 200,
+        statusText: 'OK',
         json: () => Promise.resolve(mockJwksRotated)
       });
     });
@@ -125,22 +163,25 @@ describe('verifySignatureWithRefresh', () => {
       tokenNewKey,
       mockJwksUri,
       mockJwks,
-      (newJwks) => {
+      (newJwks: JSONWebKeySet) => {
         refreshCalled = true;
         expect(newJwks).toEqual(mockJwksRotated);
       }
     );
 
-    expect(result.valid).toBe(false); // Will still fail since we're not doing actual crypto verification in test
-    expect(result.error).toBeDefined();
+    // The verification will still fail due to invalid test keys, 
+    // but the important part is that refresh was attempted
+    expect(result.valid).toBe(false);
     expect(refreshCalled).toBe(true);
+    // The error could be about key modulus or signature verification
+    expect(result.error).toBeDefined();
   });
 
   test('should handle network error during refresh', async () => {
     const tokenNewKey = 'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LTMifQ.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature';
     
     // Mock proxyFetch to fail
-    mockProxyFetch.mockImplementation(() => {
+    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
       return Promise.resolve({
         ok: false,
         status: 500,
@@ -162,9 +203,11 @@ describe('verifySignatureWithRefresh', () => {
     const tokenNewKey = 'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LTQifQ.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature';
     
     // Mock proxyFetch to return invalid JWKS
-    mockProxyFetch.mockImplementation(() => {
+    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
       return Promise.resolve({
         ok: true,
+        status: 200,
+        statusText: 'OK',
         json: () => Promise.resolve({ invalid: 'jwks' })
       });
     });

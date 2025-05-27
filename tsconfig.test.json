@@ -14,9 +14,13 @@
   "include": [
     "node_modules/bun-types/test.d.ts", 
     "src/tests/**/*", 
-    "**/*.test.ts", 
-    "**/*.test.tsx", 
-    "**/*.spec.ts", 
-    "**/*.spec.tsx"
+    "src/**/*.test.ts", 
+    "src/**/*.test.tsx", 
+    "src/**/*.spec.ts", 
+    "src/**/*.spec.tsx"
+  ],
+  // Exclude e2e tests (they should only run with Playwright)
+  "exclude": [
+    "e2e/**/*"
   ]
 }
