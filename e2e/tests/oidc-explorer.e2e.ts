@@ -84,7 +84,7 @@ test.describe('OIDC Explorer', () => {
     
     // After timeout, we should either see an error or the loading should have stopped
     const fetchingText = await page.locator('text=Fetching configuration...').isVisible();
-    const hasError = await page.locator('text=/[Ee]rror|[Ff]ailed|Could not/').isVisible();
+    const hasError = await page.locator('[role="alert"]:has-text("Error"), .sonner-toast:has-text("Error"), .sonner-toast:has-text("Failed")').first().isVisible();
     
     // Either we should see an error or the fetching should have stopped
     expect(fetchingText || hasError).toBeTruthy();
