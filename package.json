@@ -26,10 +26,10 @@
     "dev:detach:vite": "bun ./scripts/start-server.js --only-vite",
     "dev:detach:proxy": "bun ./scripts/start-server.js --only-proxy",
     "dev:stop": "bun ./scripts/stop-server.js",
-    "e2e": "playwright test --config=e2e/playwright.config.ts --project=chromium",
-    "e2e:all": "playwright test --config=e2e/playwright.config.ts",
+    "e2e": "playwright test --config=e2e/playwright.config.ts --project=chromium --reporter=list",
+    "e2e:all": "playwright test --config=e2e/playwright.config.ts --reporter=list",
     "e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
-    "e2e:headed": "playwright test --config=e2e/playwright.config.ts --headed",
+    "e2e:headed": "playwright test --config=e2e/playwright.config.ts --headed --reporter=list",
     "e2e:debug": "playwright test --config=e2e/playwright.config.ts --debug",
     "e2e:install": "playwright install"
   },

@@ -44,12 +44,12 @@ export const selectors = {
 
   // OAuth Playground
   oauthPlayground: {
-    demoModeSwitch: '[role="switch"]',
+    demoModeSwitch: '#demo-mode-switch',
     authUrlInput: 'input[placeholder*="example.com/authorize"]',
-    tokenUrlInput: 'input#token-endpoint',
-    clientIdInput: 'input#client-id',
-    clientSecretInput: 'input#client-secret',
-    scopeInput: 'input#scope',
+    tokenUrlInput: 'input[placeholder*="example.com/token"]',
+    clientIdInput: 'input[placeholder*="client"]',
+    clientSecretInput: 'input[placeholder*="client secret"]',
+    scopeInput: 'input[placeholder*="openid profile email"]',
     startAuthButton: 'button:has-text("Continue to Authorization")',
     exchangeTokenButton: 'button:has-text("Exchange Token")',
   },
