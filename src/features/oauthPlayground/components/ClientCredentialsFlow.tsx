@@ -34,6 +34,22 @@ export function ClientCredentialsFlow() {
   const [result, setResult] = useState<TokenResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false); // Add state for demo mode
   const [configLoading, setConfigLoading] = useState(false);
+  
+  // Update values when demo mode changes
+  React.useEffect(() => {
+    if (isDemoMode) {
+      setTokenEndpoint(`${window.location.origin}/oauth-playground/demo/token`);
+      setClientId("demo-client-credentials-client");
+      setClientSecret("demo-client-secret");
+      setScope("api:read api:write");
+    } else {
+      // Clear demo values when switching off
+      setTokenEndpoint("");
+      setClientId("");
+      setClientSecret("");
+      setScope("");
+    }
+  }, [isDemoMode]);
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
@@ -229,7 +245,10 @@ export function ClientCredentialsFlow() {
                 placeholder="space-separated scopes (e.g., api:read)"
               />
             </div>
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading || (!isDemoMode && (!tokenEndpoint || !clientId || !clientSecret))}
+            >
               {loading ? "Requesting..." : (isDemoMode ? "Generate Demo Token" : "Request Token")}
             </Button>
           </form>

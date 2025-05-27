@@ -24,7 +24,7 @@ export const selectors = {
 
   // Token Inspector
   tokenInspector: {
-    tokenInput: 'textarea[placeholder*="OAuth/OIDC Token"]',
+    tokenInput: 'textarea#token-input',
     tokenDisplay: '.token-display',
     headerTab: 'button[role="tab"]:has-text("Header")',
     payloadTab: 'button[role="tab"]:has-text("Payload")',
@@ -36,8 +36,8 @@ export const selectors = {
 
   // OIDC Explorer
   oidcExplorer: {
-    urlInput: 'input[placeholder*="OpenID Provider URL"]',
-    randomExample: 'button[aria-label="Load random example"]',
+    urlInput: 'input#issuer-url',
+    randomExample: 'button[title="Load random example"]',
     configDisplay: '.config-display',
     jwksDisplay: '.jwks-display',
   },
@@ -46,10 +46,10 @@ export const selectors = {
   oauthPlayground: {
     demoModeSwitch: '[role="switch"]',
     authUrlInput: 'input[placeholder*="example.com/authorize"]',
-    tokenUrlInput: 'input[placeholder*="example.com/token"]',
-    clientIdInput: 'input[placeholder*="client"]',
-    clientSecretInput: 'input[placeholder="Your client secret"]',
-    scopeInput: 'input[placeholder*="openid"]',
+    tokenUrlInput: 'input#token-endpoint',
+    clientIdInput: 'input#client-id',
+    clientSecretInput: 'input#client-secret',
+    scopeInput: 'input#scope',
     startAuthButton: 'button:has-text("Continue to Authorization")',
     exchangeTokenButton: 'button:has-text("Exchange Token")',
   },

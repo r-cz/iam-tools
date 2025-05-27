@@ -41,11 +41,11 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Wait for demo mode to fully activate
     await page.waitForTimeout(1000);
     
-    // Request Token button should be enabled
-    const requestButton = await utils.getButtonByText('Request Token');
+    // Generate Demo Token button should be enabled
+    const requestButton = await utils.getButtonByText('Generate Demo Token');
     await expect(requestButton).toBeEnabled();
     
-    // Click Request Token
+    // Click Generate Demo Token
     await requestButton.click();
     
     // Wait for token response
