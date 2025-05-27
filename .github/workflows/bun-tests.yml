@@ -31,10 +31,24 @@ jobs:
     - name: Run coverage tests
       run: bun test:coverage
     
+    - name: Install Playwright browsers
+      run: bun run e2e:install
+    
+    - name: Run e2e tests
+      run: bun run e2e
+    
     - name: Upload test coverage
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report
         path: coverage/
+        retention-days: 30
+        
+    - name: Upload e2e test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-results
+        path: e2e/test-results/
         retention-days: 30
