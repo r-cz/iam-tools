@@ -25,6 +25,7 @@ interface IssuerHistoryProps {
   onSelectIssuer: (issuerUrl: string) => void;
   configLoading?: boolean;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 // Helper function to truncate long URLs
@@ -58,7 +59,7 @@ function truncateUrl(url: string, maxLength: number = 40): string {
  * Shared component for displaying a history of recently used OIDC issuer URLs
  * Used across OIDC Explorer, OAuth Playground, and Token Inspector features
  */
-export function IssuerHistory({ onSelectIssuer, configLoading = false, disabled = false }: IssuerHistoryProps) {
+export function IssuerHistory({ onSelectIssuer, configLoading = false, disabled = false, compact = false }: IssuerHistoryProps) {
   const { issuerHistory, removeIssuer, updateIssuer, clearIssuers } = useIssuerHistory();
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editName, setEditName] = React.useState('');
@@ -86,18 +87,31 @@ export function IssuerHistory({ onSelectIssuer, configLoading = false, disabled 
   }
   
   return (
-    <div className="w-full">
+    <div className={compact ? "" : "w-full"}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="flex items-center gap-1"
-            disabled={disabled || configLoading}
-          >
-            {configLoading ? <Loader2 size={16} className="animate-spin" /> : <History size={16} />}
-            <span>Recent Issuers</span>
-          </Button>
+          {compact ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-8 w-8"
+              disabled={disabled || configLoading}
+              title="Recent Issuers"
+            >
+              {configLoading ? <Loader2 size={16} className="animate-spin" /> : <History size={16} />}
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-1"
+              disabled={disabled || configLoading}
+            >
+              {configLoading ? <Loader2 size={16} className="animate-spin" /> : <History size={16} />}
+              <span>Recent Issuers</span>
+            </Button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[340px]">
           <DropdownMenuLabel>Issuer URL History</DropdownMenuLabel>

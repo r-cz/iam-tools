@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CodeBlock } from "@/components/ui/code-block";
-import { IssuerHistory } from "@/components/common";
+import { IssuerHistory, TokenHistoryDropdown } from "@/components/common";
 import { useIssuerHistory, useAppState } from "@/lib/state";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { User, History } from "lucide-react";
+import { User } from "lucide-react";
 import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
 
 interface UserInfoResponse {
@@ -61,7 +61,6 @@ export function UserInfo() {
   const [result, setResult] = useState<UserInfoResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
-  const [showTokenHistory, setShowTokenHistory] = useState(false);
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false);
   
   // Auto-fill demo token when demo mode is enabled
@@ -126,7 +125,6 @@ export function UserInfo() {
   // Handle token selection from history
   const handleSelectToken = (tokenValue: string) => {
     setAccessToken(tokenValue);
-    setShowTokenHistory(false);
   };
 
   const generateDemoUserInfo = (): UserInfoResponse => {
@@ -265,83 +263,64 @@ export function UserInfo() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* UserInfo Endpoint Input with History */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="userinfo-endpoint">UserInfo Endpoint</Label>
-                <IssuerHistory 
-                  onSelectIssuer={handleSelectIssuer}
-                  configLoading={configLoading}
+              <Label htmlFor="userinfo-endpoint">UserInfo Endpoint</Label>
+              <div className="relative">
+                <Input
+                  id="userinfo-endpoint"
+                  type="url"
+                  value={userInfoEndpoint}
+                  onChange={(e) => setUserInfoEndpoint(e.target.value)}
+                  required={!isDemoMode}
                   disabled={isDemoMode}
+                  placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/userinfo"}
+                  className={isDemoMode ? "" : "pr-10"}
                 />
+                {!isDemoMode && (
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <IssuerHistory 
+                      onSelectIssuer={handleSelectIssuer}
+                      configLoading={configLoading}
+                      disabled={isDemoMode}
+                      compact={true}
+                    />
+                  </div>
+                )}
               </div>
-              <Input
-                id="userinfo-endpoint"
-                type="url"
-                value={userInfoEndpoint}
-                onChange={(e) => setUserInfoEndpoint(e.target.value)}
-                required={!isDemoMode}
-                disabled={isDemoMode}
-                placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/userinfo"}
-              />
             </div>
             
             {/* Access Token Input with History */}
-            <div className="relative">
-              <div className="flex justify-between items-center mb-1.5">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
                 <Label htmlFor="access-token">Access Token</Label>
-                <div className="flex items-center gap-2">
-                  {tokenHistory.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-1"
-                      onClick={() => setShowTokenHistory(!showTokenHistory)}
-                      disabled={isDemoMode}
-                    >
-                      <History size={16} />
-                      <span>Recent Tokens</span>
-                    </Button>
-                  )}
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleInspectToken}
-                    disabled={!accessToken}
-                  >
-                    View in Token Inspector
-                  </Button>
-                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleInspectToken}
+                  disabled={!accessToken}
+                >
+                  View in Token Inspector
+                </Button>
               </div>
-              <Input
-                id="access-token"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                required={!isDemoMode}
-                placeholder={isDemoMode ? "Optional in demo mode" : "Enter your access token"}
-                className="font-mono text-xs"
-              />
-              
-              {/* Recent Tokens Dropdown */}
-              {showTokenHistory && tokenHistory.length > 0 && (
-                <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
-                  <div className="p-1">
-                    {tokenHistory.slice(0, 10).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
-                        onClick={() => handleSelectToken(item.token)}
-                      >
-                        <div className="truncate">{item.name || `Token ${item.id.substring(0, 8)}...`}</div>
-                        {item.issuer && (
-                          <div className="text-xs text-muted-foreground truncate">{item.issuer}</div>
-                        )}
-                      </button>
-                    ))}
+              <div className="relative">
+                <Input
+                  id="access-token"
+                  value={accessToken}
+                  onChange={(e) => setAccessToken(e.target.value)}
+                  required={!isDemoMode}
+                  placeholder={isDemoMode ? "Optional in demo mode" : "Enter your access token"}
+                  className={`font-mono text-xs ${tokenHistory.length > 0 && !isDemoMode ? 'pr-10' : ''}`}
+                />
+                {tokenHistory.length > 0 && !isDemoMode && (
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <TokenHistoryDropdown
+                      onSelectToken={handleSelectToken}
+                      disabled={isDemoMode}
+                      compact={true}
+                    />
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             
             <Button type="submit" disabled={loading}>

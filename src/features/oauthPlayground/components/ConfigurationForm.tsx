@@ -121,7 +121,11 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       }
     }
 
-    if (!clientId) {
+    // In demo mode, use default client ID if none provided
+    let finalClientId = clientId;
+    if (isDemoMode && !clientId) {
+      finalClientId = 'demo-client';
+    } else if (!isDemoMode && !clientId) {
       toast.error('Client ID is required');
       return;
     }
@@ -132,7 +136,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       authEndpoint: isDemoMode ? undefined : authEndpoint,
       tokenEndpoint: isDemoMode ? undefined : tokenEndpoint,
       jwksEndpoint: isDemoMode ? undefined : jwksEndpoint,
-      clientId,
+      clientId: finalClientId,
       redirectUri,
       scopes: scopes.split(' ').filter(Boolean),
       demoMode: isDemoMode
@@ -178,23 +182,29 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               <h3 className="text-lg font-medium">Identity Provider Details</h3>
               {/* Issuer URL for Auto-Discovery */}
               <div className="space-y-2">
-                <div className="flex justify-between items-start">
-                  <Label>Issuer URL (for Auto-Discovery)</Label>
-                  <IssuerHistory onSelectIssuer={handleSelectIssuer} />
-                </div>
+                <Label>Issuer URL (for Auto-Discovery)</Label>
                 <div className="flex space-x-2">
-                  <Input
-                    placeholder="https://example.com"
-                    value={issuerUrl}
-                    onChange={(e) => {
-                      setIssuerUrl(e.target.value);
-                      // Clear endpoints if issuer changes, allowing manual input or re-discovery
-                      setAuthEndpoint('');
-                      setTokenEndpoint('');
-                      setJwksEndpoint('');
-                      setEndpointsLocked(false);
-                    }}
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="https://example.com"
+                      value={issuerUrl}
+                      onChange={(e) => {
+                        setIssuerUrl(e.target.value);
+                        // Clear endpoints if issuer changes, allowing manual input or re-discovery
+                        setAuthEndpoint('');
+                        setTokenEndpoint('');
+                        setJwksEndpoint('');
+                        setEndpointsLocked(false);
+                      }}
+                      className="pr-10"
+                    />
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <IssuerHistory 
+                        onSelectIssuer={handleSelectIssuer} 
+                        compact={true}
+                      />
+                    </div>
+                  </div>
                   <Button 
                     type="button" 
                     onClick={fetchOidcConfig}
