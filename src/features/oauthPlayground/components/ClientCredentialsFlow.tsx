@@ -193,23 +193,29 @@ export function ClientCredentialsFlow() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Token Endpoint Input with History (Disabled in Demo Mode) */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="token-endpoint">Token Endpoint</Label>
-                <IssuerHistory 
-                  onSelectIssuer={handleSelectIssuer}
-                  configLoading={configLoading}
+              <Label htmlFor="token-endpoint">Token Endpoint</Label>
+              <div className="relative">
+                <Input
+                  id="token-endpoint"
+                  type="url"
+                  value={tokenEndpoint}
+                  onChange={(e) => setTokenEndpoint(e.target.value)}
+                  required={!isDemoMode}
                   disabled={isDemoMode}
+                  placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/token"}
+                  className={isDemoMode ? "" : "pr-10"}
                 />
+                {!isDemoMode && (
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <IssuerHistory 
+                      onSelectIssuer={handleSelectIssuer}
+                      configLoading={configLoading}
+                      disabled={isDemoMode}
+                      compact={true}
+                    />
+                  </div>
+                )}
               </div>
-              <Input
-                id="token-endpoint"
-                type="url"
-                value={tokenEndpoint}
-                onChange={(e) => setTokenEndpoint(e.target.value)}
-                required={!isDemoMode}
-                disabled={isDemoMode}
-                placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/token"}
-              />
             </div>
             {/* Client ID Input */}
             <div>

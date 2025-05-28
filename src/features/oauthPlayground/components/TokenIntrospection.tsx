@@ -326,42 +326,44 @@ export function TokenIntrospection() {
             </div>
             
             {/* Token Input with History */}
-            <div className="relative">
-              <div className="flex justify-between items-center mb-1.5">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
                 <Label htmlFor="token">Token to Introspect</Label>
-                <div className="flex items-center gap-2">
-                  {tokenHistory.length > 0 && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleInspectToken}
+                  disabled={!token}
+                >
+                  View in Token Inspector
+                </Button>
+              </div>
+              <div className="relative">
+                <Input
+                  id="token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  required
+                  placeholder="Enter token to introspect"
+                  className={`font-mono text-xs ${tokenHistory.length > 0 && !isDemoMode ? 'pr-10' : ''}`}
+                />
+                {tokenHistory.length > 0 && !isDemoMode && (
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
                     <Button
                       type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-1"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
                       onClick={() => setShowTokenHistory(!showTokenHistory)}
                       disabled={isDemoMode}
+                      title="Recent Tokens"
                     >
                       <History size={16} />
-                      <span>Recent Tokens</span>
                     </Button>
-                  )}
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleInspectToken}
-                    disabled={!token}
-                  >
-                    View in Token Inspector
-                  </Button>
-                </div>
+                  </div>
+                )}
               </div>
-              <Input
-                id="token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                required
-                placeholder="Enter token to introspect"
-                className="font-mono text-xs"
-              />
               
               {/* Recent Tokens Dropdown */}
               {showTokenHistory && tokenHistory.length > 0 && (

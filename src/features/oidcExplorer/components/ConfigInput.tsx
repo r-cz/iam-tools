@@ -74,38 +74,32 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <label htmlFor="issuer-url" className="block text-sm font-medium">
-              OpenID Provider URL
-            </label>
-            <Popover>
-              <PopoverTrigger>
-                <span 
-                  className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help" 
-                  aria-label="Issuer URL info"
-                >
-                  ?
-                </span>
-              </PopoverTrigger>
-              <PopoverContent>
-                <div className="max-w-xs">
-                  <p className="font-medium">What is an OpenID Provider URL?</p>
-                  <p className="mt-1">
-                    This is the base URL of the identity provider that implements OpenID Connect. The app will append 
-                    <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch configuration info.
-                  </p>
-                  <p className="mt-2 text-xs">
-                    Click the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button next to the input field to load a real-world example.
-                  </p>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-          <IssuerHistory onSelectIssuer={(issuerUrl) => {
-            setIssuerUrl(issuerUrl);
-            onFetchRequested(issuerUrl);
-          }} />
+        <div className="flex items-center gap-2">
+          <label htmlFor="issuer-url" className="block text-sm font-medium">
+            OpenID Provider URL
+          </label>
+          <Popover>
+            <PopoverTrigger>
+              <span 
+                className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help" 
+                aria-label="Issuer URL info"
+              >
+                ?
+              </span>
+            </PopoverTrigger>
+            <PopoverContent>
+              <div className="max-w-xs">
+                <p className="font-medium">What is an OpenID Provider URL?</p>
+                <p className="mt-1">
+                  This is the base URL of the identity provider that implements OpenID Connect. The app will append 
+                  <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch configuration info.
+                </p>
+                <p className="mt-2 text-xs">
+                  Click the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button next to the input field to load a real-world example.
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2">
