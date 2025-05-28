@@ -121,7 +121,11 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       }
     }
 
-    if (!clientId) {
+    // In demo mode, use default client ID if none provided
+    let finalClientId = clientId;
+    if (isDemoMode && !clientId) {
+      finalClientId = 'demo-client';
+    } else if (!isDemoMode && !clientId) {
       toast.error('Client ID is required');
       return;
     }
@@ -132,7 +136,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       authEndpoint: isDemoMode ? undefined : authEndpoint,
       tokenEndpoint: isDemoMode ? undefined : tokenEndpoint,
       jwksEndpoint: isDemoMode ? undefined : jwksEndpoint,
-      clientId,
+      clientId: finalClientId,
       redirectUri,
       scopes: scopes.split(' ').filter(Boolean),
       demoMode: isDemoMode
@@ -178,7 +182,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               <h3 className="text-lg font-medium">Identity Provider Details</h3>
               {/* Issuer URL for Auto-Discovery */}
               <div className="space-y-2">
-                <div className="flex justify-between items-start">
+                <div className="flex items-center justify-between">
                   <Label>Issuer URL (for Auto-Discovery)</Label>
                   <IssuerHistory onSelectIssuer={handleSelectIssuer} />
                 </div>

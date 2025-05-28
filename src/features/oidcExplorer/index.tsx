@@ -16,7 +16,6 @@ import {
   JwksDisplay, 
   ProviderInfo
 } from "./components";
-import { IssuerHistory } from "@/components/common";
 import { detectProvider } from "./utils/config-helpers";
 import { useIssuerHistory } from "../../lib/state";
 
@@ -111,16 +110,11 @@ export function OidcExplorer() {
       {/* Configuration Input */}
       <Card>
         <CardContent className="p-5">
-          <div className="space-y-4">
-            {/* Issuer History Component */}
-            <IssuerHistory onSelectIssuer={handleFetchConfig} />
-            
-            {/* Config Input Component */}
-            <ConfigInput
-              onFetchRequested={handleFetchConfig}
-              isLoading={isLoading}
-            />
-          </div>
+          {/* Config Input Component */}
+          <ConfigInput
+            onFetchRequested={handleFetchConfig}
+            isLoading={isLoading}
+          />
         </CardContent>
       </Card>
 
