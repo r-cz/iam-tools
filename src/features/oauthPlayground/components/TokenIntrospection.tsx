@@ -9,13 +9,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/ui/code-block";
 import { useAppState } from "@/lib/state";
-import { History, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
 import { signToken } from "@/lib/jwt/sign-token";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
 import { toast } from "sonner";
-import { IssuerHistory } from "@/components/common";
+import { IssuerHistory, TokenHistoryDropdown } from "@/components/common";
 
 interface IntrospectionResponse {
   active: boolean;
@@ -50,7 +50,6 @@ export function TokenIntrospection() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<IntrospectionResponse | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const [showTokenHistory, setShowTokenHistory] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false);
 
@@ -148,7 +147,6 @@ export function TokenIntrospection() {
   // Handle token selection from history
   const handleSelectToken = (tokenValue: string) => {
     setToken(tokenValue);
-    setShowTokenHistory(false);
   };
   
   // Handle issuer selection from history
@@ -350,38 +348,11 @@ export function TokenIntrospection() {
                 />
                 {tokenHistory.length > 0 && !isDemoMode && (
                   <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setShowTokenHistory(!showTokenHistory)}
+                    <TokenHistoryDropdown
+                      onSelectToken={handleSelectToken}
                       disabled={isDemoMode}
-                      title="Recent Tokens"
-                    >
-                      <History size={16} />
-                    </Button>
-                  </div>
-                )}
-                
-                {/* Recent Tokens Dropdown */}
-                {showTokenHistory && tokenHistory.length > 0 && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
-                    <div className="p-1">
-                      {tokenHistory.slice(0, 10).map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
-                          onClick={() => handleSelectToken(item.token)}
-                        >
-                          <div className="truncate">{item.name || `Token ${item.id.substring(0, 8)}...`}</div>
-                          {item.issuer && (
-                            <div className="text-xs text-muted-foreground truncate">{item.issuer}</div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                      compact={true}
+                    />
                   </div>
                 )}
               </div>
