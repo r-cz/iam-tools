@@ -182,23 +182,29 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               <h3 className="text-lg font-medium">Identity Provider Details</h3>
               {/* Issuer URL for Auto-Discovery */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Issuer URL (for Auto-Discovery)</Label>
-                  <IssuerHistory onSelectIssuer={handleSelectIssuer} />
-                </div>
+                <Label>Issuer URL (for Auto-Discovery)</Label>
                 <div className="flex space-x-2">
-                  <Input
-                    placeholder="https://example.com"
-                    value={issuerUrl}
-                    onChange={(e) => {
-                      setIssuerUrl(e.target.value);
-                      // Clear endpoints if issuer changes, allowing manual input or re-discovery
-                      setAuthEndpoint('');
-                      setTokenEndpoint('');
-                      setJwksEndpoint('');
-                      setEndpointsLocked(false);
-                    }}
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="https://example.com"
+                      value={issuerUrl}
+                      onChange={(e) => {
+                        setIssuerUrl(e.target.value);
+                        // Clear endpoints if issuer changes, allowing manual input or re-discovery
+                        setAuthEndpoint('');
+                        setTokenEndpoint('');
+                        setJwksEndpoint('');
+                        setEndpointsLocked(false);
+                      }}
+                      className="pr-10"
+                    />
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <IssuerHistory 
+                        onSelectIssuer={handleSelectIssuer} 
+                        compact={true}
+                      />
+                    </div>
+                  </div>
                   <Button 
                     type="button" 
                     onClick={fetchOidcConfig}

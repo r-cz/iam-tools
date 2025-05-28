@@ -117,18 +117,27 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
               onChange={(e) => setIssuerUrl(e.target.value)}
               onKeyDown={handleKeyDown} // Ensure this prop uses the correctly defined function
               placeholder="https://example.com/identity"
-              className="pr-10"
+              className="pr-20"
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              type="button"
-              onClick={handleRandomExample}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-              title="Load random example"
-            >
-              <ShuffleIcon className="h-4 w-4" />
-            </Button>
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
+              <IssuerHistory 
+                onSelectIssuer={(url) => {
+                  setIssuerUrl(url);
+                  onFetchRequested(url);
+                }}
+                compact={true}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                onClick={handleRandomExample}
+                className="h-8 w-8"
+                title="Load random example"
+              >
+                <ShuffleIcon className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <Button
             onClick={handleFetchConfig}

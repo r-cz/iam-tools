@@ -300,23 +300,29 @@ export function TokenIntrospection() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Introspection Endpoint Input with History */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="introspection-endpoint">Introspection Endpoint</Label>
-                <IssuerHistory 
-                  onSelectIssuer={handleSelectIssuer}
-                  configLoading={configLoading}
+              <Label htmlFor="introspection-endpoint">Introspection Endpoint</Label>
+              <div className="relative">
+                <Input
+                  id="introspection-endpoint"
+                  type="url"
+                  value={introspectionEndpoint}
+                  onChange={(e) => setIntrospectionEndpoint(e.target.value)}
+                  required={!isDemoMode}
                   disabled={isDemoMode}
+                  placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/introspect"}
+                  className={isDemoMode ? "" : "pr-10"}
                 />
+                {!isDemoMode && (
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <IssuerHistory 
+                      onSelectIssuer={handleSelectIssuer}
+                      configLoading={configLoading}
+                      disabled={isDemoMode}
+                      compact={true}
+                    />
+                  </div>
+                )}
               </div>
-              <Input
-                id="introspection-endpoint"
-                type="url"
-                value={introspectionEndpoint}
-                onChange={(e) => setIntrospectionEndpoint(e.target.value)}
-                required={!isDemoMode}
-                disabled={isDemoMode}
-                placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/introspect"}
-              />
             </div>
             
             {/* Token Input with History */}

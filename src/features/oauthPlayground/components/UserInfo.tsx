@@ -265,23 +265,29 @@ export function UserInfo() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* UserInfo Endpoint Input with History */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="userinfo-endpoint">UserInfo Endpoint</Label>
-                <IssuerHistory 
-                  onSelectIssuer={handleSelectIssuer}
-                  configLoading={configLoading}
+              <Label htmlFor="userinfo-endpoint">UserInfo Endpoint</Label>
+              <div className="relative">
+                <Input
+                  id="userinfo-endpoint"
+                  type="url"
+                  value={userInfoEndpoint}
+                  onChange={(e) => setUserInfoEndpoint(e.target.value)}
+                  required={!isDemoMode}
                   disabled={isDemoMode}
+                  placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/userinfo"}
+                  className={isDemoMode ? "" : "pr-10"}
                 />
+                {!isDemoMode && (
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <IssuerHistory 
+                      onSelectIssuer={handleSelectIssuer}
+                      configLoading={configLoading}
+                      disabled={isDemoMode}
+                      compact={true}
+                    />
+                  </div>
+                )}
               </div>
-              <Input
-                id="userinfo-endpoint"
-                type="url"
-                value={userInfoEndpoint}
-                onChange={(e) => setUserInfoEndpoint(e.target.value)}
-                required={!isDemoMode}
-                disabled={isDemoMode}
-                placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/userinfo"}
-              />
             </div>
             
             {/* Access Token Input with History */}
