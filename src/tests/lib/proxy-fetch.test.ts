@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { vi } from 'vitest';
 import { proxyFetch } from '../../lib/proxy-fetch'; // Use relative path
 
 // Mock fetch globally for all tests in this file
 const originalFetch = global.fetch;
-const mockFetch = mock(); // Use Bun's built-in mock function
+const mockFetch = vi.fn(); // Use vitest's mock function
 
 describe('proxyFetch', () => {
   beforeEach(() => {

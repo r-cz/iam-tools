@@ -87,11 +87,18 @@ describe('OidcConfigCache', () => {
     // Wait for memory TTL to expire
     await new Promise(resolve => setTimeout(resolve, 1100));
     
+    // Clear memory cache to force storage lookup
+    cache['memoryCache'].clear();
+    
     // Should still be available from storage
     expect(cache.get('https://example.com')).toEqual(mockConfig);
     
-    // Wait for storage TTL to expire
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Wait for storage TTL to expire from original timestamp
+    // Total wait time should be > 2000ms (storage TTL)
+    await new Promise(resolve => setTimeout(resolve, 1100));
+    
+    // Clear memory cache again to force storage lookup
+    cache['memoryCache'].clear();
     
     // Should no longer be available
     expect(cache.get('https://example.com')).toBeNull();

@@ -9,7 +9,7 @@ A collection of specialized tools for Identity and Access Management (IAM) devel
 - **Components**: shadcn/ui
 - **Package Manager**: Bun
 - **Routing**: React Router
-- **Testing**: Bun Test + React Testing Library
+- **Testing**: Bun Test + React Testing Library + Playwright
 - **Deployment**: Cloudflare Pages + Cloudflare Functions
 
 ## Development
@@ -56,10 +56,14 @@ bun run clean:deep  # Deep clean (includes lock files)
 
 ## Testing
 
-The project uses Bun's built-in test runner for fast and efficient tests:
+The project uses a comprehensive testing strategy with two complementary approaches:
+
+### Unit & Integration Tests
+
+Powered by Bun's built-in test runner with React Testing Library:
 
 ```bash
-# Run all tests
+# Run all unit tests
 bun test
 
 # Run tests in watch mode
@@ -72,7 +76,49 @@ bun test:coverage
 bun test:update
 ```
 
-Tests are located in `src/tests` and follow a structure mirroring the main application.
+Unit tests are located in `src/tests/` and include:
+
+- Component tests with snapshot testing
+- Feature module integration tests
+- Hook and utility function tests
+- API mocking with custom test utilities
+
+### End-to-End Tests
+
+Powered by Playwright for full user flow testing:
+
+```bash
+# Install Playwright browsers (first time setup)
+bun run e2e:install
+
+# Run E2E tests (Chromium only)
+bun run e2e
+
+# Run E2E tests on all browsers
+bun run e2e:all
+
+# Run tests in interactive UI mode
+bun run e2e:ui
+
+# Debug tests with browser visible
+bun run e2e:headed
+```
+
+E2E tests are located in `e2e/` and cover:
+
+- Navigation and routing
+- OAuth 2.0 flow testing (auth code + PKCE, client credentials)
+- OIDC configuration exploration
+- Token inspection and validation
+- User interactions and error handling
+
+### Testing Architecture
+
+- **Unit Tests**: Test individual functions and components in isolation
+- **Integration Tests**: Test feature modules with mocked APIs
+- **E2E Tests**: Test complete user flows with real browser interactions
+- **Mocking**: Custom API mocks for predictable testing without external dependencies
+- **CI/CD**: All tests run automatically on GitHub Actions for every PR
 
 ## CORS Proxy
 
@@ -140,7 +186,7 @@ We use a feature-based organization pattern that groups code by functionality:
     - `data/` - Feature-specific data
     - `pages/` - Feature pages (routes)
   - `src/features/oauthPlayground` - OAuth flow testing tool
-    - `components/` - Feature-specific components 
+    - `components/` - Feature-specific components
     - `utils/` - Feature-specific utilities
     - `pages/` - Feature pages (routes)
   - `src/features/home` - Homepage components
@@ -167,6 +213,7 @@ See [docs/file-structure.md](docs/file-structure.md) for more details on the cod
 ### Token Inspector
 
 Analyze and debug JWT tokens with detailed information about:
+
 - Header and payload contents
 - Signature validation using JWKS
 - Token expiration timelines
@@ -177,6 +224,7 @@ See [Token Inspector Documentation](docs/feature-guides/token-inspector.md) for 
 ### OIDC Explorer
 
 Explore and analyze OpenID Connect provider configurations:
+
 - Fetch and display `.well-known/openid-configuration` details
 - Fetch and inspect the provider's JSON Web Key Set (JWKS)
 - Identify common providers based on issuer URL or configuration
@@ -186,6 +234,7 @@ See [OIDC Explorer Documentation](docs/feature-guides/oidc-explorer.md) for deta
 ### OAuth Playground
 
 Test and explore OAuth 2.0 flows interactively:
+
 - Walk through the Authorization Code with PKCE flow step by step
 - Test with your own IdP or use a demo mode with a simulated identity provider
 - Generate PKCE parameters, build authorization requests, and exchange codes for tokens
