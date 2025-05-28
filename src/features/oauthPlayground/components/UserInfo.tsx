@@ -328,28 +328,28 @@ export function UserInfo() {
                     </Button>
                   </div>
                 )}
-              </div>
-              
-              {/* Recent Tokens Dropdown */}
-              {showTokenHistory && tokenHistory.length > 0 && (
-                <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
-                  <div className="p-1">
-                    {tokenHistory.slice(0, 10).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
-                        onClick={() => handleSelectToken(item.token)}
-                      >
-                        <div className="truncate">{item.name || `Token ${item.id.substring(0, 8)}...`}</div>
-                        {item.issuer && (
-                          <div className="text-xs text-muted-foreground truncate">{item.issuer}</div>
-                        )}
-                      </button>
-                    ))}
+                
+                {/* Recent Tokens Dropdown */}
+                {showTokenHistory && tokenHistory.length > 0 && (
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md max-h-40 overflow-y-auto">
+                    <div className="p-1">
+                      {tokenHistory.slice(0, 10).map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
+                          onClick={() => handleSelectToken(item.token)}
+                        >
+                          <div className="truncate">{item.name || `Token ${item.id.substring(0, 8)}...`}</div>
+                          {item.issuer && (
+                            <div className="text-xs text-muted-foreground truncate">{item.issuer}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             
             <Button type="submit" disabled={loading}>
