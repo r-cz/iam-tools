@@ -1,6 +1,6 @@
 import { DecodedSamlResponse } from "../utils/saml-decoder";
 import { Badge } from "@/components/ui/badge";
-import { CopyButton } from "@/components/common";
+import { CopyButton, JsonDisplay } from "@/components/common";
 
 interface ResponseDisplayProps {
   response: DecodedSamlResponse;
@@ -12,6 +12,45 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
       return new Date(dateString).toLocaleString();
     } catch {
       return dateString;
+    }
+  };
+
+  const formatXml = (xml: string): string => {
+    try {
+      // Parse the XML with proper MIME type
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, 'application/xml');
+      
+      // Check for parsing errors
+      const parserError = xmlDoc.querySelector('parsererror');
+      if (parserError || xmlDoc.documentElement.nodeName === 'parsererror') {
+        return xml; // Return original if parsing fails
+      }
+      
+      // Format the XML with proper indentation
+      const serializer = new XMLSerializer();
+      const formatted = serializer.serializeToString(xmlDoc);
+      
+      // Add indentation
+      let indent = 0;
+      const lines = formatted
+        .replace(/></g, '>\n<')
+        .split('\n')
+        .map(line => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('</')) {
+            indent = Math.max(0, indent - 2);
+          }
+          const indented = ' '.repeat(indent) + trimmed;
+          if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.endsWith('/>') && !trimmed.includes('</')) {
+            indent += 2;
+          }
+          return indented;
+        });
+      
+      return lines.join('\n');
+    } catch {
+      return xml; // Return original if formatting fails
     }
   };
 
@@ -77,13 +116,11 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
 
       {/* Raw XML */}
       <div className="mt-6">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-medium">Raw XML</h4>
-          <CopyButton text={response.xml} showText={false} />
-        </div>
-        <pre className="p-4 bg-muted rounded-lg overflow-x-auto">
-          <code className="text-xs">{response.xml}</code>
-        </pre>
+        <JsonDisplay 
+          data={formatXml(response.xml)}
+          language="xml"
+          containerClassName="relative"
+        />
       </div>
     </div>
   );

@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -52,13 +51,7 @@ export function SamlResponseDecoder() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Input Card */}
       <Card className="lg:col-span-1">
-        <CardHeader>
-          <CardTitle>SAML Response Input</CardTitle>
-          <CardDescription>
-            Paste your base64-encoded SAML Response
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-6">
           <div className="space-y-2">
             <Label htmlFor="saml-input">SAML Response (Base64)</Label>
             <Textarea

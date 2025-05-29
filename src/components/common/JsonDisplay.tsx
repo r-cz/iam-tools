@@ -34,7 +34,7 @@ export function JsonDisplay({
       {showCopyButton && (
         <CopyButton
           text={jsonString}
-          className={cn("absolute top-2 right-2", copyButtonClassName)}
+          className={cn("absolute top-2 right-2 bg-background", copyButtonClassName)}
           size="sm"
           variant="outline"
         />
