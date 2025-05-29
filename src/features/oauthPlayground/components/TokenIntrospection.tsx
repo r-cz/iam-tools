@@ -9,13 +9,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/ui/code-block";
 import { useAppState } from "@/lib/state";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Copy, Check } from "lucide-react";
 import { signToken } from "@/lib/jwt/sign-token";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
 import { toast } from "sonner";
 import { IssuerHistory, TokenHistoryDropdown } from "@/components/common";
+import { useClipboard } from "@/hooks/use-clipboard";
 
 interface IntrospectionResponse {
   active: boolean;
@@ -38,6 +39,7 @@ interface IntrospectionResponse {
 export function TokenIntrospection() {
   const navigate = useNavigate();
   const { addToken, tokenHistory } = useAppState();
+  const { copy, copied } = useClipboard();
   
   // Endpoint state
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState("");
@@ -417,11 +419,31 @@ export function TokenIntrospection() {
               )}
               
               {/* Full Response */}
-              <CodeBlock
-                code={JSON.stringify(result, null, 2)}
-                language="json"
-                className="text-xs max-h-96 overflow-auto"
-              />
+              <div className="relative">
+                <CodeBlock
+                  code={JSON.stringify(result, null, 2)}
+                  language="json"
+                  className="text-xs max-h-96 overflow-auto"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copy(JSON.stringify(result, null, 2))}
+                  className="absolute top-2 right-2"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
               
               {/* Key Claims Explained (RFC 7662) */}
               <div className="mt-6 space-y-4">

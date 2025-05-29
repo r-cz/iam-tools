@@ -323,11 +323,21 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
         </TabsContent>
         
         <TabsContent value="raw">
-          <CodeBlock
-            code={JSON.stringify(jwks, null, 2)}
-            language="json"
-            className="max-h-[70vh] overflow-auto"
-          />
+          <div className="relative">
+            <CodeBlock
+              code={JSON.stringify(jwks, null, 2)}
+              language="json"
+              className="max-h-[70vh] overflow-auto"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => copy(JSON.stringify(jwks, null, 2))}
+              className="absolute top-2 right-2"
+            >
+              {copied ? 'Copied!' : 'Copy JSON'}
+            </Button>
+          </div>
         </TabsContent>
         </Tabs>
       </CardContent>

@@ -12,6 +12,8 @@ import { IssuerHistory } from "@/components/common";
 import { useIssuerHistory } from "@/lib/state";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { toast } from "sonner";
+import { Copy, Check } from "lucide-react";
+import { useClipboard } from "@/hooks/use-clipboard";
 
 interface TokenResponse {
   access_token?: string;
@@ -26,6 +28,7 @@ interface TokenResponse {
 export function ClientCredentialsFlow() {
   const navigate = useNavigate(); // Instantiate useNavigate
   const { addIssuer } = useIssuerHistory();
+  const { copy, copied } = useClipboard();
   const [tokenEndpoint, setTokenEndpoint] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -262,11 +265,31 @@ export function ClientCredentialsFlow() {
             <div className="mt-6 space-y-4"> {/* Add space-y-4 for button spacing */}
               <Label className="mb-1.5 block">Result</Label>
               {/* Use CodeBlock instead of textarea */}
-              <CodeBlock
-                code={JSON.stringify(result, null, 2)}
-                language="json"
-                className="text-xs max-h-96 overflow-auto" // Add max-height and overflow
-              />
+              <div className="relative">
+                <CodeBlock
+                  code={JSON.stringify(result, null, 2)}
+                  language="json"
+                  className="text-xs max-h-96 overflow-auto" // Add max-height and overflow
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copy(JSON.stringify(result, null, 2))}
+                  className="absolute top-2 right-2"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
               {/* Add Inspect Token button */}
               {result.access_token && (
                 <Button
