@@ -1,6 +1,6 @@
 export interface DecodedJWT {
-  header: Record<string, any>;
-  payload: Record<string, any>;
+  header: Record<string, unknown>;
+  payload: Record<string, unknown>;
   signature: string;
   raw: {
     header: string;
@@ -60,7 +60,7 @@ export function decodeJWT(token: string): DecodedJWT | null {
         signature
       }
     };
-  } catch (error) {
+  } catch {
     // Return null for any decoding errors
     return null;
   }
@@ -71,7 +71,7 @@ export function decodeJWT(token: string): DecodedJWT | null {
  * @param token The JWT token to decode
  * @returns The decoded payload or null if invalid
  */
-export function decodeJwtPayload(token: string): Record<string, any> | null {
+export function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const decoded = decodeJWT(token);
   return decoded?.payload || null;
 }
@@ -81,7 +81,7 @@ export function decodeJwtPayload(token: string): Record<string, any> | null {
  * @param token The JWT token to decode
  * @returns The decoded header or null if invalid
  */
-export function decodeJwtHeader(token: string): Record<string, any> | null {
+export function decodeJwtHeader(token: string): Record<string, unknown> | null {
   const decoded = decodeJWT(token);
   return decoded?.header || null;
 }
