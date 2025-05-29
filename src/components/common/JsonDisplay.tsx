@@ -3,7 +3,7 @@ import { CopyButton } from "./CopyButton";
 import { cn } from "@/lib/utils";
 
 interface JsonDisplayProps {
-  data: any;
+  data: unknown;
   className?: string;
   containerClassName?: string;
   copyButtonClassName?: string;

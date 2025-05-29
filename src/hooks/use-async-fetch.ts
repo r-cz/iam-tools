@@ -7,7 +7,7 @@ export interface AsyncFetchState<T> {
 }
 
 export interface UseAsyncFetchResult<T> extends AsyncFetchState<T> {
-  execute: (...args: any[]) => Promise<T | null>;
+  execute: (...args: unknown[]) => Promise<T | null>;
   reset: () => void;
 }
 
@@ -15,8 +15,8 @@ export interface UseAsyncFetchOptions<T> {
   onSuccess?: (data: T) => void;
   onError?: (error: Error) => void;
   cache?: Map<string, T>;
-  getCacheKey?: (...args: any[]) => string;
-  shouldExecute?: (...args: any[]) => boolean;
+  getCacheKey?: (...args: unknown[]) => string;
+  shouldExecute?: (...args: unknown[]) => boolean;
 }
 
 /**
@@ -28,7 +28,7 @@ export interface UseAsyncFetchOptions<T> {
  * @returns Object with data, loading, error states and execute function
  */
 export function useAsyncFetch<T>(
-  asyncFunction: (...args: any[]) => Promise<T>,
+  asyncFunction: (...args: unknown[]) => Promise<T>,
   options: UseAsyncFetchOptions<T> = {}
 ): UseAsyncFetchResult<T> {
   const [data, setData] = useState<T | null>(null);
@@ -38,7 +38,7 @@ export function useAsyncFetch<T>(
   // Use ref to track if component is mounted
   const isMountedRef = useRef(true);
 
-  const execute = useCallback(async (...args: any[]): Promise<T | null> => {
+  const execute = useCallback(async (...args: unknown[]): Promise<T | null> => {
     // Check if we should execute
     if (options.shouldExecute && !options.shouldExecute(...args)) {
       return null;
@@ -112,10 +112,10 @@ export function useAsyncFetch<T>(
 
 // Convenience hook for fetch operations
 export function useAsyncApiFetch<T>(
-  url: string | ((...args: any[]) => string),
+  url: string | ((...args: unknown[]) => string),
   options: UseAsyncFetchOptions<T> & RequestInit = {}
 ): UseAsyncFetchResult<T> {
-  const fetchFunction = useCallback(async (...args: any[]) => {
+  const fetchFunction = useCallback(async (...args: unknown[]) => {
     const finalUrl = typeof url === 'function' ? url(...args) : url;
     const response = await fetch(finalUrl, options);
     
