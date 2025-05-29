@@ -17,6 +17,7 @@ import AuthCodeWithPkcePage from './features/oauthPlayground/pages/auth-code-pkc
 import ClientCredentialsPage from './features/oauthPlayground/pages/client-credentials'
 import IntrospectionPage from './features/oauthPlayground/pages/introspection'
 import UserInfoPage from './features/oauthPlayground/pages/userinfo'
+import SamlResponseDecoderPage from './features/saml/pages/response-decoder'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -34,6 +35,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="oauth-playground/client-credentials" element={<ClientCredentialsPage />} />
               <Route path="oauth-playground/introspection" element={<IntrospectionPage />} />
               <Route path="oauth-playground/userinfo" element={<UserInfoPage />} />
+              <Route path="saml/response-decoder" element={<SamlResponseDecoderPage />} />
             </Route>
             <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
             <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />

@@ -9,7 +9,9 @@ import {
   FlaskConical,
   UserRoundSearch,
   Server,
-  UserRoundCheck
+  UserRoundCheck,
+  Shield,
+  FileCode
 } from "lucide-react"
 import { Link } from 'react-router-dom';
 
@@ -79,6 +81,18 @@ const menuTree = [
           // More flows will be added here later
         ]
       }
+    ]
+  },
+  {
+    title: "SAML Tools",
+    icon: Shield,
+    items: [
+      {
+        title: "Response Decoder",
+        url: "/saml/response-decoder",
+        icon: FileCode
+      }
+      // More SAML tools will be added here later
     ]
   }
 ];
