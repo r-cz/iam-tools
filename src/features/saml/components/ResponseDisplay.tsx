@@ -17,12 +17,13 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
 
   const formatXml = (xml: string): string => {
     try {
-      // Parse the XML
+      // Parse the XML with proper MIME type
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xml, 'text/xml');
+      const xmlDoc = parser.parseFromString(xml, 'application/xml');
       
       // Check for parsing errors
-      if (xmlDoc.querySelector('parsererror')) {
+      const parserError = xmlDoc.querySelector('parsererror');
+      if (parserError || xmlDoc.documentElement.nodeName === 'parsererror') {
         return xml; // Return original if parsing fails
       }
       
