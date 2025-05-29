@@ -8,13 +8,11 @@ import {
   CardFooter
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Key, Info, AlertCircle } from 'lucide-react';
-import { useClipboard } from '@/hooks/use-clipboard';
-import { Button } from '@/components/ui/button';
+import { JsonDisplay, CopyButton } from '@/components/common';
 import { Jwks, JwksKey } from '../utils/types';
 
 interface JwksDisplayProps {
@@ -27,7 +25,6 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(
     jwks.keys.length > 0 ? jwks.keys[0].kid : null
   );
-  const { copy, copied } = useClipboard();
 
   // Get the selected key
   const selectedKey = jwks.keys.find(key => key.kid === selectedKeyId) || null;
@@ -136,13 +133,12 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => copy(JSON.stringify(key, null, 2))}
-            >
-              {copied ? 'Copied!' : 'Copy Key JSON'}
-            </Button>
+            <CopyButton
+              text={JSON.stringify(key, null, 2)}
+              variant="outline"
+              size="sm"
+              copiedText="Copied!"
+            />
           </div>
         </div>
         
@@ -323,21 +319,11 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
         </TabsContent>
         
         <TabsContent value="raw">
-          <div className="relative">
-            <CodeBlock
-              code={JSON.stringify(jwks, null, 2)}
-              language="json"
-              className="max-h-[70vh] overflow-auto"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => copy(JSON.stringify(jwks, null, 2))}
-              className="absolute top-2 right-2"
-            >
-              {copied ? 'Copied!' : 'Copy JSON'}
-            </Button>
-          </div>
+          <JsonDisplay
+            data={jwks}
+            containerClassName="relative"
+            maxHeight="70vh"
+          />
         </TabsContent>
         </Tabs>
       </CardContent>

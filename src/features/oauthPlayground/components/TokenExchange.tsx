@@ -6,11 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OAuthConfig, PkceParams, TokenResponse } from '../utils/types';
-import { CodeBlock } from '@/components/ui/code-block';
 import { proxyFetch } from '@/lib/proxy-fetch';
 import { toast } from 'sonner';
-import { Copy, Check } from "lucide-react";
-import { useClipboard } from "@/hooks/use-clipboard";
+import { JsonDisplay } from '@/components/common';
 
 interface TokenExchangeProps {
   config: OAuthConfig;
@@ -28,7 +26,6 @@ export function TokenExchange({
   const navigate = useNavigate();
   const [isExchanging, setIsExchanging] = useState<boolean>(false);
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null);
-  const { copy, copied } = useClipboard();
   const [tokenRequestPayload, setTokenRequestPayload] = useState<string>('');
 
   // Create token request payload
@@ -165,7 +162,9 @@ export function TokenExchange({
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <h3 className="text-sm font-medium">Authorization Code</h3>
-          <CodeBlock code={authorizationCode} language="text" />
+          <div className="font-mono text-xs bg-muted p-3 rounded-md overflow-x-auto">
+            {authorizationCode}
+          </div>
 
           <h3 className="text-sm font-medium">Token Request</h3>
           <div className="space-y-2">
@@ -178,7 +177,9 @@ export function TokenExchange({
             <p className="text-sm text-muted-foreground">
               <strong>Content-Type:</strong> application/x-www-form-urlencoded
             </p>
-            <CodeBlock code={tokenRequestPayload} language="text" />
+            <div className="font-mono text-xs bg-muted p-3 rounded-md overflow-x-auto">
+              {tokenRequestPayload}
+            </div>
           </div>
         </div>
 
@@ -194,8 +195,8 @@ export function TokenExchange({
                 {tokenResponse.access_token && (
                   <div>
                     <h3 className="text-sm font-medium">Access Token</h3>
-                    <div className="max-h-40 overflow-auto">
-                      <CodeBlock code={tokenResponse.access_token} language="text" />
+                    <div className="font-mono text-xs bg-muted p-3 rounded-md max-h-40 overflow-auto">
+                      {tokenResponse.access_token}
                     </div>
                   </div>
                 )}
@@ -203,8 +204,8 @@ export function TokenExchange({
                 {tokenResponse.id_token && (
                   <div>
                     <h3 className="text-sm font-medium">ID Token</h3>
-                    <div className="max-h-40 overflow-auto">
-                      <CodeBlock code={tokenResponse.id_token} language="text" />
+                    <div className="font-mono text-xs bg-muted p-3 rounded-md max-h-40 overflow-auto">
+                      {tokenResponse.id_token}
                     </div>
                   </div>
                 )}
@@ -212,8 +213,8 @@ export function TokenExchange({
                 {tokenResponse.refresh_token && (
                   <div>
                     <h3 className="text-sm font-medium">Refresh Token</h3>
-                    <div className="max-h-40 overflow-auto">
-                      <CodeBlock code={tokenResponse.refresh_token} language="text" />
+                    <div className="font-mono text-xs bg-muted p-3 rounded-md max-h-40 overflow-auto">
+                      {tokenResponse.refresh_token}
                     </div>
                   </div>
                 )}
@@ -234,30 +235,10 @@ export function TokenExchange({
             </TabsContent>
 
             <TabsContent value="raw">
-              <div className="relative">
-                <CodeBlock
-                  code={JSON.stringify(tokenResponse, null, 2)}
-                  language="json"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copy(JSON.stringify(tokenResponse, null, 2))}
-                  className="absolute top-2 right-2"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-1" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-1" />
-                      Copy
-                    </>
-                  )}
-                </Button>
-              </div>
+              <JsonDisplay
+                data={tokenResponse}
+                containerClassName="relative"
+              />
             </TabsContent>
           </Tabs>
         )}

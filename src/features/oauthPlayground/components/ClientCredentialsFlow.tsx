@@ -7,13 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch"; // Import Switch
 import { signToken } from "@/lib/jwt/sign-token"; // Import signing function
 import { DEMO_JWKS } from "@/lib/jwt/demo-key"; // Import demo JWKS for kid
-import { CodeBlock } from "@/components/ui/code-block"; // Import CodeBlock
-import { IssuerHistory } from "@/components/common";
+import { IssuerHistory, JsonDisplay } from "@/components/common";
 import { useIssuerHistory } from "@/lib/state";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { toast } from "sonner";
-import { Copy, Check } from "lucide-react";
-import { useClipboard } from "@/hooks/use-clipboard";
 
 interface TokenResponse {
   access_token?: string;
@@ -28,7 +25,6 @@ interface TokenResponse {
 export function ClientCredentialsFlow() {
   const navigate = useNavigate(); // Instantiate useNavigate
   const { addIssuer } = useIssuerHistory();
-  const { copy, copied } = useClipboard();
   const [tokenEndpoint, setTokenEndpoint] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -264,32 +260,10 @@ export function ClientCredentialsFlow() {
           {result && (
             <div className="mt-6 space-y-4"> {/* Add space-y-4 for button spacing */}
               <Label className="mb-1.5 block">Result</Label>
-              {/* Use CodeBlock instead of textarea */}
-              <div className="relative">
-                <CodeBlock
-                  code={JSON.stringify(result, null, 2)}
-                  language="json"
-                  className="text-xs max-h-96 overflow-auto" // Add max-height and overflow
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copy(JSON.stringify(result, null, 2))}
-                  className="absolute top-2 right-2"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-1" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-1" />
-                      Copy
-                    </>
-                  )}
-                </Button>
-              </div>
+              <JsonDisplay
+                data={result}
+                className="text-xs max-h-96 overflow-auto"
+              />
               {/* Add Inspect Token button */}
               {result.access_token && (
                 <Button

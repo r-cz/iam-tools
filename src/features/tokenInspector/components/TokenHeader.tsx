@@ -4,9 +4,7 @@ import { getProviderSpecificClaimInfo } from "../data/provider-claims";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { useClipboard } from "@/hooks/use-clipboard";
-import { Copy, Check } from "lucide-react";
+import { JsonDisplay } from "@/components/common";
 
 interface TokenHeaderProps {
   header: any;
@@ -14,7 +12,6 @@ interface TokenHeaderProps {
 }
 
 export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
-  const { copy, copied } = useClipboard();
   
   // Get validation badge for a claim
   const getValidationBadge = (key: string) => {
@@ -54,27 +51,10 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <CodeBlock code={JSON.stringify(header, null, 2)} language="json" />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => copy(JSON.stringify(header, null, 2))}
-          className="absolute top-2 right-2"
-        >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4 mr-1" />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4 mr-1" />
-              Copy
-            </>
-          )}
-        </Button>
-      </div>
+      <JsonDisplay 
+        data={header}
+        containerClassName="relative"
+      />
       
       <div className="space-y-3">
         <h3 className="text-md font-medium">Header Claims</h3>
