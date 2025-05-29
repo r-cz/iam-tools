@@ -17,11 +17,25 @@ interface UseOidcConfigResult {
  * 
  * This is a refactored version using the new useAsyncFetch hook,
  * demonstrating how to simplify async data fetching patterns.
+ * 
+ * Note: This example handles caching manually within the fetch function
+ * since the oidcConfigCache uses a custom implementation.
  */
 export function useOidcConfig(): UseOidcConfigResult {
-  const fetchFunction = useCallback(async (issuerUrl: string) => {
+  const fetchFunction = useCallback(async (...args: unknown[]) => {
+    const issuerUrl = args[0];
+    if (typeof issuerUrl !== 'string') {
+      throw new Error('Issuer URL must be a string');
+    }
     if (!issuerUrl) {
       throw new Error('Issuer URL is required');
+    }
+
+    // Check cache first
+    const cachedConfig = oidcConfigCache.get(issuerUrl);
+    if (cachedConfig) {
+      console.log('Using cached OIDC configuration for:', issuerUrl);
+      return cachedConfig;
     }
 
     // Construct the well-known URL
@@ -59,10 +73,8 @@ export function useOidcConfig(): UseOidcConfigResult {
   }, []);
 
   const { data, isLoading, error, execute } = useAsyncFetch(fetchFunction, {
-    cache: oidcConfigCache,
-    getCacheKey: (issuerUrl: string) => issuerUrl,
-    shouldExecute: (issuerUrl: string) => !!issuerUrl,
-    onSuccess: (data) => {
+    shouldExecute: (...args: unknown[]) => !!args[0],
+    onSuccess: () => {
       console.log('Successfully fetched OIDC configuration');
     },
     onError: (error) => {
