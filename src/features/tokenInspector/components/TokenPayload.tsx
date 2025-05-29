@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useClipboard } from "@/hooks/use-clipboard";
+import { Copy, Check } from "lucide-react";
 
 interface TokenPayloadProps {
   payload: any;
@@ -19,6 +21,7 @@ export function TokenPayload({
   validationResults 
 }: TokenPayloadProps) {
   const [showAll, setShowAll] = useState(false);
+  const { copy, copied } = useClipboard();
   
   // Claims to show first based on token type
   const standardClaims = tokenType === "id_token" ? [
@@ -210,10 +213,28 @@ export function TokenPayload({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="rounded-lg border bg-card text-card-foreground shadow-sm relative">
         <div className="p-4">
           <CodeBlock code={JSON.stringify(payload, null, 2)} language="json" />
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => copy(JSON.stringify(payload, null, 2))}
+          className="absolute top-2 right-2"
+        >
+          {copied ? (
+            <>
+              <Check className="h-4 w-4 mr-1" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4 mr-1" />
+              Copy
+            </>
+          )}
+        </Button>
       </div>
       
       <div className="space-y-3">
