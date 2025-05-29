@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TokenHistoryItem } from '@/lib/state/types';
 import { useAppState } from '@/lib/state';
+import { decodeJwtPayload } from '@/lib/jwt/decode-token';
 
 interface TokenHistoryDropdownProps {
   onSelectToken: (token: string) => void;
@@ -42,28 +43,6 @@ function truncateToken(token: string): string {
   return `${firstPart}...${lastPart}`;
 }
 
-/**
- * Decodes a JWT token to get its payload
- * @param token The JWT token to decode
- * @returns The decoded payload object or null if invalid
- */
-function decodeJwtPayload(token: string): any | null {
-  try {
-    if (!token) return null;
-    
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = parts[1];
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const decodedPayload = JSON.parse(atob(base64));
-    
-    return decodedPayload;
-  } catch (error) {
-    console.error('Error decoding JWT token:', error);
-    return null;
-  }
-}
 
 /**
  * Shared component for displaying a history of recently used JWT tokens
