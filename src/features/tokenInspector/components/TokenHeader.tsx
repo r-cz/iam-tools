@@ -54,10 +54,8 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm relative">
-        <div className="p-4">
-          <CodeBlock code={JSON.stringify(header, null, 2)} language="json" />
-        </div>
+      <div className="relative">
+        <CodeBlock code={JSON.stringify(header, null, 2)} language="json" />
         <Button
           size="sm"
           variant="outline"
