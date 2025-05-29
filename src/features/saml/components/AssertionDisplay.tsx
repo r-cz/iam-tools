@@ -123,7 +123,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 
                 {/* Assertion ID */}
                 <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="p-3 space-y-2">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <span className="font-mono text-sm font-medium">Assertion ID</span>
@@ -137,7 +137,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
 
                 {/* Issuer */}
                 <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="p-3 space-y-2">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <span className="font-mono text-sm font-medium">Issuer</span>
@@ -151,7 +151,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
 
                 {/* Issue Time */}
                 <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="p-3 space-y-2">
                     <div className="space-y-1">
                       <span className="font-mono text-sm font-medium">Issue Time</span>
                       <div className="text-xs text-muted-foreground">When this assertion was created</div>
@@ -163,7 +163,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 {/* Subject */}
                 {assertion.subject?.nameId && (
                   <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                    <CardContent className="p-4 space-y-3">
+                    <CardContent className="p-3 space-y-2">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 {/* Authentication Context */}
                 {assertion.authnStatement?.authnContext && (
                   <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                    <CardContent className="p-4 space-y-3">
+                    <CardContent className="p-3 space-y-2">
                       <div className="space-y-1">
                         <span className="font-mono text-sm font-medium">Authentication Method</span>
                         <div className="text-xs text-muted-foreground">{samlDescriptions.authnContext}</div>
@@ -202,7 +202,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 {/* Session Index */}
                 {assertion.authnStatement?.sessionIndex && (
                   <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                    <CardContent className="p-4 space-y-3">
+                    <CardContent className="p-3 space-y-2">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
                           <span className="font-mono text-sm font-medium">Session Index</span>
@@ -218,12 +218,12 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 {/* Validity Period */}
                 {(assertion.conditions?.notBefore || assertion.conditions?.notOnOrAfter) && (
                   <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                    <CardContent className="p-4 space-y-3">
+                    <CardContent className="p-3 space-y-2">
                       <div className="space-y-1">
                         <span className="font-mono text-sm font-medium">Validity Period</span>
                         <div className="text-xs text-muted-foreground">Time window when this assertion is valid</div>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {assertion.conditions.notBefore && (
                           <div>
                             <div className="text-xs text-muted-foreground mb-1">Valid From:</div>
@@ -244,7 +244,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 {/* Audiences */}
                 {assertion.conditions?.audiences && assertion.conditions.audiences.length > 0 && (
                   <Card className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                    <CardContent className="p-4 space-y-3">
+                    <CardContent className="p-3 space-y-2">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm font-medium">Audiences</span>
@@ -298,7 +298,7 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 <div className="grid grid-cols-1 gap-3">
                   {visibleAttributes.map((attr, i) => (
                     <Card key={i} className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                      <CardContent className="p-4 space-y-3">
+                      <CardContent className="p-3 space-y-2">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <span className="font-mono text-sm font-medium">{attr.name}</span>
