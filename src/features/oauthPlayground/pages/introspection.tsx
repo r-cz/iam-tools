@@ -6,7 +6,7 @@ export default function IntrospectionPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="OAuth Token Introspection"
+        title="Introspection"
         description="Verify the state and validity of OAuth tokens against an introspection endpoint."
         icon={SearchCheck}
       />
