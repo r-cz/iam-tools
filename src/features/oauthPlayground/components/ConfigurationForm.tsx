@@ -163,6 +163,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           {/* Demo Mode Toggle - Updated Styling */}
           <div className="mb-4 p-3 border rounded-md bg-muted/50">
             <DemoModeToggle
+              id="demo-mode-switch"
               checked={isDemoMode}
               onCheckedChange={setIsDemoMode}
               description="Use a simulated Identity Provider for testing"
