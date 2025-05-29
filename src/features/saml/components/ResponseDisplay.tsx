@@ -16,6 +16,44 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
     }
   };
 
+  const formatXml = (xml: string): string => {
+    try {
+      // Parse the XML
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, 'text/xml');
+      
+      // Check for parsing errors
+      if (xmlDoc.querySelector('parsererror')) {
+        return xml; // Return original if parsing fails
+      }
+      
+      // Format the XML with proper indentation
+      const serializer = new XMLSerializer();
+      const formatted = serializer.serializeToString(xmlDoc);
+      
+      // Add indentation
+      let indent = 0;
+      const lines = formatted
+        .replace(/></g, '>\n<')
+        .split('\n')
+        .map(line => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('</')) {
+            indent = Math.max(0, indent - 2);
+          }
+          const indented = ' '.repeat(indent) + trimmed;
+          if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.endsWith('/>') && !trimmed.includes('</')) {
+            indent += 2;
+          }
+          return indented;
+        });
+      
+      return lines.join('\n');
+    } catch {
+      return xml; // Return original if formatting fails
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Response Details */}
@@ -78,7 +116,7 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
 
       {/* Raw XML */}
       <div className="mt-6">
-        <CodeBlock code={response.xml} language="xml" />
+        <CodeBlock code={formatXml(response.xml)} language="xml" />
       </div>
     </div>
   );
