@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PageContainer, PageHeader } from '@/components/page';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink, ArrowRight, Lock, Key, SearchCheck, UserRoundSearch } from 'lucide-react';
+import { ExternalLink, UserRoundCheck, Server, SearchCheck, UserRoundSearch } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
@@ -11,7 +11,7 @@ export function OAuthPlaygroundPage() {
       id: 'auth-code-pkce',
       title: 'Authorization Code with PKCE',
       description: 'The most secure OAuth 2.0 flow for public clients like SPAs and mobile apps.',
-      icon: ArrowRight,
+      icon: UserRoundCheck,
       url: '/oauth-playground/auth-code-pkce',
       active: true,
     },
@@ -19,13 +19,13 @@ export function OAuthPlaygroundPage() {
       id: 'client-credentials',
       title: 'Client Credentials',
       description: 'OAuth 2.0 flow for server-to-server API access and machine-to-machine communication.',
-      icon: Key,
+      icon: Server,
       url: '/oauth-playground/client-credentials',
       active: true,
     },
     {
       id: 'introspection',
-      title: 'Token Introspection',
+      title: 'Introspection',
       description: 'Verify the state and validity of OAuth tokens against an introspection endpoint.',
       icon: SearchCheck,
       url: '/oauth-playground/introspection',
@@ -38,14 +38,6 @@ export function OAuthPlaygroundPage() {
       icon: UserRoundSearch,
       url: '/oauth-playground/userinfo',
       active: true,
-    },
-    {
-      id: 'auth-code',
-      title: 'Authorization Code',
-      description: 'The traditional OAuth 2.0 flow for web applications with a backend server.',
-      icon: Lock,
-      url: '/oauth-playground/auth-code',
-      active: false,
     },
   ]);
 
