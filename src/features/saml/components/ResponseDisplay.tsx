@@ -115,7 +115,10 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
       </div>
 
       {/* Raw XML */}
-      <div className="mt-6">
+      <div className="mt-6 relative">
+        <div className="absolute top-2 right-2 z-10">
+          <CopyButton text={formatXml(response.xml)} showText={false} />
+        </div>
         <CodeBlock code={formatXml(response.xml)} language="xml" />
       </div>
     </div>
