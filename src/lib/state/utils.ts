@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { TokenHistoryItem, IssuerHistoryItem } from './types';
 import { DEFAULT_MAX_HISTORY_ITEMS } from './constants';
+import { decodeJwtPayload } from '@/lib/jwt/decode-token';
 
 /**
  * Generate a unique ID for history items
@@ -9,28 +10,6 @@ export function generateId(): string {
   return uuidv4();
 }
 
-/**
- * Decodes a JWT token to extract its payload
- * @param token JWT token to decode
- * @returns The decoded payload or null if invalid
- */
-function decodeJwtPayload(token: string): any | null {
-  try {
-    if (!token) return null;
-    
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = parts[1];
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const decodedPayload = JSON.parse(atob(base64));
-    
-    return decodedPayload;
-  } catch (error) {
-    console.error('Error decoding JWT token:', error);
-    return null;
-  }
-}
 
 /**
  * Add a token to history, maintaining max size
@@ -65,8 +44,8 @@ export function addTokenToHistory(
   try {
     const payload = decodeJwtPayload(token);
     if (payload) {
-      subject = payload.sub;
-      issuer = payload.iss;
+      subject = typeof payload.sub === 'string' ? payload.sub : undefined;
+      issuer = typeof payload.iss === 'string' ? payload.iss : undefined;
     }
   } catch (error) {
     console.error('Error extracting token data:', error);

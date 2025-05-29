@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { base64UrlDecode } from "@/lib/jwt/decode-token";
 
 interface TokenSizeProps {
   token: string;
@@ -26,13 +27,6 @@ export function TokenSize({ token }: TokenSizeProps) {
   const signatureSize = new Blob([signaturePart]).size;
   const totalSize = new Blob([token]).size;
   
-  // Utility function to handle base64url decoding
-  const base64UrlDecode = (str: string) => {
-    // Convert base64url to base64 by replacing characters and adding padding if needed
-    const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-    const padding = '='.repeat((4 - base64.length % 4) % 4);
-    return atob(base64 + padding);
-  };
   
   // Calculate decoded sizes (actual JSON after base64 decoding)
   let decodedHeader = {};

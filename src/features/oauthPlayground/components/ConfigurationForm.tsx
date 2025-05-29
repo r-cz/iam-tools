@@ -4,13 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce';
 import { proxyFetch } from '@/lib/proxy-fetch';
 import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
 import { toast } from 'sonner';
-import { IssuerHistory } from '@/components/common';
+import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common';
 import { useIssuerHistory } from '@/lib/state';
 
 interface ConfigurationFormProps {
@@ -162,18 +161,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       <CardContent>
         <div className="grid gap-6">
           {/* Demo Mode Toggle - Updated Styling */}
-          <div className="flex items-center space-x-2 mb-4 p-3 border rounded-md bg-muted/50">
-            <Switch
+          <div className="mb-4 p-3 border rounded-md bg-muted/50">
+            <DemoModeToggle
               id="demo-mode-switch"
               checked={isDemoMode}
               onCheckedChange={setIsDemoMode}
+              description="Use a simulated Identity Provider for testing"
             />
-            <Label htmlFor="demo-mode-switch" className="mb-0"> {/* Remove bottom margin from label */}
-              Demo Mode
-              <p className="text-xs text-muted-foreground font-normal">
-                Use a simulated Identity Provider for testing
-              </p>
-            </Label>
           </div>
 
           {/* Configuration based on mode */}
@@ -219,47 +213,47 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               </div>
 
               {/* Manual/Discovered Endpoints */}
-              <div className="space-y-2">
-                <Label>Authorization Endpoint</Label>
-                <Input
-                  placeholder="https://example.com/authorize"
-                  value={authEndpoint}
-                  onChange={(e) => setAuthEndpoint(e.target.value)}
-                  readOnly={endpointsLocked}
-                />
-                 <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <span>Required endpoint for starting the authorization flow.</span>
-                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
-                </p>
-              </div>
+              <FormFieldInput
+                label="Authorization Endpoint"
+                placeholder="https://example.com/authorize"
+                value={authEndpoint}
+                onChange={(e) => setAuthEndpoint(e.target.value)}
+                readOnly={endpointsLocked}
+                description={
+                  <span className="flex items-center gap-2">
+                    <span>Required endpoint for starting the authorization flow.</span>
+                    {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
+                  </span>
+                }
+              />
               
-              <div className="space-y-2">
-                <Label>Token Endpoint</Label>
-                <Input
-                  placeholder="https://example.com/token"
-                  value={tokenEndpoint}
-                  onChange={(e) => setTokenEndpoint(e.target.value)}
-                  readOnly={endpointsLocked}
-                />
-                 <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <span>Required endpoint for exchanging the authorization code for tokens.</span>
-                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
-                </p>
-              </div>
+              <FormFieldInput
+                label="Token Endpoint"
+                placeholder="https://example.com/token"
+                value={tokenEndpoint}
+                onChange={(e) => setTokenEndpoint(e.target.value)}
+                readOnly={endpointsLocked}
+                description={
+                  <span className="flex items-center gap-2">
+                    <span>Required endpoint for exchanging the authorization code for tokens.</span>
+                    {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
+                  </span>
+                }
+              />
               
-              <div className="space-y-2">
-                <Label>JWKS Endpoint (Optional)</Label>
-                <Input
-                  placeholder="https://example.com/.well-known/jwks.json"
-                  value={jwksEndpoint}
-                  onChange={(e) => setJwksEndpoint(e.target.value)}
-                  readOnly={endpointsLocked}
-                />
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <span>Endpoint for retrieving public keys to validate token signatures.</span>
-                  {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
-                </p>
-              </div>
+              <FormFieldInput
+                label="JWKS Endpoint (Optional)"
+                placeholder="https://example.com/.well-known/jwks.json"
+                value={jwksEndpoint}
+                onChange={(e) => setJwksEndpoint(e.target.value)}
+                readOnly={endpointsLocked}
+                description={
+                  <span className="flex items-center gap-2">
+                    <span>Endpoint for retrieving public keys to validate token signatures.</span>
+                    {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
+                  </span>
+                }
+              />
             </div>
           ) : (
             // Removed the empty div that previously held the static message
@@ -267,45 +261,32 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           )}
 
           {/* Common Configuration */}
-          <div className="space-y-2">
-            <Label>Client ID</Label>
-            <Input
-              placeholder={isDemoMode ? "demo-client" : "Your client ID"}
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-            />
-            <p className="text-sm text-muted-foreground">
-              {isDemoMode 
-                ? "Any value is accepted in demo mode" 
-                : "The client ID registered with your Identity Provider"}
-            </p>
-          </div>
+          <FormFieldInput
+            label="Client ID"
+            placeholder={isDemoMode ? "demo-client" : "Your client ID"}
+            value={clientId}
+            onChange={(e) => setClientId(e.target.value)}
+            description={isDemoMode 
+              ? "Any value is accepted in demo mode" 
+              : "The client ID registered with your Identity Provider"}
+          />
           
-          <div className="space-y-2">
-            <Label>Redirect URI</Label>
-            <Input
-              value={redirectUri}
-              readOnly // Make the input read-only
-              // onChange removed
-            />
-            <p className="text-sm text-muted-foreground">
-              {isDemoMode
-                ? "The URI where the demo server sends the response."
-                : "This is the required Redirect URI. You MUST register this exact URI with your Identity Provider for this client."}
-            </p>
-          </div>
+          <FormFieldInput
+            label="Redirect URI"
+            value={redirectUri}
+            readOnly
+            description={isDemoMode
+              ? "The URI where the demo server sends the response."
+              : "This is the required Redirect URI. You MUST register this exact URI with your Identity Provider for this client."}
+          />
           
-          <div className="space-y-2">
-            <Label>Scopes</Label>
-            <Input
-              placeholder="openid profile email"
-              value={scopes}
-              onChange={(e) => setScopes(e.target.value)}
-            />
-            <p className="text-sm text-muted-foreground">
-              Space-separated OAuth scopes
-            </p>
-          </div>
+          <FormFieldInput
+            label="Scopes"
+            placeholder="openid profile email"
+            value={scopes}
+            onChange={(e) => setScopes(e.target.value)}
+            description="Space-separated OAuth scopes"
+          />
 
           {/* PKCE Parameters */}
           <div className="space-y-4 rounded-lg border p-4">
@@ -316,29 +297,26 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               </Button>
             </div>
             
-            <div className="space-y-2">
-              <Label>Code Verifier</Label>
-              <Input value={codeVerifier} readOnly />
-              <p className="text-sm text-muted-foreground">
-                Random string used to generate the code challenge
-              </p>
-            </div>
+            <FormFieldInput
+              label="Code Verifier"
+              value={codeVerifier}
+              readOnly
+              description="Random string used to generate the code challenge"
+            />
             
-            <div className="space-y-2">
-              <Label>Code Challenge (S256)</Label>
-              <Input value={codeChallenge} readOnly />
-              <p className="text-sm text-muted-foreground">
-                SHA-256 hash of the code verifier, Base64URL encoded
-              </p>
-            </div>
+            <FormFieldInput
+              label="Code Challenge (S256)"
+              value={codeChallenge}
+              readOnly
+              description="SHA-256 hash of the code verifier, Base64URL encoded"
+            />
             
-            <div className="space-y-2">
-              <Label>State</Label>
-              <Input value={state} readOnly />
-              <p className="text-sm text-muted-foreground">
-                Random value for CSRF protection
-              </p>
-            </div>
+            <FormFieldInput
+              label="State"
+              value={state}
+              readOnly
+              description="Random value for CSRF protection"
+            />
           </div>
 
           <Button type="button" onClick={handleSubmit}>

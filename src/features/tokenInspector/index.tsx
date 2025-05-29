@@ -23,6 +23,7 @@ import { getIssuerBaseUrl } from "@/lib/jwt/generate-signed-token";
 import { useTokenHistory } from "../../lib/state";
 import { verifySignatureWithRefresh } from "@/lib/jwt/verify-signature-with-refresh";
 import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
+import { decodeJWT } from "@/lib/jwt/decode-token";
 
 interface TokenInspectorProps {
   initialToken?: string | null;
@@ -110,16 +111,10 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     }
 
     try {
-      const parts = tokenToDecode.split(".");
-      if (parts.length !== 3) throw new Error("Invalid JWT format (must have 3 parts)");
-
-      const [encodedHeader, encodedPayload] = parts;
-      const base64Header = encodedHeader.replace(/-/g, '+').replace(/_/g, '/');
-      const base64Payload = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
-      const paddedHeader = base64Header + '='.repeat((4 - base64Header.length % 4) % 4);
-      const paddedPayload = base64Payload + '='.repeat((4 - base64Payload.length % 4) % 4);
-      const header = JSON.parse(atob(paddedHeader));
-      const payload = JSON.parse(atob(paddedPayload));
+      const decoded = decodeJWT(tokenToDecode);
+      if (!decoded) throw new Error("Invalid JWT format");
+      
+      const { header, payload } = decoded;
 
       // Add token to history when it's successfully decoded
       if (token && token.trim().length > 0) {
@@ -131,7 +126,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       // Check explicit claim first, then check issuer matching our known demo issuer URL
       const isLikelyDemo = payload.is_demo_token === true ||
                            (payload.iss && typeof payload.iss === 'string' && payload.iss === demoIssuerUrl);
-      setIsDemoToken(isLikelyDemo); // Update state based on CURRENT token
+      setIsDemoToken(Boolean(isLikelyDemo)); // Update state based on CURRENT token
       console.log('Decoded token. Is Demo:', isLikelyDemo, 'Issuer:', payload.iss);
 
       // Determine token type and perform basic claim validation
@@ -140,7 +135,8 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       const validationResults = validateToken(header, payload, detectedTokenType);
 
       // Set issuer URL for JWKS resolver (use demo issuer if it's a demo token)
-      const currentIssuer = isLikelyDemo ? demoIssuerUrl : (payload.iss || "");
+      const issuerFromPayload = typeof payload.iss === 'string' ? payload.iss : '';
+      const currentIssuer = isLikelyDemo ? demoIssuerUrl : issuerFromPayload;
       if (currentIssuer && currentIssuer !== issuerUrl) {
           setIssuerUrl(currentIssuer);
       } else if (!currentIssuer) {
