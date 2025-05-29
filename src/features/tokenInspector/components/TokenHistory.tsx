@@ -150,19 +150,19 @@ export function TokenHistory({ onSelectToken }: TokenHistoryProps) {
                         if (decodedPayload) {
                           return (
                             <>
-                              {decodedPayload.sub && (
+                              {typeof decodedPayload.sub === 'string' && (
                                 <div className="text-xs text-muted-foreground truncate">
-                                  Subject: {typeof decodedPayload.sub === 'string' && decodedPayload.sub.length > 20 
+                                  Subject: {decodedPayload.sub.length > 20 
                                     ? `${decodedPayload.sub.substring(0, 18)}...` 
                                     : decodedPayload.sub}
                                 </div>
                               )}
-                              {decodedPayload.iss && (
+                              {typeof decodedPayload.iss === 'string' && (
                                 <div className="text-xs text-muted-foreground truncate">
                                   Issuer: {
                                     (() => {
                                       try {
-                                        const url = new URL(decodedPayload.iss);
+                                        const url = new URL(decodedPayload.iss as string);
                                         return url.hostname;
                                       } catch {
                                         return decodedPayload.iss;

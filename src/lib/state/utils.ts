@@ -44,8 +44,8 @@ export function addTokenToHistory(
   try {
     const payload = decodeJwtPayload(token);
     if (payload) {
-      subject = payload.sub;
-      issuer = payload.iss;
+      subject = typeof payload.sub === 'string' ? payload.sub : undefined;
+      issuer = typeof payload.iss === 'string' ? payload.iss : undefined;
     }
   } catch (error) {
     console.error('Error extracting token data:', error);

@@ -93,7 +93,7 @@ export function decodeJwtHeader(token: string): Record<string, unknown> | null {
  */
 export function isJwtExpired(token: string): boolean {
   const payload = decodeJwtPayload(token);
-  if (!payload || !payload.exp) {
+  if (!payload || typeof payload.exp !== 'number') {
     return false; // If no exp claim, assume not expired
   }
 
@@ -108,7 +108,7 @@ export function isJwtExpired(token: string): boolean {
  */
 export function getJwtExpiration(token: string): Date | null {
   const payload = decodeJwtPayload(token);
-  if (!payload || !payload.exp) {
+  if (!payload || typeof payload.exp !== 'number') {
     return null;
   }
 
