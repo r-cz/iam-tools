@@ -5,10 +5,11 @@ import {
   Search,
   SearchCheck,
   FileJson,
-  ArrowRight,
   ChevronRight,
   FlaskConical,
-  UserRoundSearch
+  UserRoundSearch,
+  Server,
+  UserRoundCheck
 } from "lucide-react"
 import { Link } from 'react-router-dom';
 
@@ -58,15 +59,15 @@ const menuTree = [
           {
             title: "Auth Code",
             url: "/oauth-playground/auth-code-pkce",
-            icon: ArrowRight
+            icon: UserRoundCheck
           },
           {
             title: "Client Credentials",
             url: "/oauth-playground/client-credentials",
-            icon: KeyRound
+            icon: Server
           },
           {
-            title: "Token Introspection",
+            title: "Introspection",
             url: "/oauth-playground/introspection",
             icon: SearchCheck
           },

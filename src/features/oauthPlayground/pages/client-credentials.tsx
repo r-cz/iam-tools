@@ -1,5 +1,5 @@
 import { PageContainer, PageHeader } from "@/components/page";
-import { KeyRound } from "lucide-react"; // Import KeyRound icon
+import { Server } from "lucide-react";
 import { ClientCredentialsFlow } from "../components/ClientCredentialsFlow";
 
 export default function ClientCredentialsPage() {
@@ -8,7 +8,7 @@ export default function ClientCredentialsPage() {
       <PageHeader
         title="OAuth Client Credentials Flow" // Update title
         description="Client Credentials flow for server-to-server authentication in OAuth 2.0." // Update description
-        icon={KeyRound} // Add KeyRound icon
+        icon={Server}
       />
       <ClientCredentialsFlow />
     </PageContainer>
