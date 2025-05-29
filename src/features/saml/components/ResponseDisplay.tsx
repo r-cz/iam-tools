@@ -1,7 +1,6 @@
 import { DecodedSamlResponse } from "../utils/saml-decoder";
 import { Badge } from "@/components/ui/badge";
-import { CopyButton } from "@/components/common";
-import { CodeBlock } from "@/components/ui/code-block";
+import { CopyButton, JsonDisplay } from "@/components/common";
 
 interface ResponseDisplayProps {
   response: DecodedSamlResponse;
@@ -115,11 +114,12 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
       </div>
 
       {/* Raw XML */}
-      <div className="mt-6 relative">
-        <div className="absolute top-2 right-2 z-10">
-          <CopyButton text={formatXml(response.xml)} showText={false} />
-        </div>
-        <CodeBlock code={formatXml(response.xml)} language="xml" />
+      <div className="mt-6">
+        <JsonDisplay 
+          data={formatXml(response.xml)}
+          language="xml"
+          containerClassName="relative"
+        />
       </div>
     </div>
   );
