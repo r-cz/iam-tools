@@ -397,11 +397,31 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
         </TabsContent>
         
         <TabsContent value="raw">
-          <CodeBlock
-            code={JSON.stringify(config, null, 2)}
-            language="json"
-            className="max-h-[70vh] overflow-auto"
-          />
+          <div className="relative">
+            <CodeBlock
+              code={JSON.stringify(config, null, 2)}
+              language="json"
+              className="max-h-[70vh] overflow-auto"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => copy(JSON.stringify(config, null, 2))}
+              className="absolute top-2 right-2"
+            >
+              {copied ? (
+                <>
+                  <ClipboardCheck className="h-4 w-4 mr-1" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copy
+                </>
+              )}
+            </Button>
+          </div>
         </TabsContent>
         </Tabs>
       </CardContent>

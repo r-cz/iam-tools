@@ -9,6 +9,8 @@ import { OAuthConfig, PkceParams, TokenResponse } from '../utils/types';
 import { CodeBlock } from '@/components/ui/code-block';
 import { proxyFetch } from '@/lib/proxy-fetch';
 import { toast } from 'sonner';
+import { Copy, Check } from "lucide-react";
+import { useClipboard } from "@/hooks/use-clipboard";
 
 interface TokenExchangeProps {
   config: OAuthConfig;
@@ -26,6 +28,7 @@ export function TokenExchange({
   const navigate = useNavigate();
   const [isExchanging, setIsExchanging] = useState<boolean>(false);
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null);
+  const { copy, copied } = useClipboard();
   const [tokenRequestPayload, setTokenRequestPayload] = useState<string>('');
 
   // Create token request payload
@@ -231,10 +234,30 @@ export function TokenExchange({
             </TabsContent>
 
             <TabsContent value="raw">
-              <CodeBlock
-                code={JSON.stringify(tokenResponse, null, 2)}
-                language="json"
-              />
+              <div className="relative">
+                <CodeBlock
+                  code={JSON.stringify(tokenResponse, null, 2)}
+                  language="json"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copy(JSON.stringify(tokenResponse, null, 2))}
+                  className="absolute top-2 right-2"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         )}

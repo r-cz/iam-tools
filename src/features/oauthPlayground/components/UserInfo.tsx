@@ -11,8 +11,9 @@ import { useIssuerHistory, useAppState } from "@/lib/state";
 import { proxyFetch } from "@/lib/proxy-fetch";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { User } from "lucide-react";
+import { User, Copy, Check } from "lucide-react";
 import { generateFreshToken } from "@/features/tokenInspector/utils/generate-token";
+import { useClipboard } from "@/hooks/use-clipboard";
 
 interface UserInfoResponse {
   sub?: string;
@@ -51,6 +52,7 @@ export function UserInfo() {
   const navigate = useNavigate();
   const { addIssuer } = useIssuerHistory();
   const { addToken, tokenHistory } = useAppState();
+  const { copy, copied } = useClipboard();
 
   // Form state
   const [userInfoEndpoint, setUserInfoEndpoint] = useState("");
@@ -412,11 +414,31 @@ export function UserInfo() {
               )}
               
               {/* Full Response */}
-              <CodeBlock
-                code={JSON.stringify(result, null, 2)}
-                language="json"
-                className="text-xs max-h-96 overflow-auto"
-              />
+              <div className="relative">
+                <CodeBlock
+                  code={JSON.stringify(result, null, 2)}
+                  language="json"
+                  className="text-xs max-h-96 overflow-auto"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copy(JSON.stringify(result, null, 2))}
+                  className="absolute top-2 right-2"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
               
               {/* Standard Claims Info */}
               {!result.error && (
