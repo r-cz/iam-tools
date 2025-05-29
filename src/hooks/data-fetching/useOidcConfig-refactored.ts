@@ -1,0 +1,77 @@
+import { useCallback } from 'react';
+import { proxyFetch } from '@/lib/proxy-fetch';
+import { oidcConfigCache } from '@/lib/cache/oidc-config-cache';
+import { useAsyncFetch } from '../use-async-fetch';
+import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types';
+
+interface UseOidcConfigResult {
+  data: OidcConfiguration | null;
+  isLoading: boolean;
+  error: Error | null;
+  fetchConfig: (url: string) => Promise<OidcConfiguration | null>;
+}
+
+/**
+ * Hook to fetch OIDC configuration from an issuer URL.
+ * Handles fetching via proxy if necessary.
+ * 
+ * This is a refactored version using the new useAsyncFetch hook,
+ * demonstrating how to simplify async data fetching patterns.
+ */
+export function useOidcConfig(): UseOidcConfigResult {
+  const fetchFunction = useCallback(async (issuerUrl: string) => {
+    if (!issuerUrl) {
+      throw new Error('Issuer URL is required');
+    }
+
+    // Construct the well-known URL
+    let wellKnownUrl = '';
+    try {
+      const url = new URL(issuerUrl);
+      // Ensure trailing slash for correct joining
+      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`;
+      wellKnownUrl = new URL(
+        `${basePath}.well-known/openid-configuration`,
+        url.origin
+      ).toString();
+    } catch (e) {
+      throw new Error('Invalid Issuer URL format.');
+    }
+
+    const response = await proxyFetch(wellKnownUrl);
+
+    if (!response.ok) {
+      let errorMsg = `Failed to fetch OIDC configuration: ${response.status} ${response.statusText}`;
+      try {
+        const errorBody = await response.json();
+        errorMsg += ` - ${JSON.stringify(errorBody)}`;
+      } catch (e) { /* Ignore if response body is not JSON */ }
+      throw new Error(errorMsg);
+    }
+
+    const configData: OidcConfiguration = await response.json();
+    
+    // Store in cache for future use
+    oidcConfigCache.set(issuerUrl, configData);
+    console.log('Cached OIDC configuration for:', issuerUrl);
+    
+    return configData;
+  }, []);
+
+  const { data, isLoading, error, execute } = useAsyncFetch(fetchFunction, {
+    cache: oidcConfigCache,
+    getCacheKey: (issuerUrl: string) => issuerUrl,
+    shouldExecute: (issuerUrl: string) => !!issuerUrl,
+    onSuccess: (data) => {
+      console.log('Successfully fetched OIDC configuration');
+    },
+    onError: (error) => {
+      console.error('Error fetching OIDC config:', error);
+    }
+  });
+
+  // Rename execute to fetchConfig for backwards compatibility
+  const fetchConfig = execute;
+
+  return { data, isLoading, error, fetchConfig };
+}

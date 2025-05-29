@@ -3,11 +3,9 @@ import { ValidationResult, TokenType } from "../utils/types";
 import { getClaimDescription } from "../data/claim-descriptions";
 import { getProviderSpecificClaimInfo } from "../data/provider-claims";
 import { Button } from "@/components/ui/button";
-import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useClipboard } from "@/hooks/use-clipboard";
-import { Copy, Check } from "lucide-react";
+import { JsonDisplay } from "@/components/common";
 
 interface TokenPayloadProps {
   payload: any;
@@ -21,7 +19,6 @@ export function TokenPayload({
   validationResults 
 }: TokenPayloadProps) {
   const [showAll, setShowAll] = useState(false);
-  const { copy, copied } = useClipboard();
   
   // Claims to show first based on token type
   const standardClaims = tokenType === "id_token" ? [
@@ -75,7 +72,9 @@ export function TokenPayload({
     // Handle other arrays and objects
     if (typeof value === "object" && value !== null) {
       return (
-        <CodeBlock code={JSON.stringify(value, null, 2)} language="json" className="p-1" />
+        <div className="font-mono text-xs bg-muted p-2 rounded-md overflow-x-auto">
+          {JSON.stringify(value, null, 2)}
+        </div>
       );
     }
     
@@ -213,27 +212,10 @@ export function TokenPayload({
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <CodeBlock code={JSON.stringify(payload, null, 2)} language="json" />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => copy(JSON.stringify(payload, null, 2))}
-          className="absolute top-2 right-2"
-        >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4 mr-1" />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4 mr-1" />
-              Copy
-            </>
-          )}
-        </Button>
-      </div>
+      <JsonDisplay 
+        data={payload}
+        containerClassName="relative"
+      />
       
       <div className="space-y-3">
         <h3 className="text-md font-medium">{tokenType === "id_token" ? "Common OIDC Claims" : "Common OAuth/JWT Claims"}</h3>

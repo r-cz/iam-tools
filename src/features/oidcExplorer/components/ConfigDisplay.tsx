@@ -7,19 +7,15 @@ import {
   CardDescription,
   CardFooter
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { CodeBlock } from "@/components/ui/code-block";
 import { Badge } from "@/components/ui/badge";
 import { 
   CheckCircle2, 
   XCircle, 
-  Link,
-  Copy,
-  ClipboardCheck 
+  Link
 } from 'lucide-react';
-import { useClipboard } from '@/hooks/use-clipboard';
+import { CopyButton, JsonDisplay } from '@/components/common';
 
 
 import { OidcConfiguration } from '../utils/types';
@@ -32,10 +28,6 @@ interface ConfigDisplayProps {
 
 export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwksClick from destructuring
   const [view, setView] = useState<'formatted' | 'raw'>('formatted');
-  const { copy, copied } = useClipboard();
-  
-  // We'll use this to track the currently copied text
-  const [copiedText, setCopiedText] = useState<string>('');
   
   /**
    * Format a long property name to be more readable
@@ -137,28 +129,13 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
     return (
       <div className="flex flex-wrap items-center gap-2">
         <code className="text-sm break-all">{value}</code>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <CopyButton
+          text={value}
+          variant="ghost"
+          size="sm"
           className="h-6 px-2 text-xs"
-          onClick={() => {
-                copy(value);
-                setCopiedText(value);
-              }}
-          disabled={copied && copiedText === value}
-        >
-          {copied && copiedText === value ? (
-            <>
-              <ClipboardCheck className="h-3 w-3 mr-1" />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3 mr-1" />
-              Copy
-            </>
-          )}
-        </Button>
+          iconSize="h-3 w-3"
+        />
       </div>
     );
   };
@@ -290,31 +267,13 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
                         <div className="mt-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <code className="text-sm break-all">{config.jwks_uri}</code>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 px-2 text-xs"
-                                onClick={() => {
-                                  copy(config.jwks_uri || '');
-                                  setCopiedText(config.jwks_uri || '');
-                                }}
-                                disabled={copied && copiedText === config.jwks_uri}
-                              >
-                                {copied && copiedText === config.jwks_uri ? (
-                                  <>
-                                    <ClipboardCheck className="h-3 w-3 mr-1" />
-                                    Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    Copy
-                                  </>
-                                )}
-                              </Button>
-                              {/* Removed Fetch JWKS button */}
-                            </div>
+                            <CopyButton
+                              text={config.jwks_uri || ''}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              iconSize="h-3 w-3"
+                            />
                           </div>
                         </div>
                       </div>
@@ -397,31 +356,11 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) { // Removed onJwk
         </TabsContent>
         
         <TabsContent value="raw">
-          <div className="relative">
-            <CodeBlock
-              code={JSON.stringify(config, null, 2)}
-              language="json"
-              className="max-h-[70vh] overflow-auto"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => copy(JSON.stringify(config, null, 2))}
-              className="absolute top-2 right-2"
-            >
-              {copied ? (
-                <>
-                  <ClipboardCheck className="h-4 w-4 mr-1" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-1" />
-                  Copy
-                </>
-              )}
-            </Button>
-          </div>
+          <JsonDisplay
+            data={config}
+            containerClassName="relative"
+            maxHeight="70vh"
+          />
         </TabsContent>
         </Tabs>
       </CardContent>
