@@ -52,8 +52,33 @@ export function SamlResponseDecoder() {
       {/* Input Card */}
       <Card className="lg:col-span-1">
         <CardContent className="space-y-4 pt-6">
-          <div className="space-y-2">
-            <Label htmlFor="saml-input">SAML Response (Base64)</Label>
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <Label htmlFor="saml-input" className="block text-sm font-medium">
+                SAML Response (Base64)
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExample}
+                  className="flex items-center gap-1.5"
+                >
+                  <TestTubeDiagonal size={16} />
+                  <span>Example</span>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleClear}
+                  className="flex items-center gap-1.5"
+                >
+                  <RotateCcw size={16} />
+                  <span>Clear</span>
+                </Button>
+              </div>
+            </div>
+            
             <Textarea
               id="saml-input"
               placeholder="Paste your base64-encoded SAML Response here..."
@@ -61,44 +86,24 @@ export function SamlResponseDecoder() {
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
               className="min-h-[200px] font-mono text-sm"
             />
-          </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-4">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex justify-end">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExample}
-                className="flex items-center gap-1.5"
+                onClick={handleDecode}
+                disabled={!input.trim()}
+                className="w-full sm:w-auto flex items-center gap-1.5"
               >
-                <TestTubeDiagonal size={16} />
-                <span>Example</span>
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleClear}
-                className="flex items-center gap-1.5"
-              >
-                <RotateCcw size={16} />
-                <span>Clear</span>
+                <Search size={16} />
+                <span>Decode Response</span>
               </Button>
             </div>
-            <Button
-              onClick={handleDecode}
-              disabled={!input.trim()}
-              className="w-full sm:w-auto flex items-center gap-1.5"
-            >
-              <Search size={16} />
-              <span>Decode Response</span>
-            </Button>
           </div>
         </CardContent>
       </Card>
