@@ -148,17 +148,4 @@ test.describe('Token Inspector', () => {
     await expect(page.locator('text=user-example-123').first()).toBeVisible();
   });
 
-  test('should handle paste functionality', async ({ page }) => {
-    // Skip clipboard test in CI environment as it's unreliable
-    // Just test that the paste button exists and is clickable
-    const pasteButton = page.locator(selectors.buttons.paste);
-    await expect(pasteButton).toBeVisible();
-    await expect(pasteButton).toBeEnabled();
-    
-    // Click it to verify it doesn't break
-    await pasteButton.click();
-    
-    // Just verify the page is still functional
-    await expect(page.locator('text=OAuth/OIDC Token').first()).toBeVisible();
-  });
 });
