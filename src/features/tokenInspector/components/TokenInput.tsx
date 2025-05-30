@@ -4,11 +4,12 @@ import Editor from "react-simple-code-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, TestTubeDiagonal, RotateCcw, Search } from "lucide-react";
 import { generateFreshToken } from "../utils/generate-token";
 import { toast } from "sonner";
 import { DEMO_JWKS } from "@/lib/jwt/demo-key";
 import { cn } from "@/lib/utils"; // Import cn utility
+import { TokenHistory } from "./TokenHistory";
 
 interface TokenInputProps {
   token: string;
@@ -17,6 +18,7 @@ interface TokenInputProps {
   onReset: () => void;
   onJwksResolved?: (jwks: any) => void; // Optional callback for JWKS
   initialToken?: string | null; // Token from URL parameter
+  onSelectTokenFromHistory?: (token: string) => void; // Callback for when a token is selected from history
 }
 
 // Highlighting function for JWT parts
@@ -45,7 +47,8 @@ export function TokenInput({
   onDecode, 
   onReset,
   onJwksResolved,
-  initialToken
+  initialToken,
+  onSelectTokenFromHistory
 }: TokenInputProps) {
   const [isLoadingExample, setIsLoadingExample] = useState(false);
   const [isExampleToken, setIsExampleToken] = useState(false);
@@ -60,14 +63,12 @@ export function TokenInput({
     }
   }, [initialToken, token]);
 
-  const handlePaste = async () => {
-    try {
-      const clipboardText = await navigator.clipboard.readText();
-      setToken(clipboardText.trim());
-      setIsExampleToken(false);
-    } catch (err) {
-      console.error("Failed to read clipboard:", err);
-      alert("Unable to access clipboard. Please paste the token manually.");
+  const handleSelectTokenFromHistory = (selectedToken: string) => {
+    setToken(selectedToken);
+    setIsExampleToken(false);
+    setIsInitialToken(false);
+    if (onSelectTokenFromHistory) {
+      onSelectTokenFromHistory(selectedToken);
     }
   };
 
@@ -134,27 +135,27 @@ export function TokenInput({
           OAuth/OIDC Token
         </label>
         <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handlePaste}
-          >
-            Paste
-          </Button>
+          <div className="w-auto">
+            <TokenHistory onSelectToken={handleSelectTokenFromHistory} />
+          </div>
           <Button
             variant="outline"
             size="sm"
             onClick={loadExampleToken}
             disabled={isLoadingExample}
+            className="flex items-center gap-1.5"
           >
-            {isLoadingExample ? "Loading..." : "Example"}
+            <TestTubeDiagonal size={16} />
+            <span>{isLoadingExample ? "Loading..." : "Example"}</span>
           </Button>
           <Button 
             variant="destructive" 
             size="sm" 
             onClick={handleReset}
+            className="flex items-center gap-1.5"
           >
-            Reset
+            <RotateCcw size={16} />
+            <span>Clear</span>
           </Button>
         </div>
       </div>
@@ -214,9 +215,10 @@ export function TokenInput({
         <Button 
           onClick={onDecode}
           disabled={!token}
-          className="w-auto"
+          className="w-auto flex items-center gap-1.5"
         >
-          Inspect Token
+          <Search size={16} />
+          <span>Inspect Token</span>
         </Button>
       </div>
     </div>

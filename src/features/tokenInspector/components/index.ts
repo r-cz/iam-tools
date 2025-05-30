@@ -5,4 +5,3 @@ export * from './TokenPayload';
 export * from './TokenSignature';
 export * from './TokenSize';
 export * from './TokenTimeline';
-export * from './TokenHistory';
