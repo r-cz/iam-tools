@@ -15,7 +15,7 @@ import { decodeSamlResponse, type DecodedSamlResponse } from "../utils/saml-deco
 import { ResponseDisplay } from "./ResponseDisplay";
 import { AssertionDisplay } from "./AssertionDisplay";
 import { SignatureDisplay } from "./SignatureDisplay";
-import { AlertCircle, FileCode, Shield, FileKey, CheckCircle } from "lucide-react";
+import { AlertCircle, Search, Shield, FileKey, CheckCircle, TestTubeDiagonal, RotateCcw } from "lucide-react";
 
 export function SamlResponseDecoder() {
   const [input, setInput] = useState("");
@@ -70,16 +70,34 @@ export function SamlResponseDecoder() {
             </Alert>
           )}
 
-          <div className="flex gap-2">
-            <Button onClick={handleDecode} disabled={!input.trim()}>
-              <FileCode className="mr-2 h-4 w-4" />
-              Decode Response
-            </Button>
-            <Button variant="secondary" onClick={handleExample}>
-              Load Example
-            </Button>
-            <Button variant="outline" onClick={handleClear}>
-              Clear
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-4">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExample}
+                className="flex items-center gap-1.5"
+              >
+                <TestTubeDiagonal size={16} />
+                <span>Example</span>
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleClear}
+                className="flex items-center gap-1.5"
+              >
+                <RotateCcw size={16} />
+                <span>Clear</span>
+              </Button>
+            </div>
+            <Button
+              onClick={handleDecode}
+              disabled={!input.trim()}
+              className="w-full sm:w-auto flex items-center gap-1.5"
+            >
+              <Search size={16} />
+              <span>Decode Response</span>
             </Button>
           </div>
         </CardContent>
