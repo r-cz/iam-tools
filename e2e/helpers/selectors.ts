@@ -15,9 +15,9 @@ export const selectors = {
   buttons: {
     primary: '.bg-primary',
     secondary: '.bg-secondary',
-    paste: 'button:has-text("Paste")',
     example: 'button:has-text("Example")',
-    reset: 'button:has-text("Reset")',
+    clear: 'button:has-text("Clear")',
+    reset: 'button:has-text("Clear")', // Alias for backward compatibility
     fetchConfig: 'button:has-text("Fetch Config")',
     inspectToken: 'button:has-text("Inspect Token")',
   },

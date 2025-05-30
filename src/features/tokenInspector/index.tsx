@@ -14,8 +14,7 @@ import {
   TokenPayload,
   TokenSignature,
   TokenTimeline,
-  TokenSize,
-  TokenHistory 
+  TokenSize
 } from "./components";
 import { validateToken, determineTokenType } from "./utils/token-validation";
 import type { TokenType, DecodedToken, ValidationResult } from "@/types"; // Point to the shared types directory
@@ -284,20 +283,16 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       {/* Input Card */}
       <Card className="lg:col-span-1">
         <CardContent className="p-5">
-          <div className="space-y-4">
-            {/* Token History Component */}
-            <TokenHistory onSelectToken={handleSelectToken} />
-            
-            {/* Token Input Component */}
-            <TokenInput
-              token={token}
-              setToken={setToken} // Let input component update token state
-              onDecode={() => decodeToken(token)} // Explicitly trigger decode on button click
-              onReset={resetState}
-              onJwksResolved={handleJwksFromExample} // For auto-loading JWKS from example btn
-              initialToken={initialToken} // Pass initial token if present
-            />
-          </div>
+          {/* Token Input Component with integrated history */}
+          <TokenInput
+            token={token}
+            setToken={setToken} // Let input component update token state
+            onDecode={() => decodeToken(token)} // Explicitly trigger decode on button click
+            onReset={resetState}
+            onJwksResolved={handleJwksFromExample} // For auto-loading JWKS from example btn
+            initialToken={initialToken} // Pass initial token if present
+            onSelectTokenFromHistory={handleSelectToken} // Pass the callback for history selection
+          />
         </CardContent>
       </Card>
 
