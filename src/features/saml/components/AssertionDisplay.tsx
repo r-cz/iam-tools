@@ -145,8 +145,8 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                       <CopyButton text={assertion.issuer} showText={false} />
                     </div>
                     <div className="font-mono text-sm break-all">{assertion.issuer}</div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* Issue Time */}
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
@@ -156,8 +156,8 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                       <div className="text-xs text-muted-foreground">When this assertion was created</div>
                     </div>
                     {formatTimestamp(assertion.issueInstant)}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* Subject */}
                 {assertion.subject?.nameId && (
