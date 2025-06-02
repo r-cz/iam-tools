@@ -42,6 +42,25 @@ export async function proxyFetch(url: string, options?: RequestInit): Promise<Re
 }
 
 /**
+ * Gets the current hostname, handling both browser and test environments
+ * @returns The current hostname or empty string if not available
+ */
+function getCurrentHostname(): string {
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined' && window?.location?.hostname) {
+    return window.location.hostname;
+  }
+  
+  // Check if we're in a test environment with globalThis.window
+  if (typeof globalThis !== 'undefined' && (globalThis as any).window?.location?.hostname) {
+    return (globalThis as any).window.location.hostname;
+  }
+  
+  // Default to empty string
+  return '';
+}
+
+/**
  * Determines if a URL needs to be proxied
  * @param url The URL to check
  * @returns True if the URL should be proxied
@@ -51,10 +70,7 @@ function needsProxy(url: string): boolean {
     const urlObj = new URL(url);
     
     // Don't proxy requests to our own domain
-    // Handle both browser and test environments
-    const currentHostname = typeof window !== 'undefined' && window.location 
-      ? window.location.hostname 
-      : '';
+    const currentHostname = getCurrentHostname();
     const isSameDomain = currentHostname && urlObj.hostname === currentHostname;
     if (isSameDomain) {
       return false;

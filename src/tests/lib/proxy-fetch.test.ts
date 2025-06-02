@@ -10,25 +10,36 @@ describe('proxyFetch', () => {
   beforeEach(() => {
     // Use type assertion to handle mismatch between mock and native fetch types
     global.fetch = mockFetch as unknown as typeof fetch;
-    // Ensure global.window exists before mocking location (for non-browser envs)
-    if (typeof global.window === 'undefined') {
-      // @ts-ignore - Define minimal window for test environment
-      global.window = { location: { hostname: '' } };
-    }
-    // Mock window.location.hostname for needsProxy checks
-    Object.defineProperty(global.window, 'location', {
-      value: {
+    
+    // Store original window for restoration
+    const originalWindow = (globalThis as any).window;
+    
+    // Set up window object for tests - use globalThis to ensure compatibility
+    (globalThis as any).window = {
+      location: {
         hostname: 'test.app.com',
-      },
-      writable: true,
-    });
-    // We will set import.meta.env.DEV directly in tests that need it
+        protocol: 'http:',
+        port: '3000',
+        host: 'test.app.com:3000',
+        pathname: '/',
+        search: '',
+        hash: '',
+        href: 'http://test.app.com:3000/'
+      }
+    };
+    
+    // Store original for cleanup
+    (globalThis as any).__originalWindow = originalWindow;
   });
 
   afterEach(() => {
     global.fetch = originalFetch; // Restore original fetch
     mockFetch.mockClear(); // Clear mock history
-    // Restore window.location if needed, though usually resetting mocks is enough
+    // Restore original window
+    if ((globalThis as any).__originalWindow) {
+      (globalThis as any).window = (globalThis as any).__originalWindow;
+      delete (globalThis as any).__originalWindow;
+    }
   });
 
   // === Testing proxyFetch function ===
