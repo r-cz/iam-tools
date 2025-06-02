@@ -1,11 +1,31 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'bun:test';
+
+// We need to mock fetch before importing the module
+let mockFetchCalls: Array<{ url: string; options?: RequestInit }> = [];
+let mockFetchResponse: Response | Error = new Response('Mock response', { status: 200 });
+
+// Override global fetch before any imports
+const originalFetch = global.fetch;
+global.fetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+  const urlString = url.toString();
+  mockFetchCalls.push({ url: urlString, options });
+  
+  if (mockFetchResponse instanceof Error) {
+    throw mockFetchResponse;
+  }
+  
+  return mockFetchResponse;
+};
+
+// Now import the module - it will use our mocked fetch
 import * as proxyFetchModule from '../../lib/proxy-fetch';
 
 describe('proxyFetch', () => {
-  let originalFetch: typeof fetch;
-  let fetchCalls: Array<{ url: string; options?: RequestInit }> = [];
-
   beforeEach(() => {
+    // Reset state for each test
+    mockFetchCalls = [];
+    mockFetchResponse = new Response('Mock response', { status: 200 });
+    
     // Store original window for restoration
     const originalWindow = (globalThis as any).window;
     
@@ -25,27 +45,20 @@ describe('proxyFetch', () => {
     
     // Store original for cleanup
     (globalThis as any).__originalWindow = originalWindow;
-    
-    // Store original fetch and replace with mock
-    originalFetch = global.fetch;
-    fetchCalls = [];
-    
-    global.fetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
-      const urlString = url.toString();
-      fetchCalls.push({ url: urlString, options });
-      return new Response('Mock response', { status: 200 });
-    };
   });
 
   afterEach(() => {
-    // Restore original fetch
-    global.fetch = originalFetch;
-    
     // Restore original window
     if ((globalThis as any).__originalWindow) {
       (globalThis as any).window = (globalThis as any).__originalWindow;
       delete (globalThis as any).__originalWindow;
     }
+  });
+
+  // Cleanup after all tests
+  afterAll(() => {
+    // Restore original fetch
+    global.fetch = originalFetch;
   });
 
   // === Testing proxyFetch function ===
@@ -57,9 +70,9 @@ describe('proxyFetch', () => {
     const text = await response.text();
 
     expect(text).toBe('Mock response');
-    expect(fetchCalls).toHaveLength(1);
-    expect(fetchCalls[0].url).toBe(directUrl);
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls).toHaveLength(1);
+    expect(mockFetchCalls[0].url).toBe(directUrl);
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   // Test proxy usage (production path is used in bun test)
@@ -71,30 +84,26 @@ describe('proxyFetch', () => {
     const text = await response.text();
 
     expect(text).toBe('Mock response');
-    expect(fetchCalls).toHaveLength(1);
-    const actualUrl = fetchCalls[0].url;
+    expect(mockFetchCalls).toHaveLength(1);
+    const actualUrl = mockFetchCalls[0].url;
     expect(actualUrl).toStartWith(expectedProxyPrefix);
     expect(actualUrl).toContain(encodeURIComponent(externalUrl));
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   it('should handle fetch errors through the proxy', async () => {
     const externalUrl = 'https://external.com/.well-known/error-case';
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
     
-    // Replace fetch with one that throws
-    global.fetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
-      const urlString = url.toString();
-      fetchCalls.push({ url: urlString, options });
-      throw new Error('Network Failed');
-    };
+    // Configure to throw error
+    mockFetchResponse = new Error('Network Failed');
 
     await expect(proxyFetchModule.proxyFetch(externalUrl)).rejects.toThrow('Network Failed');
-    expect(fetchCalls).toHaveLength(1);
-    const actualUrl = fetchCalls[0].url;
+    expect(mockFetchCalls).toHaveLength(1);
+    const actualUrl = mockFetchCalls[0].url;
     expect(actualUrl).toStartWith(expectedProxyPrefix);
     expect(actualUrl).toContain(encodeURIComponent(externalUrl));
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   // === Testing needsProxy logic (implicitly via proxyFetch calls) ===
@@ -103,36 +112,36 @@ describe('proxyFetch', () => {
   it('should not proxy URLs on the same domain', async () => {
     const url = 'http://test.app.com/some/path'; // Same as window.location.hostname mock
     await proxyFetchModule.proxyFetch(url);
-    expect(fetchCalls).toHaveLength(1);
-    expect(fetchCalls[0].url).toBe(url); // Called directly
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls).toHaveLength(1);
+    expect(mockFetchCalls[0].url).toBe(url); // Called directly
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   it('should not proxy localhost URLs', async () => {
     const url = 'http://localhost:3000/api';
     await proxyFetchModule.proxyFetch(url);
-    expect(fetchCalls).toHaveLength(1);
-    expect(fetchCalls[0].url).toBe(url); // Called directly
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls).toHaveLength(1);
+    expect(mockFetchCalls[0].url).toBe(url); // Called directly
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   it('should not proxy 127.0.0.1 URLs', async () => {
     const url = 'http://127.0.0.1:8080/data';
     await proxyFetchModule.proxyFetch(url);
-    expect(fetchCalls).toHaveLength(1);
-    expect(fetchCalls[0].url).toBe(url); // Called directly
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls).toHaveLength(1);
+    expect(mockFetchCalls[0].url).toBe(url); // Called directly
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   it('should proxy .well-known URLs', async () => {
     const url = 'https://some-oidc.com/.well-known/openid-configuration';
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
     await proxyFetchModule.proxyFetch(url);
-    expect(fetchCalls).toHaveLength(1);
-    const actualUrl = fetchCalls[0].url;
+    expect(mockFetchCalls).toHaveLength(1);
+    const actualUrl = mockFetchCalls[0].url;
     expect(actualUrl).toStartWith(expectedProxyPrefix);
     expect(actualUrl).toContain(encodeURIComponent(url));
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   // Test various JWKS path formats
@@ -149,14 +158,11 @@ describe('proxyFetch', () => {
     it(`should proxy JWKS URL: ${url}`, async () => {
       const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
       await proxyFetchModule.proxyFetch(url);
-      expect(fetchCalls).toHaveLength(1);
-      const actualUrl = fetchCalls[0].url;
+      expect(mockFetchCalls).toHaveLength(1);
+      const actualUrl = mockFetchCalls[0].url;
       expect(actualUrl).toStartWith(expectedProxyPrefix);
       expect(actualUrl).toContain(encodeURIComponent(url));
-      expect(fetchCalls[0].options).toBeUndefined();
-      
-      // Clear for next test
-      fetchCalls = [];
+      expect(mockFetchCalls[0].options).toBeUndefined();
     });
   });
 
@@ -164,9 +170,9 @@ describe('proxyFetch', () => {
     const invalidUrl = 'this-is-not-a-url';
     // needsProxy should return false, so fetch directly
     await proxyFetchModule.proxyFetch(invalidUrl);
-    expect(fetchCalls).toHaveLength(1);
-    expect(fetchCalls[0].url).toBe(invalidUrl); // Called directly
-    expect(fetchCalls[0].options).toBeUndefined();
+    expect(mockFetchCalls).toHaveLength(1);
+    expect(mockFetchCalls[0].url).toBe(invalidUrl); // Called directly
+    expect(mockFetchCalls[0].options).toBeUndefined();
   });
 
   it('should pass fetch options correctly when fetching directly', async () => {
@@ -174,9 +180,9 @@ describe('proxyFetch', () => {
     const options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'value' }) };
 
     await proxyFetchModule.proxyFetch(directUrl, options);
-    expect(fetchCalls).toHaveLength(1);
-    expect(fetchCalls[0].url).toBe(directUrl);
-    expect(fetchCalls[0].options).toEqual(options);
+    expect(mockFetchCalls).toHaveLength(1);
+    expect(mockFetchCalls[0].url).toBe(directUrl);
+    expect(mockFetchCalls[0].options).toEqual(options);
   });
 
   it('should pass fetch options correctly when using proxy', async () => {
@@ -185,10 +191,10 @@ describe('proxyFetch', () => {
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
 
     await proxyFetchModule.proxyFetch(externalUrl, options);
-    expect(fetchCalls).toHaveLength(1);
-    const actualUrl = fetchCalls[0].url;
+    expect(mockFetchCalls).toHaveLength(1);
+    const actualUrl = mockFetchCalls[0].url;
     expect(actualUrl).toStartWith(expectedProxyPrefix);
     expect(actualUrl).toContain(encodeURIComponent(externalUrl));
-    expect(fetchCalls[0].options).toEqual(options);
+    expect(mockFetchCalls[0].options).toEqual(options);
   });
 });
