@@ -51,7 +51,11 @@ function needsProxy(url: string): boolean {
     const urlObj = new URL(url);
     
     // Don't proxy requests to our own domain
-    const isSameDomain = urlObj.hostname === window.location.hostname;
+    // Handle both browser and test environments
+    const currentHostname = typeof window !== 'undefined' && window.location 
+      ? window.location.hostname 
+      : '';
+    const isSameDomain = currentHostname && urlObj.hostname === currentHostname;
     if (isSameDomain) {
       return false;
     }
