@@ -1,43 +1,33 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-
-// Mock the fetch calls tracking
-let mockFetchCalls: Array<{ url: string; options?: RequestInit }> = [];
-let mockFetchShouldThrow = false;
-
-// Create a proper mock fetch function
-const mockFetch = mock(async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
-  const urlString = url.toString();
-  mockFetchCalls.push({ url: urlString, options });
-  
-  if (mockFetchShouldThrow) {
-    throw new Error('Network Failed');
-  }
-  
-  // Return a proper Response object with working text() method
-  return new Response('Mock response', { 
-    status: 200,
-    statusText: 'OK',
-    headers: new Headers()
-  });
-});
-
-// Mock the global fetch before importing any modules
-mock.module('global', () => ({
-  fetch: mockFetch
-}));
-
-// Override global fetch directly as well
-global.fetch = mockFetch as any;
-
-// Now import the module
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as proxyFetchModule from '../../lib/proxy-fetch';
 
 describe('proxyFetch', () => {
+  let mockFetchCalls: Array<{ url: string; options?: RequestInit }> = [];
+  let mockFetchShouldThrow = false;
+
+  // Mock fetch function
+  const mockFetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+    const urlString = url.toString();
+    mockFetchCalls.push({ url: urlString, options });
+    
+    if (mockFetchShouldThrow) {
+      throw new Error('Network Failed');
+    }
+    
+    return new Response('Mock response', { 
+      status: 200,
+      statusText: 'OK',
+      headers: new Headers()
+    });
+  };
+
   beforeEach(() => {
     // Reset state for each test
     mockFetchCalls = [];
     mockFetchShouldThrow = false;
-    mockFetch.mockClear();
+    
+    // Set up the mock fetch implementation
+    proxyFetchModule.setFetchImplementation(mockFetch as any);
     
     // Store original window for restoration
     const originalWindow = (globalThis as any).window;
@@ -61,6 +51,9 @@ describe('proxyFetch', () => {
   });
 
   afterEach(() => {
+    // Reset fetch implementation
+    proxyFetchModule.resetFetchImplementation();
+    
     // Restore original window
     if ((globalThis as any).__originalWindow) {
       (globalThis as any).window = (globalThis as any).__originalWindow;
