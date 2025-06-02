@@ -1,15 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import { proxyFetch } from '../../lib/proxy-fetch'; // Use relative path
 
-// Mock fetch globally for all tests in this file
-const originalFetch = global.fetch;
-const mockFetch = vi.fn(); // Use vitest's mock function
-
 describe('proxyFetch', () => {
+  let originalFetch: typeof fetch;
+  let mockFetch: any;
+
   beforeEach(() => {
-    // Use type assertion to handle mismatch between mock and native fetch types
-    global.fetch = mockFetch as unknown as typeof fetch;
+    // Store the original fetch
+    originalFetch = global.fetch;
+    
+    // Create a mock function for fetch
+    mockFetch = mock(() => Promise.resolve(new Response()));
+    
+    // Replace global.fetch with our mock
+    global.fetch = mockFetch as typeof fetch;
     
     // Store original window for restoration
     const originalWindow = (globalThis as any).window;
@@ -33,8 +37,12 @@ describe('proxyFetch', () => {
   });
 
   afterEach(() => {
-    global.fetch = originalFetch; // Restore original fetch
-    mockFetch.mockClear(); // Clear mock history
+    // Restore original fetch
+    global.fetch = originalFetch;
+    
+    // Reset mock
+    mockFetch.mockClear();
+    
     // Restore original window
     if ((globalThis as any).__originalWindow) {
       (globalThis as any).window = (globalThis as any).__originalWindow;
@@ -46,7 +54,7 @@ describe('proxyFetch', () => {
 
   it('should fetch directly if proxy is not needed', async () => {
     const directUrl = 'http://test.app.com/api/data'; // Same domain
-    mockFetch.mockResolvedValue(new Response('Direct OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('Direct OK')));
 
     const response = await proxyFetch(directUrl);
     const text = await response.text();
@@ -60,7 +68,7 @@ describe('proxyFetch', () => {
   it('should use production proxy URL when proxy is needed', async () => {
     const externalUrl = 'https://external.com/.well-known/openid-configuration';
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-    mockFetch.mockResolvedValue(new Response('Proxy OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('Proxy OK')));
 
     const response = await proxyFetch(externalUrl);
     const text = await response.text();
@@ -73,21 +81,11 @@ describe('proxyFetch', () => {
     expect(mockFetch).toHaveBeenCalledWith(actualUrl, undefined);
   });
 
-  // Test proxy usage assuming DEV=false (prod proxy path)
-  // NOTE: We can't directly control import.meta.env.DEV easily in Bun tests.
-  // This test relies on the default behavior or requires environment setup.
-  // For now, we focus on testing the *logic* that a proxy is used.
-  // A more robust approach might involve refactoring proxyFetch slightly
-  // or using environment variables Bun *can* control.
-  // Let's assume for coverage purposes that testing one proxy path is sufficient
-  // if the conditional logic itself isn't complex.
-  // We will test the structure for the production path thoroughly.
-
-   it('should handle fetch errors through the proxy', async () => {
+  it('should handle fetch errors through the proxy', async () => {
     const externalUrl = 'https://external.com/.well-known/error-case';
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
     const mockError = new Error('Network Failed');
-    mockFetch.mockRejectedValue(mockError);
+    mockFetch.mockImplementation(() => Promise.reject(mockError));
 
     await expect(proxyFetch(externalUrl)).rejects.toThrow('Network Failed');
     expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -102,21 +100,21 @@ describe('proxyFetch', () => {
 
   it('should not proxy URLs on the same domain', async () => {
     const url = 'http://test.app.com/some/path'; // Same as window.location.hostname mock
-    mockFetch.mockResolvedValue(new Response('OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('OK')));
     await proxyFetch(url);
     expect(mockFetch).toHaveBeenCalledWith(url, undefined); // Called directly
   });
 
   it('should not proxy localhost URLs', async () => {
     const url = 'http://localhost:3000/api';
-    mockFetch.mockResolvedValue(new Response('OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('OK')));
     await proxyFetch(url);
     expect(mockFetch).toHaveBeenCalledWith(url, undefined); // Called directly
   });
 
   it('should not proxy 127.0.0.1 URLs', async () => {
     const url = 'http://127.0.0.1:8080/data';
-    mockFetch.mockResolvedValue(new Response('OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('OK')));
     await proxyFetch(url);
     expect(mockFetch).toHaveBeenCalledWith(url, undefined); // Called directly
   });
@@ -124,7 +122,7 @@ describe('proxyFetch', () => {
   it('should proxy .well-known URLs', async () => {
     const url = 'https://some-oidc.com/.well-known/openid-configuration';
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-    mockFetch.mockResolvedValue(new Response('OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('OK')));
     await proxyFetch(url);
     const actualUrl = mockFetch.mock.calls[0][0];
     expect(actualUrl).toStartWith(expectedProxyPrefix);
@@ -145,7 +143,7 @@ describe('proxyFetch', () => {
   jwksPaths.forEach(url => {
     it(`should proxy JWKS URL: ${url}`, async () => {
       const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-      mockFetch.mockResolvedValue(new Response('OK'));
+      mockFetch.mockImplementation(() => Promise.resolve(new Response('OK')));
       await proxyFetch(url);
       const actualUrl = mockFetch.mock.calls[0][0];
       expect(actualUrl).toStartWith(expectedProxyPrefix);
@@ -157,7 +155,7 @@ describe('proxyFetch', () => {
   it('should not proxy invalid URLs', async () => {
     const invalidUrl = 'this-is-not-a-url';
     // needsProxy should return false, so fetch directly
-    mockFetch.mockResolvedValue(new Response('OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('OK')));
     await proxyFetch(invalidUrl);
     expect(mockFetch).toHaveBeenCalledWith(invalidUrl, undefined); // Called directly
   });
@@ -165,7 +163,7 @@ describe('proxyFetch', () => {
   it('should pass fetch options correctly when fetching directly', async () => {
     const directUrl = 'http://test.app.com/api/data';
     const options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'value' }) };
-    mockFetch.mockResolvedValue(new Response('Direct OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('Direct OK')));
 
     await proxyFetch(directUrl, options);
     expect(mockFetch).toHaveBeenCalledWith(directUrl, options);
@@ -175,7 +173,7 @@ describe('proxyFetch', () => {
     const externalUrl = 'https://external.com/.well-known/config';
     const options = { method: 'GET', headers: { 'Accept': 'application/json' } };
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
-    mockFetch.mockResolvedValue(new Response('Proxy OK'));
+    mockFetch.mockImplementation(() => Promise.resolve(new Response('Proxy OK')));
 
     await proxyFetch(externalUrl, options);
     const actualUrl = mockFetch.mock.calls[0][0];

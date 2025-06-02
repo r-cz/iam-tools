@@ -12,9 +12,6 @@ export async function proxyFetch(url: string, options?: RequestInit): Promise<Re
   // Determine if we need to use the proxy
   const useProxy = needsProxy(url);
   
-  console.log(`[proxyFetch] Request to: ${url}`);
-  console.log(`[proxyFetch] Using proxy: ${useProxy}`);
-  
   if (useProxy) {
     // Use the proxy URL
     // In development, the proxy is at localhost:8788
@@ -24,20 +21,10 @@ export async function proxyFetch(url: string, options?: RequestInit): Promise<Re
       : '/api/cors-proxy/';
       
     const proxyUrl = `${baseProxyUrl}${encodeURIComponent(url)}`;
-    console.log(`[proxyFetch] Proxying through: ${proxyUrl}`);
-    return fetch(proxyUrl, options)
-      .then(response => {
-        console.log(`[proxyFetch] Proxy response status: ${response.status}`);
-        return response;
-      })
-      .catch(error => {
-        console.error(`[proxyFetch] Proxy error: ${error.message}`);
-        throw error;
-      });
+    return fetch(proxyUrl, options);
   }
   
   // Otherwise, fetch directly
-  console.log(`[proxyFetch] Fetching directly (no proxy needed)`);
   return fetch(url, options);
 }
 
