@@ -2,24 +2,6 @@
  * Utility for fetching resources through the CORS proxy
  */
 
-// Allow dependency injection for testing
-let fetchImplementation: typeof fetch = fetch;
-
-/**
- * Set a custom fetch implementation (for testing)
- * @param customFetch Custom fetch function
- */
-export function setFetchImplementation(customFetch: typeof fetch): void {
-  fetchImplementation = customFetch;
-}
-
-/**
- * Reset fetch implementation to default (for testing)
- */
-export function resetFetchImplementation(): void {
-  fetchImplementation = fetch;
-}
-
 /**
  * Fetches a resource through the CORS proxy
  * @param url The URL to fetch
@@ -39,11 +21,11 @@ export async function proxyFetch(url: string, options?: RequestInit): Promise<Re
       : '/api/cors-proxy/';
       
     const proxyUrl = `${baseProxyUrl}${encodeURIComponent(url)}`;
-    return fetchImplementation(proxyUrl, options);
+    return fetch(proxyUrl, options);
   }
   
   // Otherwise, fetch directly
-  return fetchImplementation(url, options);
+  return fetch(url, options);
 }
 
 /**
