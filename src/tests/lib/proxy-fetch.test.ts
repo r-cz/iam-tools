@@ -1,30 +1,43 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 
-// We need to mock fetch before importing the module
+// Mock the fetch calls tracking
 let mockFetchCalls: Array<{ url: string; options?: RequestInit }> = [];
-let mockFetchResponse: Response | Error = new Response('Mock response', { status: 200 });
+let mockFetchShouldThrow = false;
 
-// Override global fetch before any imports
-const originalFetch = global.fetch;
-global.fetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+// Create a proper mock fetch function
+const mockFetch = mock(async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
   const urlString = url.toString();
   mockFetchCalls.push({ url: urlString, options });
   
-  if (mockFetchResponse instanceof Error) {
-    throw mockFetchResponse;
+  if (mockFetchShouldThrow) {
+    throw new Error('Network Failed');
   }
   
-  return mockFetchResponse;
-};
+  // Return a proper Response object with working text() method
+  return new Response('Mock response', { 
+    status: 200,
+    statusText: 'OK',
+    headers: new Headers()
+  });
+});
 
-// Now import the module - it will use our mocked fetch
+// Mock the global fetch before importing any modules
+mock.module('global', () => ({
+  fetch: mockFetch
+}));
+
+// Override global fetch directly as well
+global.fetch = mockFetch as any;
+
+// Now import the module
 import * as proxyFetchModule from '../../lib/proxy-fetch';
 
 describe('proxyFetch', () => {
   beforeEach(() => {
     // Reset state for each test
     mockFetchCalls = [];
-    mockFetchResponse = new Response('Mock response', { status: 200 });
+    mockFetchShouldThrow = false;
+    mockFetch.mockClear();
     
     // Store original window for restoration
     const originalWindow = (globalThis as any).window;
@@ -53,12 +66,6 @@ describe('proxyFetch', () => {
       (globalThis as any).window = (globalThis as any).__originalWindow;
       delete (globalThis as any).__originalWindow;
     }
-  });
-
-  // Cleanup after all tests
-  afterAll(() => {
-    // Restore original fetch
-    global.fetch = originalFetch;
   });
 
   // === Testing proxyFetch function ===
@@ -96,7 +103,7 @@ describe('proxyFetch', () => {
     const expectedProxyPrefix = '/api/cors-proxy/'; // Use production path
     
     // Configure to throw error
-    mockFetchResponse = new Error('Network Failed');
+    mockFetchShouldThrow = true;
 
     await expect(proxyFetchModule.proxyFetch(externalUrl)).rejects.toThrow('Network Failed');
     expect(mockFetchCalls).toHaveLength(1);
