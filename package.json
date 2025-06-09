@@ -86,7 +86,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
-    "happy-dom": "^17.5.7",
+    "happy-dom": "^17.6.3",
     "node-jose-tools": "^2.0.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.33.1",
