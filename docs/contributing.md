@@ -26,6 +26,13 @@ Please be respectful and considerate of others when contributing to this project
 7. Push your changes to your fork
 8. Submit a pull request
 
+### Branching & Commits
+
+- Branch naming: `feat/description`, `fix/description`, `chore/description`
+- Use PRs for all changes (no direct merges to `main`)
+- Prefer conventional commit style for messages, e.g. `feat: add token timeline` or `fix: handle expired jwk`
+- Squash commits when merging to keep history tidy
+
 ## Project Structure
 
 Please follow the established project structure:
@@ -71,6 +78,12 @@ See [file-structure.md](./file-structure.md) for more details.
 4. Wait for a maintainer to review your PR
 5. Address any feedback or requested changes
 6. Once approved, your PR will be merged
+
+### Linting & Formatting
+
+- Run `bun run lint` before opening a PR
+- Follow the existing ESLint rules in `eslint.config.js`
+- Use your editor’s format-on-save (Prettier or built-in formatter) to keep diffs clean
 
 ## Adding New Features
 
