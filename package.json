@@ -21,7 +21,7 @@
     "test:watch": "bun test ./src/tests --watch --preload ./src/tests/preload.ts",
     "test:coverage": "bun test ./src/tests --coverage --preload ./src/tests/preload.ts",
     "test:update": "bun test ./src/tests --update-snapshots --preload ./src/tests/preload.ts",
-    "proxy": "wrangler pages dev --port 8788 functions",
+    "proxy": "wrangler dev --port 8788",
     "dev:all": "concurrently \"bun run dev\" \"bun run proxy\"",
     "dev:detach": "bun ./scripts/start-server.js",
     "dev:detach:vite": "bun ./scripts/start-server.js --only-vite",

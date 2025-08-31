@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This project is configured for deployment on Cloudflare Pages with Cloudflare Functions for backend API support.
+This project is configured for deployment on Cloudflare Workers with static assets for the React app.
 
 ## Overview
 
@@ -11,15 +11,12 @@ The deployment process is automated through a GitHub integration with Cloudflare
 3. The static assets are deployed to Cloudflare's edge network
 4. Cloudflare Functions are deployed alongside the static assets
 
-## Cloudflare Pages Configuration
+## Cloudflare Workers Configuration
 
 ### Build Configuration
 
-The deployment uses the following settings:
-
-- **Build Command**: `bun run build`
-- **Build Output Directory**: `dist`
-- **Node.js Version**: 18.x (or the latest LTS version supported by Cloudflare Pages)
+- Build the frontend: `bun run build` (outputs to `dist/`)
+- The Worker entry is `src/worker.ts` (routes API and serves static assets)
 
 ### Environment Variables
 
@@ -36,32 +33,22 @@ The site can be configured with custom domains through the Cloudflare Pages dash
 2. Configure DNS records in your Cloudflare DNS dashboard
 3. Cloudflare will automatically provision an SSL certificate
 
-## Cloudflare Functions
+## Cloudflare Worker (API + Assets)
 
-The project uses Cloudflare Functions (formerly Workers) for backend API functionality.
+- API routes are implemented within `src/worker.ts`
+- Static assets are served from `dist/` via the `assets` binding
+- SPA fallback is enabled with `not_found_handling: "single_page_application"`
 
-### Function Structure
-
-Functions are located in the `functions/` directory:
-
-- `functions/_middleware.ts`: Global middleware for all functions
-- `functions/_routes.json`: Custom routing rules
-- `functions/api/cors-proxy/[[path]].ts`: CORS proxy implementation
-- `functions/api/jwks/index.ts`: JWKS endpoint implementation
-
-### Function URLs
-
-In production, functions are accessible at:
+### API URLs
 
 - CORS Proxy: `https://your-domain.com/api/cors-proxy/*`
 - JWKS Endpoint: `https://your-domain.com/api/jwks/`
+- OIDC Discovery (mock): `https://your-domain.com/api/.well-known/openid-configuration`
 
-### Function Development
+### Local Development
 
-For local development of functions:
-
-1. Use `bun run dev:all` to start both the Vite dev server and the functions
-2. Functions will be accessible at `http://localhost:8788/api/*`
+1. Use `bun run dev:all` to start Vite and the Worker
+2. API endpoints are accessible at `http://localhost:8788/api/*`
 
 ## Manual Deployment
 
@@ -74,7 +61,7 @@ If you need to deploy manually:
 
 2. Deploy using Wrangler CLI (Cloudflare's deployment tool):
    ```bash
-   npx wrangler pages deploy dist
+   bunx wrangler deploy
    ```
 
 ## Deployment Best Practices
@@ -107,12 +94,11 @@ If a deployment causes issues:
 
 ## Deployment Pipeline
 
-The current deployment pipeline is:
+Typical pipeline:
 
 1. Developers push changes to GitHub
-2. GitHub triggers a build in Cloudflare Pages
-3. Cloudflare Pages builds and deploys the application
-4. The deployment is automatically available at the configured domains
+2. GitHub Actions build and test the app
+3. Wrangler deploys the Worker and static assets
 
 ## DNS Configuration
 

@@ -20,8 +20,8 @@ IAM Tools is a collection of specialized tools for Identity and Access Managemen
 - **Routing**: React Router
 - **State Management**: React Hooks + Context
 - **Testing**: Bun Test + React Testing Library
-- **Deployment**: Cloudflare Pages
-- **Backend Functions**: Cloudflare Functions
+- **Deployment**: Cloudflare Workers
+- **Backend**: Cloudflare Worker (API routing + static assets)
 
 ## Application Layers
 
