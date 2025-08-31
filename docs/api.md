@@ -1,6 +1,6 @@
 # API Documentation
 
-IAM Tools provides several API endpoints that support the frontend application. These endpoints are implemented as Cloudflare Functions and are located in the `functions/api/` directory.
+IAM Tools provides several API endpoints that support the frontend application. These endpoints are implemented within a Cloudflare Worker in `src/worker.ts`.
 
 ## CORS Proxy
 
@@ -64,7 +64,7 @@ const response = await fetch(proxyUrl, {
 
 ### Implementation Details
 
-The CORS proxy is implemented in `functions/api/cors-proxy/[[path]].ts`. It:
+The CORS proxy is implemented in `src/worker.ts`. It:
 
 1. Extracts the target URL from the request path
 2. Forwards the original request (including headers and body) to the target URL
@@ -119,7 +119,7 @@ const validateToken = async (token) => {
 
 ### Implementation Details
 
-The JWKS endpoint is implemented in `functions/api/jwks/index.ts`. It:
+The JWKS endpoint is implemented in `src/worker.ts`. It:
 
 1. Generates or retrieves pre-configured RSA key pairs
 2. Formats the public keys as a JWKS document
