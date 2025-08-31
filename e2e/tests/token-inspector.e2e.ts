@@ -83,6 +83,8 @@ test.describe('Token Inspector', () => {
   test('should reset token input', async ({ page }) => {
     // Generate example token
     await utils.clickAndWait(selectors.buttons.example);
+    // Wait for the input/state to reflect the generated token
+    await utils.waitForButtonEnabled('Inspect Token');
     
     // Verify token is populated
     const tokenInput = page.locator(selectors.tokenInspector.tokenInput);
