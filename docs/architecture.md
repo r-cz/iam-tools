@@ -59,11 +59,11 @@ The application includes serverless backend functions:
 
 ## Cloudflare Integration
 
-The application is deployed to Cloudflare Pages, which provides:
+The application runs on Cloudflare Workers, which provide:
 
-1. **Static Site Hosting**: Main application code
-2. **Cloudflare Functions**: Backend API functionality
-3. **Continuous Deployment**: Automatic deployments from Git
+1. **Static Asset Serving**: Main application assets via the assets binding
+2. **Edge API**: Backend API functionality in the Worker
+3. **Continuous Deployment**: Deployments via Wrangler/GitHub Actions
 
 ## Caching Strategy
 

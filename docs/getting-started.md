@@ -71,7 +71,7 @@ The project follows a feature-based structure:
 - `src/components/` - Shared components
 - `src/hooks/` - Custom React hooks
 - `src/lib/` - Utility functions and shared code
-- `functions/` - Cloudflare Functions (backend API)
+- `src/worker.ts` - Cloudflare Worker (backend API + static assets)
 
 See [file-structure.md](./file-structure.md) for a more detailed breakdown.
 

@@ -4,12 +4,11 @@ This project is configured for deployment on Cloudflare Workers with static asse
 
 ## Overview
 
-The deployment process is automated through a GitHub integration with Cloudflare Pages:
+You can deploy using Wrangler directly or via GitHub Actions:
 
-1. Changes pushed to the `main` branch trigger a new deployment
-2. Cloudflare Pages builds the project using the build command in `package.json`
-3. The static assets are deployed to Cloudflare's edge network
-4. Cloudflare Functions are deployed alongside the static assets
+1. Changes pushed to the `main` branch trigger a CI workflow
+2. CI builds the app and runs tests
+3. Wrangler deploys the Worker and static assets to Cloudflare's edge network
 
 ## Cloudflare Workers Configuration
 
@@ -22,16 +21,16 @@ The deployment process is automated through a GitHub integration with Cloudflare
 
 No special environment variables are required for basic deployment. However, you may configure the following if needed:
 
-- **NODE_ENV**: Set to `production` for production builds (default in Cloudflare Pages)
+- **NODE_ENV**: Set to `production` for production builds
 - **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins for CORS
 
 ### Custom Domains
 
-The site can be configured with custom domains through the Cloudflare Pages dashboard:
+You can bind a custom domain to your Worker in the Cloudflare dashboard:
 
-1. Add your domain in the Cloudflare Pages project settings
-2. Configure DNS records in your Cloudflare DNS dashboard
-3. Cloudflare will automatically provision an SSL certificate
+1. Add a route (e.g., `example.com/*`) to your Worker
+2. Configure DNS (A/AAAA/CNAME) to point at Cloudflare for your domain
+3. Cloudflare automatically provisions an SSL certificate
 
 ## Cloudflare Worker (API + Assets)
 
@@ -77,20 +76,16 @@ Before deploying to production:
 
 ### Monitoring Deployments
 
-Monitor your deployments:
+Monitor your deployments in the Cloudflare dashboard:
 
-1. Check the Cloudflare Pages dashboard for build statuses
-2. Verify that the deployed site loads correctly
+1. Verify the Worker deployment status
+2. Confirm the site loads correctly
 3. Test API endpoints after deployment
-4. Monitor for any errors in the Cloudflare dashboard
+4. Check logs and error reports
 
 ### Rollbacks
 
-If a deployment causes issues:
-
-1. Go to the Cloudflare Pages dashboard
-2. Find the last known good deployment
-3. Click "Rollback to this version"
+If a deployment causes issues, you can redeploy a previous build using Wrangler or the Cloudflare dashboard.
 
 ## Deployment Pipeline
 
@@ -102,10 +97,7 @@ Typical pipeline:
 
 ## DNS Configuration
 
-If managing your own DNS for a custom domain:
-
-1. Add a CNAME record pointing to `your-project.pages.dev`
-2. If using Cloudflare as your DNS provider, ensure the CNAME is proxied (orange cloud)
+If managing your own DNS for a custom domain, ensure your domain is proxied by Cloudflare and add a route to your Worker in the dashboard.
 
 ## Security Considerations
 
@@ -122,5 +114,5 @@ The deployment benefits from several performance optimizations:
 
 1. Assets are served from Cloudflare's global edge network
 2. Static assets are cached according to best practices
-3. Functions run close to users on Cloudflare's edge
+3. Worker runs close to users on Cloudflare's edge
 4. Images and other assets are optimized during build

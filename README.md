@@ -242,11 +242,10 @@ See [OAuth Playground Documentation](docs/feature-guides/oauth-playground.md) fo
 
 ## Deployment
 
-The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch. The deployment process includes:
+The application deploys as a Cloudflare Worker (serving both API routes and static assets). A typical deployment includes:
 
 1. Building the application with `bun run build`
-2. Deploying static assets to Cloudflare's edge network
-3. Deploying Cloudflare Functions alongside the static assets
+2. Deploying static assets (dist/) and the Worker via Wrangler
 
 For more information about the deployment process, see [Deployment Documentation](docs/deployment.md).
 
