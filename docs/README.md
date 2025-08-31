@@ -24,7 +24,10 @@ Welcome to the IAM Tools documentation. This guide will help you get started wit
 
 - [Contributing Guide](./contributing.md) - How to contribute to the project
 - [Deployment Guide](./deployment.md) - How the application is deployed
+- [Styling & Tailwind v4](./styling.md) - Design tokens, dark mode, shadcn
 
 ## Testing
 
-For information about the test suite, see the [Test README](../src/tests/README.md) file.
+For information about the unit/integration test suite, see the [Test README](../src/tests/README.md).
+
+For end-to-end tests, Playwright usage, and selector tips, see the [E2E README](../e2e/README.md).

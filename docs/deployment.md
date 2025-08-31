@@ -121,9 +121,10 @@ If managing your own DNS for a custom domain, ensure your domain is proxied by C
 The deployment includes several security measures:
 
 1. Automatic HTTPS for all traffic
-2. HTTP security headers configured in `_middleware.ts`
+2. HTTP security headers set by the Worker in `src/worker.ts` (see `withSecurityHeaders`)
 3. API request validation in function handlers
-4. Regular security updates through GitHub dependency management
+4. Strict allow-listing for the CORS proxy (well-known/JWKS endpoints, `GET/HEAD` only)
+5. Regular security updates through GitHub dependency management
 
 ## Performance Optimizations
 

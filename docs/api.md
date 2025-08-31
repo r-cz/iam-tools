@@ -72,6 +72,17 @@ The CORS proxy is implemented in `src/worker.ts`. It:
 4. Adds appropriate CORS headers to allow the frontend to access the response
 5. Returns the modified response to the frontend
 
+### Security and Restrictions
+
+To prevent abuse, the proxy applies strict allow-listing and method limits:
+
+- Allowed targets: only well-known discovery and JWKS-like endpoints
+  - Paths containing `/.well-known/`
+  - JWKS/certs-style paths such as `/jwks`, `/jwk`, `/keys`, `/oauth2/v1/certs`, or `.json` files that include `jwk` in the name
+- Allowed methods: `GET` and `HEAD` only
+- Request header filtering: strips Cloudflare-provided headers and sensitive hop-by-hop headers (`host`, `origin`, `referer`)
+- CORS: sets permissive `Access-Control-Allow-*` headers on proxy responses for the frontend to consume
+
 ## JWKS Endpoint
 
 The JWKS (JSON Web Key Set) endpoint provides a set of public keys that can be used to verify JWT signatures.

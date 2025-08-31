@@ -112,6 +112,8 @@ E2E tests are located in `e2e/` and cover:
 - Token inspection and validation
 - User interactions and error handling
 
+For Playwright tips, selector patterns, and debugging guidance, see `e2e/README.md`.
+
 ### Testing Architecture
 
 - **Unit Tests**: Test individual functions and components in isolation
@@ -256,3 +258,5 @@ For more information about the deployment process, see [Deployment Documentation
 - [API Documentation](docs/api.md) - Details about the backend API endpoints
 - [Feature Guides](docs/feature-guides/) - Usage guides for specific features
 - [Contributing Guide](docs/contributing.md) - How to contribute to the project
+- Full docs index: `docs/README.md`
+- Styling & Tailwind v4: `docs/styling.md`
