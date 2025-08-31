@@ -34,8 +34,9 @@ export default {
       }
     }
 
-    // Default: serve static assets with SPA fallback
-    return env.ASSETS.fetch(request)
+    // Default: serve static assets with SPA fallback, add security headers
+    const assetResp = await env.ASSETS.fetch(request)
+    return withSecurityHeaders(assetResp)
   },
 }
 
@@ -150,3 +151,25 @@ function filterHeaders(headers: Headers): Headers {
   return filtered
 }
 
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers)
+  headers.set('Referrer-Policy', 'no-referrer')
+  headers.set('X-Content-Type-Options', 'nosniff')
+  headers.set('X-Frame-Options', 'DENY')
+  headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+  headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "font-src 'self' data:",
+      "connect-src 'self' https:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ')
+  )
+  return new Response(response.body, { ...response, headers })
+}
