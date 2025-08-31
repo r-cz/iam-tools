@@ -36,7 +36,23 @@ You can bind a custom domain to your Worker in the Cloudflare dashboard:
 
 - API routes are implemented within `src/worker.ts`
 - Static assets are served from `dist/` via the `assets` binding
-- SPA fallback is enabled with `not_found_handling: "single_page_application"`
+- SPA fallback is enabled with `not_found_handling: "single-page-application"`
+
+## Disabling Cloudflare Pages
+
+If you previously had a Cloudflare Pages project connected:
+
+1. Go to Cloudflare Dashboard → Pages → your project
+2. Settings → Build & deployments → disable "Preview deployments" (optional)
+3. Either disconnect the GitHub integration or delete the Pages project to prevent duplicate deploys
+
+## Workers Preview Environments (PRs)
+
+This repo deploys preview Workers per pull request via GitHub Actions:
+
+- Workflow: `.github/workflows/wrangler-preview.yml`
+- Worker name pattern: `iam-tools-pr-<PR_NUMBER>`
+- Deployed on PR open/update; deleted on PR close (best-effort)
 
 ### API URLs
 
