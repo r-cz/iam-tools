@@ -4,8 +4,9 @@
 import { DEMO_JWKS } from './lib/jwt/demo-key'
 import { CSP_INLINE_SCRIPT_SHA256 } from './csp-hashes'
 
+type AssetsBinding = { fetch: (request: Request) => Promise<Response> }
 interface Env {
-  ASSETS: Fetcher
+  ASSETS: AssetsBinding
 }
 
 export default {

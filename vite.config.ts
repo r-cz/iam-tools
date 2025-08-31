@@ -6,7 +6,6 @@ import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa' // <-- Make sure this is uncommented
-import { cloudflare } from '@cloudflare/vite-plugin'
 
 // ESM-safe __dirname for Vite config
 const __filename = fileURLToPath(import.meta.url)
@@ -17,7 +16,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    cloudflare(),
     // Re-enabled PWA plugin with explicit SPA fallback
     VitePWA({
       registerType: 'autoUpdate', // Keeps the service worker updated automatically
