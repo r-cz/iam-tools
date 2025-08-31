@@ -12,6 +12,18 @@ export interface Env {
  * Usage: /api/cors-proxy/https://example.com/path
  */
 export const onRequest: PagesFunction = async (context) => {
+  // Handle CORS preflight for proxied routes
+  if (context.request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400',
+      },
+    })
+  }
   // Extract the target URL from the request path
   // The [[path]] syntax in the filename allows us to capture everything after /api/cors-proxy/
   const url = context.params.path?.join('/');
@@ -30,13 +42,16 @@ export const onRequest: PagesFunction = async (context) => {
       return new Response('This endpoint is not allowed', { status: 403 });
     }
 
+    // Restrict methods to safe reads for well-known/JWKS endpoints
+    const method = context.request.method
+    if (!['GET', 'HEAD'].includes(method)) {
+      return new Response('Method not allowed', { status: 405 })
+    }
+
     const request = new Request(targetUrl, {
-      method: context.request.method,
+      method,
       headers: filterHeaders(context.request.headers),
-      body: ['GET', 'HEAD'].includes(context.request.method) 
-        ? undefined 
-        : await context.request.blob(),
-    });
+    })
 
     // Fetch the target URL
     const response = await fetch(request);
@@ -45,13 +60,15 @@ export const onRequest: PagesFunction = async (context) => {
     const newResponse = new Response(response.body, response);
     
     // Add CORS headers
-    newResponse.headers.set('Access-Control-Allow-Origin', '*');
-    newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    newResponse.headers.set('Access-Control-Allow-Origin', '*')
+    newResponse.headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
+    newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    newResponse.headers.set('Vary', 'Origin')
     
     return newResponse;
   } catch (error) {
-    return new Response(`Error proxying request: ${error.message}`, { status: 500 });
+    const message = (error as Error)?.message ?? 'Unknown error'
+    return new Response(`Error proxying request: ${message}`, { status: 500 })
   }
 };
 

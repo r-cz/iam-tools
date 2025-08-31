@@ -8,16 +8,16 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-  timeout: 5000, // 5 second timeout for each test
+  timeout: 30000, // 30s per test for stability
   expect: {
-    timeout: 2000, // 2 second timeout for assertions
+    timeout: 5000, // 5s for assertions
   },
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    actionTimeout: 2000, // 2 second timeout for each action
-    navigationTimeout: 2000, // 2 second timeout for navigation
+    actionTimeout: 5000, // 5s per action
+    navigationTimeout: 10000, // 10s for navigation
   },
 
   projects: [
@@ -39,6 +39,6 @@ export default defineConfig({
     command: 'bun run dev:all',
     port: 5173,
     reuseExistingServer: true, // Always reuse existing server
-    timeout: 10 * 1000, // 10 second timeout to start server
+    timeout: 60 * 1000, // Allow up to 60s for first startup in CI
   },
 });

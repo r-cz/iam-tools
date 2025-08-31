@@ -22,7 +22,7 @@ export async function verifySignatureWithRefresh(
   onJwksRefresh?: (newJwks: JSONWebKeySet) => void
 ): Promise<VerifyResult> {
   try {
-    console.log('Starting signature verification with token:', token.substring(0, 20) + '...');
+    if (import.meta?.env?.DEV) console.log('Starting signature verification with token:', token.substring(0, 20) + '...');
     
     if (!initialJwks?.keys?.length) {
       return { 
@@ -36,7 +36,7 @@ export async function verifySignatureWithRefresh(
       atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))
     );
     
-    console.log('Token header:', tokenHeader);
+    if (import.meta?.env?.DEV) console.log('Token header:', tokenHeader);
     
     // Check if the token has a key ID
     if (!tokenHeader.kid) {
@@ -58,12 +58,12 @@ export async function verifySignatureWithRefresh(
       }
       
       try {
-        console.log('Found matching key:', matchingKey);
+        if (import.meta?.env?.DEV) console.log('Found matching key:', matchingKey);
         await jwtVerify(token, await importKey(matchingKey, tokenHeader.alg));
-        console.log('Verification successful');
+        if (import.meta?.env?.DEV) console.log('Verification successful');
         return { valid: true };
       } catch (error: any) {
-        console.error('Verification failed:', error);
+        if (import.meta?.env?.DEV) console.error('Verification failed:', error);
         return {
           valid: false,
           error: error.message || 'Invalid signature'
@@ -76,22 +76,22 @@ export async function verifySignatureWithRefresh(
     
     // If verification failed due to key not found or invalid signature, try refreshing JWKS
     if (!firstAttempt.valid && jwksUri) {
-      console.log('First verification attempt failed, checking for updated JWKS...');
+    if (import.meta?.env?.DEV) console.log('First verification attempt failed, checking for updated JWKS...');
       
       try {
         // First check if we have cached JWKS that might have been updated
         const cachedJwks = jwksCache.get(jwksUri);
         if (cachedJwks && cachedJwks !== initialJwks) {
-          console.log('Found different JWKS in cache, trying with cached version first');
+          if (import.meta?.env?.DEV) console.log('Found different JWKS in cache, trying with cached version first');
           const cacheAttempt = await attemptVerification(cachedJwks);
           if (cacheAttempt.valid) {
-            console.log('Verification successful with cached JWKS');
+            if (import.meta?.env?.DEV) console.log('Verification successful with cached JWKS');
             return cacheAttempt;
           }
         }
         
         // If cache didn't help, remove from cache and fetch fresh
-        console.log('Cached JWKS did not help, fetching fresh JWKS...');
+        if (import.meta?.env?.DEV) console.log('Cached JWKS did not help, fetching fresh JWKS...');
         jwksCache.remove(jwksUri);
         
         // Fetch fresh JWKS
@@ -109,7 +109,7 @@ export async function verifySignatureWithRefresh(
         
         // Cache the fresh JWKS
         jwksCache.set(jwksUri, freshJwks);
-        console.log('JWKS refreshed and cached');
+        if (import.meta?.env?.DEV) console.log('JWKS refreshed and cached');
         
         // Notify caller of the refresh
         if (onJwksRefresh) {
@@ -119,13 +119,13 @@ export async function verifySignatureWithRefresh(
         // Try verification again with fresh JWKS
         const secondAttempt = await attemptVerification(freshJwks);
         
-        if (secondAttempt.valid) {
+        if (secondAttempt.valid && import.meta?.env?.DEV) {
           console.log('Verification successful after JWKS refresh');
         }
         
         return secondAttempt;
       } catch (refreshError: any) {
-        console.error('Failed to refresh JWKS:', refreshError);
+        if (import.meta?.env?.DEV) console.error('Failed to refresh JWKS:', refreshError);
         // Return the original error, not the refresh error
         return {
           ...firstAttempt,
@@ -136,7 +136,7 @@ export async function verifySignatureWithRefresh(
     
     return firstAttempt;
   } catch (error: any) {
-    console.error('Token verification error:', error);
+    if (import.meta?.env?.DEV) console.error('Token verification error:', error);
     return { 
       valid: false, 
       error: error.message || 'Invalid signature'

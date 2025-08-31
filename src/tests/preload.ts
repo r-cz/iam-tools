@@ -1,5 +1,9 @@
 // This preload file configures the environment for all Bun tests
 
+// Provide a DOM implementation for tests via happy-dom
+// Must be imported before any other test setup that might touch window/document
+import 'happy-dom/global'
+
 // Import from bun:test
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 
