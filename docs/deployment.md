@@ -53,6 +53,7 @@ This repo deploys preview Workers per pull request via GitHub Actions:
 - Workflow: `.github/workflows/wrangler-preview.yml`
 - Worker name pattern: `iam-tools-pr-<PR_NUMBER>`
 - Deployed on PR open/update; deleted on PR close (best-effort)
+- Previews are skipped for forked pull requests (no repository secrets available on forks)
 
 ### API URLs
 
