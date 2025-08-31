@@ -1,6 +1,6 @@
-import { PageContainer, PageHeader } from "@/components/page";
-import { Server } from "lucide-react";
-import { ClientCredentialsFlow } from "../components/ClientCredentialsFlow";
+import { PageContainer, PageHeader } from '@/components/page'
+import { Server } from 'lucide-react'
+import { ClientCredentialsFlow } from '../components/ClientCredentialsFlow'
 
 export default function ClientCredentialsPage() {
   return (
@@ -12,5 +12,5 @@ export default function ClientCredentialsPage() {
       />
       <ClientCredentialsFlow />
     </PageContainer>
-  );
+  )
 }

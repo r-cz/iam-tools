@@ -1,96 +1,96 @@
-import React, { useState } from "react";
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch"; // Import Switch
-import { signToken } from "@/lib/jwt/sign-token"; // Import signing function
-import { DEMO_JWKS } from "@/lib/jwt/demo-key"; // Import demo JWKS for kid
-import { IssuerHistory, JsonDisplay } from "@/components/common";
-import { useIssuerHistory } from "@/lib/state";
-import { proxyFetch } from "@/lib/proxy-fetch";
-import { toast } from "sonner";
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom' // Import useNavigate
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch' // Import Switch
+import { signToken } from '@/lib/jwt/sign-token' // Import signing function
+import { DEMO_JWKS } from '@/lib/jwt/demo-key' // Import demo JWKS for kid
+import { IssuerHistory, JsonDisplay } from '@/components/common'
+import { useIssuerHistory } from '@/lib/state'
+import { proxyFetch } from '@/lib/proxy-fetch'
+import { toast } from 'sonner'
 
 interface TokenResponse {
-  access_token?: string;
-  token_type?: string;
-  expires_in?: number;
-  scope?: string;
-  error?: string;
-  error_description?: string;
-  [key: string]: any;
+  access_token?: string
+  token_type?: string
+  expires_in?: number
+  scope?: string
+  error?: string
+  error_description?: string
+  [key: string]: any
 }
 
 export function ClientCredentialsFlow() {
-  const navigate = useNavigate(); // Instantiate useNavigate
-  const { addIssuer } = useIssuerHistory();
-  const [tokenEndpoint, setTokenEndpoint] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
-  const [scope, setScope] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<TokenResponse | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState(false); // Add state for demo mode
-  const [configLoading, setConfigLoading] = useState(false);
-  
+  const navigate = useNavigate() // Instantiate useNavigate
+  const { addIssuer } = useIssuerHistory()
+  const [tokenEndpoint, setTokenEndpoint] = useState('')
+  const [clientId, setClientId] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [scope, setScope] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<TokenResponse | null>(null)
+  const [isDemoMode, setIsDemoMode] = useState(false) // Add state for demo mode
+  const [configLoading, setConfigLoading] = useState(false)
+
   // Update values when demo mode changes
   React.useEffect(() => {
     if (isDemoMode) {
-      setTokenEndpoint(`${window.location.origin}/oauth-playground/demo/token`);
-      setClientId("demo-client-credentials-client");
-      setClientSecret("demo-client-secret");
-      setScope("api:read api:write");
+      setTokenEndpoint(`${window.location.origin}/oauth-playground/demo/token`)
+      setClientId('demo-client-credentials-client')
+      setClientSecret('demo-client-secret')
+      setScope('api:read api:write')
     } else {
       // Clear demo values when switching off
-      setTokenEndpoint("");
-      setClientId("");
-      setClientSecret("");
-      setScope("");
+      setTokenEndpoint('')
+      setClientId('')
+      setClientSecret('')
+      setScope('')
     }
-  }, [isDemoMode]);
+  }, [isDemoMode])
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
-    setConfigLoading(true);
-    
+    setConfigLoading(true)
+
     try {
       // Construct the well-known URL
-      const url = new URL(issuerUrl);
-      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`;
+      const url = new URL(issuerUrl)
+      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`
       const wellKnownUrl = new URL(
         `${basePath}.well-known/openid-configuration`,
         url.origin
-      ).toString();
-      
+      ).toString()
+
       // Fetch OIDC configuration to get token endpoint
-      const response = await proxyFetch(wellKnownUrl);
-      
+      const response = await proxyFetch(wellKnownUrl)
+
       if (response.ok) {
-        const config = await response.json();
+        const config = await response.json()
         if (config.token_endpoint) {
-          setTokenEndpoint(config.token_endpoint);
+          setTokenEndpoint(config.token_endpoint)
           // Add issuer to history
-          addIssuer(issuerUrl);
+          addIssuer(issuerUrl)
         } else {
           // Show error if no token endpoint is available
-          toast.error('This issuer does not have a token endpoint configured');
+          toast.error('This issuer does not have a token endpoint configured')
         }
       } else {
-        toast.error('Failed to fetch OIDC configuration');
+        toast.error('Failed to fetch OIDC configuration')
       }
     } catch (error) {
-      toast.error('Error fetching OIDC configuration: ' + (error as Error).message);
+      toast.error('Error fetching OIDC configuration: ' + (error as Error).message)
     } finally {
-      setConfigLoading(false);
+      setConfigLoading(false)
     }
-  };
+  }
 
   const generateDemoAccessToken = async (): Promise<TokenResponse> => {
     try {
-      const currentTime = Math.floor(Date.now() / 1000);
-      const demoClientId = clientId || "demo-client-credentials-client";
-      const demoAudience = "https://api.example.com/resource"; // Example audience
+      const currentTime = Math.floor(Date.now() / 1000)
+      const demoClientId = clientId || 'demo-client-credentials-client'
+      const demoAudience = 'https://api.example.com/resource' // Example audience
 
       const accessTokenPayload = {
         iss: `${window.location.origin}/oauth-playground/demo`,
@@ -98,77 +98,77 @@ export function ClientCredentialsFlow() {
         aud: demoAudience,
         exp: currentTime + 3600, // Expires in 1 hour
         iat: currentTime,
-        scope: scope || "api:read api:write", // Default scope if none provided
+        scope: scope || 'api:read api:write', // Default scope if none provided
         client_id: demoClientId,
         is_demo_token: true, // Mark as demo token
-        token_usage: 'access_token' // Indicate usage
-      };
+        token_usage: 'access_token', // Indicate usage
+      }
 
       // Sign the token using the demo key
-      const accessToken = await signToken(accessTokenPayload, { kid: DEMO_JWKS.keys[0].kid });
+      const accessToken = await signToken(accessTokenPayload, { kid: DEMO_JWKS.keys[0].kid })
 
       return {
         access_token: accessToken,
         token_type: 'Bearer',
         expires_in: 3600,
         scope: accessTokenPayload.scope,
-      };
+      }
     } catch (error: any) {
-      console.error('Error generating demo CC token:', error);
+      console.error('Error generating demo CC token:', error)
       return {
-        error: "token_generation_failed",
-        error_description: error.message || "Failed to generate demo token",
-      };
+        error: 'token_generation_failed',
+        error_description: error.message || 'Failed to generate demo token',
+      }
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setResult(null);
+    e.preventDefault()
+    setLoading(true)
+    setResult(null)
 
     if (isDemoMode) {
       // Generate demo token
-      const demoResult = await generateDemoAccessToken();
-      setResult(demoResult);
-      setLoading(false);
+      const demoResult = await generateDemoAccessToken()
+      setResult(demoResult)
+      setLoading(false)
     } else {
       // Perform real network request
       try {
-        const params = new URLSearchParams();
-        params.append("grant_type", "client_credentials");
-        params.append("client_id", clientId);
-        params.append("client_secret", clientSecret);
-        if (scope) params.append("scope", scope);
+        const params = new URLSearchParams()
+        params.append('grant_type', 'client_credentials')
+        params.append('client_id', clientId)
+        params.append('client_secret', clientSecret)
+        if (scope) params.append('scope', scope)
 
         const res = await fetch(tokenEndpoint, {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: params.toString(),
-        });
+        })
 
-        const data = await res.json();
-        setResult(data);
+        const data = await res.json()
+        setResult(data)
       } catch (err: any) {
         setResult({
-          error: "network_error",
-          error_description: err.message || "Network error",
-        });
+          error: 'network_error',
+          error_description: err.message || 'Network error',
+        })
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
-  };
+  }
 
   // Function to handle inspecting the token
   const handleInspectToken = () => {
     if (result?.access_token) {
-      const inspectUrl = `/token-inspector?token=${encodeURIComponent(result.access_token)}`;
-      navigate(inspectUrl);
+      const inspectUrl = `/token-inspector?token=${encodeURIComponent(result.access_token)}`
+      navigate(inspectUrl)
     }
-  };
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -176,12 +176,10 @@ export function ClientCredentialsFlow() {
         <CardContent className="p-5">
           {/* Demo Mode Switch */}
           <div className="flex items-center space-x-2 mb-4 p-3 border rounded-md bg-muted/50">
-            <Switch
-              id="demo-mode-switch"
-              checked={isDemoMode}
-              onCheckedChange={setIsDemoMode}
-            />
-            <Label htmlFor="demo-mode-switch" className="mb-0"> {/* Remove bottom margin from label */}
+            <Switch id="demo-mode-switch" checked={isDemoMode} onCheckedChange={setIsDemoMode} />
+            <Label htmlFor="demo-mode-switch" className="mb-0">
+              {' '}
+              {/* Remove bottom margin from label */}
               Demo Mode
               <p className="text-xs text-muted-foreground font-normal">
                 Generate a signed demo token locally instead of calling the endpoint.
@@ -201,12 +199,12 @@ export function ClientCredentialsFlow() {
                   onChange={(e) => setTokenEndpoint(e.target.value)}
                   required={!isDemoMode}
                   disabled={isDemoMode}
-                  placeholder={isDemoMode ? "N/A (Demo Mode)" : "https://example.com/oauth/token"}
-                  className={isDemoMode ? "" : "pr-10"}
+                  placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/token'}
+                  className={isDemoMode ? '' : 'pr-10'}
                 />
                 {!isDemoMode && (
                   <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                    <IssuerHistory 
+                    <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
                       configLoading={configLoading}
                       disabled={isDemoMode}
@@ -218,18 +216,22 @@ export function ClientCredentialsFlow() {
             </div>
             {/* Client ID Input */}
             <div>
-              <Label htmlFor="client-id" className="mb-1.5 block">Client ID</Label>
+              <Label htmlFor="client-id" className="mb-1.5 block">
+                Client ID
+              </Label>
               <Input
                 id="client-id"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
                 required={!isDemoMode} // Not required in demo mode, but useful for payload
-                placeholder={isDemoMode ? "(Optional for Demo)" : "Enter Client ID"}
+                placeholder={isDemoMode ? '(Optional for Demo)' : 'Enter Client ID'}
               />
             </div>
             {/* Client Secret Input (Disabled in Demo Mode) */}
             <div>
-              <Label htmlFor="client-secret" className="mb-1.5 block">Client Secret</Label>
+              <Label htmlFor="client-secret" className="mb-1.5 block">
+                Client Secret
+              </Label>
               <Input
                 id="client-secret"
                 type="password"
@@ -237,12 +239,14 @@ export function ClientCredentialsFlow() {
                 onChange={(e) => setClientSecret(e.target.value)}
                 required={!isDemoMode} // Not required in demo mode
                 disabled={isDemoMode} // Disable in demo mode
-                placeholder={isDemoMode ? "N/A (Demo Mode)" : "Enter Client Secret"}
+                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
               />
             </div>
             {/* Scope Input */}
             <div>
-              <Label htmlFor="scope" className="mb-1.5 block">Scope (optional)</Label>
+              <Label htmlFor="scope" className="mb-1.5 block">
+                Scope (optional)
+              </Label>
               <Input
                 id="scope"
                 value={scope}
@@ -250,27 +254,22 @@ export function ClientCredentialsFlow() {
                 placeholder="space-separated scopes (e.g., api:read)"
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading || (!isDemoMode && (!tokenEndpoint || !clientId || !clientSecret))}
             >
-              {loading ? "Requesting..." : (isDemoMode ? "Generate Demo Token" : "Request Token")}
+              {loading ? 'Requesting...' : isDemoMode ? 'Generate Demo Token' : 'Request Token'}
             </Button>
           </form>
           {result && (
-            <div className="mt-6 space-y-4"> {/* Add space-y-4 for button spacing */}
+            <div className="mt-6 space-y-4">
+              {' '}
+              {/* Add space-y-4 for button spacing */}
               <Label className="mb-1.5 block">Result</Label>
-              <JsonDisplay
-                data={result}
-                className="text-xs max-h-96 overflow-auto"
-              />
+              <JsonDisplay data={result} className="text-xs max-h-96 overflow-auto" />
               {/* Add Inspect Token button */}
               {result.access_token && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleInspectToken}
-                >
+                <Button variant="secondary" size="sm" onClick={handleInspectToken}>
                   Inspect Access Token
                 </Button>
               )}
@@ -279,7 +278,7 @@ export function ClientCredentialsFlow() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
-export default ClientCredentialsFlow;
+export default ClientCredentialsFlow

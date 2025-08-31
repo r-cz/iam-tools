@@ -1,24 +1,22 @@
-import { DecodedSamlResponse } from "../utils/saml-decoder";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Shield, AlertCircle, Info } from "lucide-react";
+import { DecodedSamlResponse } from '../utils/saml-decoder'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Shield, AlertCircle, Info } from 'lucide-react'
 
 interface SignatureDisplayProps {
-  response: DecodedSamlResponse;
+  response: DecodedSamlResponse
 }
 
 export function SignatureDisplay({ response }: SignatureDisplayProps) {
-  const hasAnySignature = response.hasSignature || response.assertions.some(a => a.hasSignature);
+  const hasAnySignature = response.hasSignature || response.assertions.some((a) => a.hasSignature)
 
   if (!hasAnySignature) {
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          This SAML Response and its assertions are not signed.
-        </AlertDescription>
+        <AlertDescription>This SAML Response and its assertions are not signed.</AlertDescription>
       </Alert>
-    );
+    )
   }
 
   return (
@@ -69,11 +67,10 @@ export function SignatureDisplay({ response }: SignatureDisplayProps) {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          Signature validation requires the IdP's public key or certificate. 
-          This tool currently shows signature presence only. 
-          Full signature validation will be added in a future update.
+          Signature validation requires the IdP's public key or certificate. This tool currently
+          shows signature presence only. Full signature validation will be added in a future update.
         </AlertDescription>
       </Alert>
     </div>
-  );
+  )
 }

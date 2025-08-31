@@ -1,15 +1,14 @@
-import { v4 as uuidv4 } from 'uuid';
-import { TokenHistoryItem, IssuerHistoryItem } from './types';
-import { DEFAULT_MAX_HISTORY_ITEMS } from './constants';
-import { decodeJwtPayload } from '@/lib/jwt/decode-token';
+import { v4 as uuidv4 } from 'uuid'
+import { TokenHistoryItem, IssuerHistoryItem } from './types'
+import { DEFAULT_MAX_HISTORY_ITEMS } from './constants'
+import { decodeJwtPayload } from '@/lib/jwt/decode-token'
 
 /**
  * Generate a unique ID for history items
  */
 export function generateId(): string {
-  return uuidv4();
+  return uuidv4()
 }
-
 
 /**
  * Add a token to history, maintaining max size
@@ -24,33 +23,33 @@ export function addTokenToHistory(
   maxItems: number = DEFAULT_MAX_HISTORY_ITEMS
 ): TokenHistoryItem[] {
   // Check if token already exists in history
-  const existingIndex = history.findIndex(item => item.token === token);
-  const timestamp = Date.now();
-  
+  const existingIndex = history.findIndex((item) => item.token === token)
+  const timestamp = Date.now()
+
   if (existingIndex >= 0) {
     // Update existing token's lastUsedAt
-    const updatedHistory = [...history];
+    const updatedHistory = [...history]
     updatedHistory[existingIndex] = {
       ...updatedHistory[existingIndex],
       lastUsedAt: timestamp,
-    };
-    return updatedHistory;
+    }
+    return updatedHistory
   }
-  
+
   // Try to extract subject and issuer from token
-  let subject: string | undefined;
-  let issuer: string | undefined;
-  
+  let subject: string | undefined
+  let issuer: string | undefined
+
   try {
-    const payload = decodeJwtPayload(token);
+    const payload = decodeJwtPayload(token)
     if (payload) {
-      subject = typeof payload.sub === 'string' ? payload.sub : undefined;
-      issuer = typeof payload.iss === 'string' ? payload.iss : undefined;
+      subject = typeof payload.sub === 'string' ? payload.sub : undefined
+      issuer = typeof payload.iss === 'string' ? payload.iss : undefined
     }
   } catch (error) {
-    console.error('Error extracting token data:', error);
+    console.error('Error extracting token data:', error)
   }
-  
+
   // Add new token to history
   const newItem: TokenHistoryItem = {
     id: generateId(),
@@ -60,10 +59,10 @@ export function addTokenToHistory(
     // Include subject and issuer if available
     ...(subject && { subject }),
     ...(issuer && { issuer }),
-  };
-  
+  }
+
   // Add new item and limit history size
-  return [newItem, ...history].slice(0, maxItems);
+  return [newItem, ...history].slice(0, maxItems)
 }
 
 /**
@@ -79,29 +78,29 @@ export function addIssuerToHistory(
   maxItems: number = DEFAULT_MAX_HISTORY_ITEMS
 ): IssuerHistoryItem[] {
   // Check if URL already exists in history
-  const existingIndex = history.findIndex(item => item.url === url);
-  const timestamp = Date.now();
-  
+  const existingIndex = history.findIndex((item) => item.url === url)
+  const timestamp = Date.now()
+
   if (existingIndex >= 0) {
     // Update existing URL's lastUsedAt
-    const updatedHistory = [...history];
+    const updatedHistory = [...history]
     updatedHistory[existingIndex] = {
       ...updatedHistory[existingIndex],
       lastUsedAt: timestamp,
-    };
-    return updatedHistory;
+    }
+    return updatedHistory
   }
-  
+
   // Add new URL to history
   const newItem: IssuerHistoryItem = {
     id: generateId(),
     url,
     createdAt: timestamp,
     lastUsedAt: timestamp,
-  };
-  
+  }
+
   // Add new item and limit history size
-  return [newItem, ...history].slice(0, maxItems);
+  return [newItem, ...history].slice(0, maxItems)
 }
 
 /**
@@ -116,9 +115,7 @@ export function updateTokenInHistory(
   id: string,
   updates: Partial<TokenHistoryItem>
 ): TokenHistoryItem[] {
-  return history.map(item => 
-    item.id === id ? { ...item, ...updates } : item
-  );
+  return history.map((item) => (item.id === id ? { ...item, ...updates } : item))
 }
 
 /**
@@ -133,9 +130,7 @@ export function updateIssuerInHistory(
   id: string,
   updates: Partial<IssuerHistoryItem>
 ): IssuerHistoryItem[] {
-  return history.map(item => 
-    item.id === id ? { ...item, ...updates } : item
-  );
+  return history.map((item) => (item.id === id ? { ...item, ...updates } : item))
 }
 
 /**
@@ -148,7 +143,7 @@ export function removeTokenFromHistory(
   history: TokenHistoryItem[],
   id: string
 ): TokenHistoryItem[] {
-  return history.filter(item => item.id !== id);
+  return history.filter((item) => item.id !== id)
 }
 
 /**
@@ -161,7 +156,7 @@ export function removeIssuerFromHistory(
   history: IssuerHistoryItem[],
   id: string
 ): IssuerHistoryItem[] {
-  return history.filter(item => item.id !== id);
+  return history.filter((item) => item.id !== id)
 }
 
 /**
@@ -169,7 +164,7 @@ export function removeIssuerFromHistory(
  * @returns Empty token history
  */
 export function clearTokenHistory(): TokenHistoryItem[] {
-  return [];
+  return []
 }
 
 /**
@@ -177,5 +172,5 @@ export function clearTokenHistory(): TokenHistoryItem[] {
  * @returns Empty issuer history
  */
 export function clearIssuerHistory(): IssuerHistoryItem[] {
-  return [];
+  return []
 }

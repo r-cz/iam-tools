@@ -90,6 +90,7 @@ The application implements strategic caching for frequently accessed resources t
 ### Cache Management
 
 Both cache implementations support:
+
 - LRU (Least Recently Used) eviction strategy
 - Maximum entry limits to prevent unbounded growth
 - URL normalization for consistent key management

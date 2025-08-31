@@ -14,57 +14,57 @@ export enum OAuthFlowType {
  */
 export interface OAuthConfig {
   // flowType: OAuthFlowType; // Removed as flow is determined by the page/route
-  issuerUrl?: string;
-  authEndpoint?: string;
-  tokenEndpoint?: string;
-  jwksEndpoint?: string;
-  clientId: string;
-  clientSecret?: string; // Only for confidential clients
-  redirectUri: string;
-  scopes: string[];
-  demoMode?: boolean;
+  issuerUrl?: string
+  authEndpoint?: string
+  tokenEndpoint?: string
+  jwksEndpoint?: string
+  clientId: string
+  clientSecret?: string // Only for confidential clients
+  redirectUri: string
+  scopes: string[]
+  demoMode?: boolean
 }
 
 /**
  * PKCE parameters
  */
 export interface PkceParams {
-  codeVerifier: string;
-  codeChallenge: string;
-  state: string;
+  codeVerifier: string
+  codeChallenge: string
+  state: string
 }
 
 /**
  * Authorization response
  */
 export interface AuthorizationResponse {
-  code?: string;
-  state?: string;
-  error?: string;
-  error_description?: string;
+  code?: string
+  state?: string
+  error?: string
+  error_description?: string
 }
 
 /**
  * Token response
  */
 export interface TokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in?: number;
-  refresh_token?: string;
-  id_token?: string;
-  scope?: string;
-  error?: string;
-  error_description?: string;
+  access_token: string
+  token_type: string
+  expires_in?: number
+  refresh_token?: string
+  id_token?: string
+  scope?: string
+  error?: string
+  error_description?: string
 }
 
 /**
  * OAuth flow state
  */
 export interface OAuthFlowState {
-  config: OAuthConfig;
-  pkce?: PkceParams;
-  authResponse?: AuthorizationResponse;
-  tokenResponse?: TokenResponse;
-  step: 'config' | 'authorization' | 'token' | 'complete';
+  config: OAuthConfig
+  pkce?: PkceParams
+  authResponse?: AuthorizationResponse
+  tokenResponse?: TokenResponse
+  step: 'config' | 'authorization' | 'token' | 'complete'
 }

@@ -1,6 +1,6 @@
-import { PageContainer, PageHeader } from "@/components/page";
-import { UserRoundCheck } from "lucide-react";
-import { AuthCodeWithPkceFlow } from "../../components/AuthCodeWithPkceFlow";
+import { PageContainer, PageHeader } from '@/components/page'
+import { UserRoundCheck } from 'lucide-react'
+import { AuthCodeWithPkceFlow } from '../../components/AuthCodeWithPkceFlow'
 
 export default function AuthCodeWithPkcePage() {
   return (
@@ -13,5 +13,5 @@ export default function AuthCodeWithPkcePage() {
 
       <AuthCodeWithPkceFlow />
     </PageContainer>
-  );
+  )
 }

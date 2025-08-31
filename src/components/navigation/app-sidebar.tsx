@@ -1,4 +1,4 @@
-import * as React from "react"
+import * as React from 'react'
 import {
   Fingerprint,
   KeyRound,
@@ -11,15 +11,11 @@ import {
   Server,
   UserRoundCheck,
   Shield,
-  FileCode
-} from "lucide-react"
-import { Link } from 'react-router-dom';
+  FileCode,
+} from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Sidebar,
   SidebarContent,
@@ -34,68 +30,68 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
-} from "@/components/ui/sidebar"
-import { NavSettings } from "@/components/navigation/nav-settings"
+} from '@/components/ui/sidebar'
+import { NavSettings } from '@/components/navigation/nav-settings'
 
 // Define tree structure for our menu
 const menuTree = [
   {
-    title: "OAuth/OIDC Tools",
+    title: 'OAuth/OIDC Tools',
     icon: KeyRound,
     items: [
       {
-        title: "Token Inspector",
-        url: "/token-inspector",
-        icon: Search
+        title: 'Token Inspector',
+        url: '/token-inspector',
+        icon: Search,
       },
       {
-        title: "OIDC Explorer",
-        url: "/oidc-explorer",
-        icon: FileJson
+        title: 'OIDC Explorer',
+        url: '/oidc-explorer',
+        icon: FileJson,
       },
       {
-        title: "OAuth Playground",
-        url: "/oauth-playground",
+        title: 'OAuth Playground',
+        url: '/oauth-playground',
         icon: FlaskConical,
         items: [
           {
-            title: "Auth Code",
-            url: "/oauth-playground/auth-code-pkce",
-            icon: UserRoundCheck
+            title: 'Auth Code',
+            url: '/oauth-playground/auth-code-pkce',
+            icon: UserRoundCheck,
           },
           {
-            title: "Client Credentials",
-            url: "/oauth-playground/client-credentials",
-            icon: Server
+            title: 'Client Credentials',
+            url: '/oauth-playground/client-credentials',
+            icon: Server,
           },
           {
-            title: "Introspection",
-            url: "/oauth-playground/introspection",
-            icon: SearchCheck
+            title: 'Introspection',
+            url: '/oauth-playground/introspection',
+            icon: SearchCheck,
           },
           {
-            title: "UserInfo",
-            url: "/oauth-playground/userinfo",
-            icon: UserRoundSearch
-          }
+            title: 'UserInfo',
+            url: '/oauth-playground/userinfo',
+            icon: UserRoundSearch,
+          },
           // More flows will be added here later
-        ]
-      }
-    ]
+        ],
+      },
+    ],
   },
   {
-    title: "SAML Tools",
+    title: 'SAML Tools',
     icon: Shield,
     items: [
       {
-        title: "Response Decoder",
-        url: "/saml/response-decoder",
-        icon: FileCode
-      }
+        title: 'Response Decoder',
+        url: '/saml/response-decoder',
+        icon: FileCode,
+      },
       // More SAML tools will be added here later
-    ]
-  }
-];
+    ],
+  },
+]
 
 // Recursive component to render menu items
 function MenuTreeItem({ item }: { item: any }) {
@@ -136,7 +132,7 @@ function MenuTreeItem({ item }: { item: any }) {
           </CollapsibleContent>
         </Collapsible>
       </SidebarMenuItem>
-    );
+    )
   }
 
   // If it's a leaf node without subitems
@@ -149,7 +145,7 @@ function MenuTreeItem({ item }: { item: any }) {
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
-  );
+  )
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

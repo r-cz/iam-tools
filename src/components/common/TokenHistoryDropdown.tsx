@@ -1,30 +1,23 @@
-import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { 
-  Clock, 
-  Trash2, 
-  History,
-  Key,
-  Edit,
-  Check
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { 
+import React from 'react'
+import { formatDistanceToNow } from 'date-fns'
+import { Clock, Trash2, History, Key, Edit, Check } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { TokenHistoryItem } from '@/lib/state/types';
-import { useAppState } from '@/lib/state';
-import { decodeJwtPayload } from '@/lib/jwt/decode-token';
+} from '@/components/ui/dropdown-menu'
+import { TokenHistoryItem } from '@/lib/state/types'
+import { useAppState } from '@/lib/state'
+import { decodeJwtPayload } from '@/lib/jwt/decode-token'
 
 interface TokenHistoryDropdownProps {
-  onSelectToken: (token: string) => void;
-  disabled?: boolean;
-  compact?: boolean;
+  onSelectToken: (token: string) => void
+  disabled?: boolean
+  compact?: boolean
 }
 
 /**
@@ -33,55 +26,58 @@ interface TokenHistoryDropdownProps {
  * @returns Truncated token with first few and last few characters (eyJhGci...sdcfw)
  */
 function truncateToken(token: string): string {
-  if (!token) return '';
-  
-  if (token.length <= 12) return token;
-  
-  const firstPart = token.substring(0, 6);
-  const lastPart = token.substring(token.length - 5);
-  
-  return `${firstPart}...${lastPart}`;
-}
+  if (!token) return ''
 
+  if (token.length <= 12) return token
+
+  const firstPart = token.substring(0, 6)
+  const lastPart = token.substring(token.length - 5)
+
+  return `${firstPart}...${lastPart}`
+}
 
 /**
  * Shared component for displaying a history of recently used JWT tokens
  * Used in OAuth Playground components (TokenIntrospection, UserInfo)
  */
-export function TokenHistoryDropdown({ onSelectToken, disabled = false, compact = false }: TokenHistoryDropdownProps) {
-  const { tokenHistory, removeToken, updateToken, clearTokens } = useAppState();
-  const [editingId, setEditingId] = React.useState<string | null>(null);
-  const [editName, setEditName] = React.useState('');
-  const [isOpen, setIsOpen] = React.useState(false);
-  
+export function TokenHistoryDropdown({
+  onSelectToken,
+  disabled = false,
+  compact = false,
+}: TokenHistoryDropdownProps) {
+  const { tokenHistory, removeToken, updateToken, clearTokens } = useAppState()
+  const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [editName, setEditName] = React.useState('')
+  const [isOpen, setIsOpen] = React.useState(false)
+
   // Start editing a token name
   const startEditing = (id: string, currentName?: string) => {
-    setEditingId(id);
-    setEditName(currentName || '');
-  };
-  
+    setEditingId(id)
+    setEditName(currentName || '')
+  }
+
   // Save the edited name
   const saveEdit = (id: string) => {
-    updateToken(id, { name: editName });
-    setEditingId(null);
-  };
-  
+    updateToken(id, { name: editName })
+    setEditingId(null)
+  }
+
   // Cancel editing
   const cancelEdit = () => {
-    setEditingId(null);
-  };
-  
+    setEditingId(null)
+  }
+
   // Handle token selection
   const handleSelectToken = (token: TokenHistoryItem) => {
-    onSelectToken(token.token);
-    setIsOpen(false);
-  };
-  
+    onSelectToken(token.token)
+    setIsOpen(false)
+  }
+
   // If there are no tokens in history
   if (tokenHistory.length === 0) {
-    return null;
+    return null
   }
-  
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -97,9 +93,9 @@ export function TokenHistoryDropdown({ onSelectToken, disabled = false, compact 
             <History size={16} />
           </Button>
         ) : (
-          <Button 
+          <Button
             type="button"
-            variant="outline" 
+            variant="outline"
             size="sm"
             className="flex items-center gap-1"
             disabled={disabled}
@@ -125,26 +121,21 @@ export function TokenHistoryDropdown({ onSelectToken, disabled = false, compact 
                   autoFocus
                 />
                 <div className="flex gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
                     onClick={() => saveEdit(token.id)}
                   >
                     <Check size={14} />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
-                    onClick={cancelEdit}
-                  >
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelEdit}>
                     <Trash2 size={14} />
                   </Button>
                 </div>
               </div>
             ) : (
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="flex justify-between items-center cursor-pointer"
                 onClick={() => handleSelectToken(token)}
               >
@@ -160,68 +151,68 @@ export function TokenHistoryDropdown({ onSelectToken, disabled = false, compact 
                   )}
                   {(() => {
                     // First try to use stored values for better performance
-                    const subject = token.subject;
-                    const issuer = token.issuer;
-                    
+                    const subject = token.subject
+                    const issuer = token.issuer
+
                     // If stored values aren't available, try to decode the token
                     if (!subject && !issuer) {
-                      const decodedPayload = decodeJwtPayload(token.token);
+                      const decodedPayload = decodeJwtPayload(token.token)
                       if (decodedPayload) {
                         return (
                           <>
                             {typeof decodedPayload.sub === 'string' && (
                               <div className="text-xs text-muted-foreground truncate">
-                                Subject: {decodedPayload.sub.length > 20 
-                                  ? `${decodedPayload.sub.substring(0, 18)}...` 
+                                Subject:{' '}
+                                {decodedPayload.sub.length > 20
+                                  ? `${decodedPayload.sub.substring(0, 18)}...`
                                   : decodedPayload.sub}
                               </div>
                             )}
                             {typeof decodedPayload.iss === 'string' && (
                               <div className="text-xs text-muted-foreground truncate">
-                                Issuer: {
-                                  (() => {
-                                    try {
-                                      const url = new URL(decodedPayload.iss as string);
-                                      return url.hostname;
-                                    } catch {
-                                      return decodedPayload.iss;
-                                    }
-                                  })()
-                                }
+                                Issuer:{' '}
+                                {(() => {
+                                  try {
+                                    const url = new URL(decodedPayload.iss as string)
+                                    return url.hostname
+                                  } catch {
+                                    return decodedPayload.iss
+                                  }
+                                })()}
                               </div>
                             )}
                           </>
-                        );
+                        )
                       }
-                      return null;
+                      return null
                     }
-                    
+
                     // Use stored values
                     return (
                       <>
                         {subject && (
                           <div className="text-xs text-muted-foreground truncate">
-                            Subject: {typeof subject === 'string' && subject.length > 20 
-                              ? `${subject.substring(0, 18)}...` 
+                            Subject:{' '}
+                            {typeof subject === 'string' && subject.length > 20
+                              ? `${subject.substring(0, 18)}...`
                               : subject}
                           </div>
                         )}
                         {issuer && (
                           <div className="text-xs text-muted-foreground truncate">
-                            Issuer: {
-                              (() => {
-                                try {
-                                  const url = new URL(issuer);
-                                  return url.hostname;
-                                } catch {
-                                  return issuer;
-                                }
-                              })()
-                            }
+                            Issuer:{' '}
+                            {(() => {
+                              try {
+                                const url = new URL(issuer)
+                                return url.hostname
+                              } catch {
+                                return issuer
+                              }
+                            })()}
                           </div>
                         )}
                       </>
-                    );
+                    )
                   })()}
                   <div className="text-muted-foreground text-xs flex items-center gap-1">
                     <Clock size={12} />
@@ -229,24 +220,24 @@ export function TokenHistoryDropdown({ onSelectToken, disabled = false, compact 
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
                     onClick={(e) => {
-                      e.stopPropagation();
-                      startEditing(token.id, token.name);
+                      e.stopPropagation()
+                      startEditing(token.id, token.name)
                     }}
                   >
                     <Edit size={14} />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
                     onClick={(e) => {
-                      e.stopPropagation();
-                      removeToken(token.id);
+                      e.stopPropagation()
+                      removeToken(token.id)
                     }}
                   >
                     <Trash2 size={14} />
@@ -257,7 +248,7 @@ export function TokenHistoryDropdown({ onSelectToken, disabled = false, compact 
           </React.Fragment>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem 
+        <DropdownMenuItem
           className="text-destructive focus:text-destructive focus:bg-destructive/10"
           onClick={() => clearTokens()}
         >
@@ -265,5 +256,5 @@ export function TokenHistoryDropdown({ onSelectToken, disabled = false, compact 
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

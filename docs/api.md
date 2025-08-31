@@ -23,16 +23,16 @@ To fetch an OIDC configuration from a provider that doesn't allow CORS:
 ```javascript
 // Frontend code
 const fetchConfig = async (issuerUrl) => {
-  const targetUrl = `${issuerUrl}/.well-known/openid-configuration`;
-  const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`;
-  
-  const response = await fetch(proxyUrl);
+  const targetUrl = `${issuerUrl}/.well-known/openid-configuration`
+  const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`
+
+  const response = await fetch(proxyUrl)
   if (!response.ok) {
-    throw new Error(`Failed to fetch: ${response.status}`);
+    throw new Error(`Failed to fetch: ${response.status}`)
   }
-  
-  return await response.json();
-};
+
+  return await response.json()
+}
 ```
 
 #### With Query Parameters
@@ -40,8 +40,8 @@ const fetchConfig = async (issuerUrl) => {
 To fetch an endpoint with query parameters:
 
 ```javascript
-const targetUrl = `https://example.com/api/resource?param1=value1&param2=value2`;
-const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`;
+const targetUrl = `https://example.com/api/resource?param1=value1&param2=value2`
+const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`
 ```
 
 #### With Different HTTP Methods
@@ -50,16 +50,16 @@ The proxy supports all HTTP methods (GET, POST, PUT, DELETE, etc.):
 
 ```javascript
 // For a POST request
-const targetUrl = `https://example.com/api/resource`;
-const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`;
+const targetUrl = `https://example.com/api/resource`
+const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`
 
 const response = await fetch(proxyUrl, {
   method: 'POST',
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   },
-  body: JSON.stringify({ key: 'value' })
-});
+  body: JSON.stringify({ key: 'value' }),
+})
 ```
 
 ### Implementation Details
@@ -119,13 +119,13 @@ This endpoint is primarily used for demonstration purposes in the Token Inspecto
 ```javascript
 // Example of validating a token against the JWKS endpoint
 const validateToken = async (token) => {
-  const jwksUrl = '/api/jwks/';
-  const jwksResponse = await fetch(jwksUrl);
-  const jwks = await jwksResponse.json();
-  
+  const jwksUrl = '/api/jwks/'
+  const jwksResponse = await fetch(jwksUrl)
+  const jwks = await jwksResponse.json()
+
   // Use the JWKS to validate the token signature
-  return verifyTokenSignature(token, jwks);
-};
+  return verifyTokenSignature(token, jwks)
+}
 ```
 
 ### Implementation Details

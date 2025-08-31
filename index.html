@@ -4,37 +4,46 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>iam.tools</title>
-    <meta name="description" content="A collection of specialized tools for Identity and Access Management (IAM) development and debugging" />
-    
+    <meta
+      name="description"
+      content="A collection of specialized tools for Identity and Access Management (IAM) development and debugging"
+    />
+
     <!-- PWA support: manifest is injected by vite-plugin-pwa -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="iam.tools" />
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
     <link rel="icon" type="image/png" href="/icons/favicon.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    
+
     <!-- Theme color -->
     <meta name="theme-color" content="#1a1a1a" />
-    
+
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="IAM Tools" />
-    <meta property="og:description" content="Specialized tools for Identity and Access Management development and debugging" />
+    <meta
+      property="og:description"
+      content="Specialized tools for Identity and Access Management development and debugging"
+    />
     <meta property="og:image" content="/icons/social-preview.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:url" content="https://iam.tools" />
-    
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="IAM Tools" />
-    <meta name="twitter:description" content="Specialized tools for Identity and Access Management development and debugging" />
+    <meta
+      name="twitter:description"
+      content="Specialized tools for Identity and Access Management development and debugging"
+    />
     <meta name="twitter:image" content="/icons/social-preview.png" />
-    
+
     <!-- Anti-flash snippet for dark mode -->
     <style>
       /* Applied before JS loads to prevent flash */
@@ -44,28 +53,28 @@
       }
     </style>
     <script>
-      (function() {
+      ;(function () {
         // Check saved theme or use system preference
-        const storageKey = 'iam-tools-theme';
+        const storageKey = 'iam-tools-theme'
         const getPreferredTheme = () => {
-          const storedTheme = localStorage.getItem(storageKey);
-          if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme;
-          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        };
-        
+          const storedTheme = localStorage.getItem(storageKey)
+          if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+
         // Apply theme immediately
-        const theme = getPreferredTheme();
-        document.documentElement.classList.toggle('dark', theme === 'dark');
-        document.documentElement.classList.toggle('dark-mode', theme === 'dark');
-        
+        const theme = getPreferredTheme()
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        document.documentElement.classList.toggle('dark-mode', theme === 'dark')
+
         // Watch for system preference changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
           if (localStorage.getItem(storageKey) === 'system') {
-            document.documentElement.classList.toggle('dark', e.matches);
-            document.documentElement.classList.toggle('dark-mode', e.matches);
+            document.documentElement.classList.toggle('dark', e.matches)
+            document.documentElement.classList.toggle('dark-mode', e.matches)
           }
-        });
-      })();
+        })
+      })()
     </script>
   </head>
   <body>

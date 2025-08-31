@@ -135,8 +135,12 @@ function isAllowedEndpoint(urlStr: string): boolean {
   const parsed = new URL(urlStr)
   const isWellKnown = parsed.pathname.includes('/.well-known/')
   const up = parsed.pathname.toUpperCase()
-  const isJwks = up.includes('/JWKS') || up.includes('/JWK') || parsed.pathname.includes('/keys') ||
-    parsed.pathname.includes('/oauth2/v1/certs') || (parsed.pathname.endsWith('.json') && up.includes('JWK'))
+  const isJwks =
+    up.includes('/JWKS') ||
+    up.includes('/JWK') ||
+    parsed.pathname.includes('/keys') ||
+    parsed.pathname.includes('/oauth2/v1/certs') ||
+    (parsed.pathname.endsWith('.json') && up.includes('JWK'))
   return isWellKnown || isJwks
 }
 

@@ -1,132 +1,132 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 // Removed Tabs imports
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge'; // Import Badge
-import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce';
-import { proxyFetch } from '@/lib/proxy-fetch';
-import { OAuthConfig, PkceParams } from '../utils/types'; // Removed OAuthFlowType import
-import { toast } from 'sonner';
-import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common';
-import { useIssuerHistory } from '@/lib/state';
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge' // Import Badge
+import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce'
+import { proxyFetch } from '@/lib/proxy-fetch'
+import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
+import { toast } from 'sonner'
+import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common'
+import { useIssuerHistory } from '@/lib/state'
 
 interface ConfigurationFormProps {
-  onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void;
+  onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void
 }
 
 export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) {
   // Removed flowType state
-  const [issuerUrl, setIssuerUrl] = useState<string>('');
-  const [authEndpoint, setAuthEndpoint] = useState<string>('');
-  const [tokenEndpoint, setTokenEndpoint] = useState<string>('');
-  const [jwksEndpoint, setJwksEndpoint] = useState<string>('');
-  const [clientId, setClientId] = useState<string>('');
-  const [redirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`); // Removed setRedirectUri
-  const [scopes, setScopes] = useState<string>('openid profile email');
-  const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
-  const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false); // Track if endpoints were set by discovery
-  const { addIssuer } = useIssuerHistory();
+  const [issuerUrl, setIssuerUrl] = useState<string>('')
+  const [authEndpoint, setAuthEndpoint] = useState<string>('')
+  const [tokenEndpoint, setTokenEndpoint] = useState<string>('')
+  const [jwksEndpoint, setJwksEndpoint] = useState<string>('')
+  const [clientId, setClientId] = useState<string>('')
+  const [redirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`) // Removed setRedirectUri
+  const [scopes, setScopes] = useState<string>('openid profile email')
+  const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false)
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false)
+  const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false) // Track if endpoints were set by discovery
+  const { addIssuer } = useIssuerHistory()
 
   // Generate PKCE values
-  const [codeVerifier, setCodeVerifier] = useState<string>('');
-  const [codeChallenge, setCodeChallenge] = useState<string>('');
-  const [state, setState] = useState<string>('');
+  const [codeVerifier, setCodeVerifier] = useState<string>('')
+  const [codeChallenge, setCodeChallenge] = useState<string>('')
+  const [state, setState] = useState<string>('')
 
   useEffect(() => {
     // Generate initial PKCE values
-    regeneratePkce();
-  }, []);
+    regeneratePkce()
+  }, [])
 
   // Add useEffect to show toast when demo mode is enabled
   useEffect(() => {
     if (isDemoMode) {
-      toast.info("Demo mode enabled. A mock OAuth server will be used.");
+      toast.info('Demo mode enabled. A mock OAuth server will be used.')
     }
-  }, [isDemoMode]);
-  
+  }, [isDemoMode])
+
   // Handle selecting an issuer from the history
   const handleSelectIssuer = (issuerUrl: string) => {
-    setIssuerUrl(issuerUrl);
+    setIssuerUrl(issuerUrl)
     // Clear endpoints when issuer changes
-    setAuthEndpoint('');
-    setTokenEndpoint('');
-    setJwksEndpoint('');
-    setEndpointsLocked(false);
+    setAuthEndpoint('')
+    setTokenEndpoint('')
+    setJwksEndpoint('')
+    setEndpointsLocked(false)
     // Fetch config from the selected issuer
-    setTimeout(() => fetchOidcConfig(), 0);
-  };
+    setTimeout(() => fetchOidcConfig(), 0)
+  }
 
   const regeneratePkce = async () => {
-    const verifier = generateCodeVerifier();
-    setCodeVerifier(verifier);
-    
-    const challenge = await generateCodeChallenge(verifier);
-    setCodeChallenge(challenge);
+    const verifier = generateCodeVerifier()
+    setCodeVerifier(verifier)
 
-    const newState = generateState();
-    setState(newState);
-  };
+    const challenge = await generateCodeChallenge(verifier)
+    setCodeChallenge(challenge)
+
+    const newState = generateState()
+    setState(newState)
+  }
 
   const fetchOidcConfig = async () => {
     if (!issuerUrl) {
-      toast.error('Please enter an issuer URL');
-      return;
+      toast.error('Please enter an issuer URL')
+      return
     }
 
-    setIsLoadingDiscovery(true);
+    setIsLoadingDiscovery(true)
     try {
       const discoveryUrl = issuerUrl.endsWith('/')
         ? `${issuerUrl}.well-known/openid-configuration`
-        : `${issuerUrl}/.well-known/openid-configuration`;
+        : `${issuerUrl}/.well-known/openid-configuration`
 
-      const response = await proxyFetch(discoveryUrl);
-      const config = await response.json();
+      const response = await proxyFetch(discoveryUrl)
+      const config = await response.json()
 
-      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
-      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint);
-      if (config.token_endpoint) setTokenEndpoint(config.token_endpoint);
-      if (config.jwks_uri) setJwksEndpoint(config.jwks_uri);
-      
+      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint)
+      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint)
+      if (config.token_endpoint) setTokenEndpoint(config.token_endpoint)
+      if (config.jwks_uri) setJwksEndpoint(config.jwks_uri)
+
       // Lock endpoints if discovery was successful
       if (config.authorization_endpoint || config.token_endpoint || config.jwks_uri) {
-        setEndpointsLocked(true);
+        setEndpointsLocked(true)
         // Add to issuer history if discovery was successful
-        addIssuer(issuerUrl);
+        addIssuer(issuerUrl)
       }
 
-      toast.success('OIDC configuration loaded successfully');
+      toast.success('OIDC configuration loaded successfully')
     } catch (error) {
-      setEndpointsLocked(false); // Unlock on error
-      console.error('Error fetching OIDC configuration:', error);
-      toast.error('Failed to fetch OIDC configuration');
+      setEndpointsLocked(false) // Unlock on error
+      console.error('Error fetching OIDC configuration:', error)
+      toast.error('Failed to fetch OIDC configuration')
     } finally {
-      setIsLoadingDiscovery(false);
+      setIsLoadingDiscovery(false)
     }
-  };
+  }
 
   const handleSubmit = () => {
     // Validate form
     if (!isDemoMode) {
       if (!authEndpoint) {
-        toast.error('Authorization endpoint is required');
-        return;
+        toast.error('Authorization endpoint is required')
+        return
       }
       if (!tokenEndpoint) {
-        toast.error('Token endpoint is required');
-        return;
+        toast.error('Token endpoint is required')
+        return
       }
     }
 
     // In demo mode, use default client ID if none provided
-    let finalClientId = clientId;
+    let finalClientId = clientId
     if (isDemoMode && !clientId) {
-      finalClientId = 'demo-client';
+      finalClientId = 'demo-client'
     } else if (!isDemoMode && !clientId) {
-      toast.error('Client ID is required');
-      return;
+      toast.error('Client ID is required')
+      return
     }
 
     const config: OAuthConfig = {
@@ -138,24 +138,25 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       clientId: finalClientId,
       redirectUri,
       scopes: scopes.split(' ').filter(Boolean),
-      demoMode: isDemoMode
-    };
+      demoMode: isDemoMode,
+    }
 
     const pkce: PkceParams = {
       codeVerifier,
       codeChallenge,
-      state
-    };
+      state,
+    }
 
-    onConfigComplete(config, pkce);
-  };
+    onConfigComplete(config, pkce)
+  }
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle>OAuth 2.0 Flow Configuration</CardTitle>
         <CardDescription>
-          Configure your OAuth 2.0 flow parameters. You can either connect to your own IdP or use the demo mode.
+          Configure your OAuth 2.0 flow parameters. You can either connect to your own IdP or use
+          the demo mode.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -171,115 +172,131 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           </div>
 
           {/* Configuration based on mode */}
-          {!isDemoMode ? (
-            <div className="space-y-4 rounded-lg border p-4">
-              <h3 className="text-lg font-medium">Identity Provider Details</h3>
-              {/* Issuer URL for Auto-Discovery */}
-              <div className="space-y-2">
-                <Label>Issuer URL (for Auto-Discovery)</Label>
-                <div className="flex space-x-2">
-                  <div className="relative flex-1">
-                    <Input
-                      placeholder="https://example.com"
-                      value={issuerUrl}
-                      onChange={(e) => {
-                        setIssuerUrl(e.target.value);
-                        // Clear endpoints if issuer changes, allowing manual input or re-discovery
-                        setAuthEndpoint('');
-                        setTokenEndpoint('');
-                        setJwksEndpoint('');
-                        setEndpointsLocked(false);
-                      }}
-                      className="pr-10"
-                    />
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                      <IssuerHistory 
-                        onSelectIssuer={handleSelectIssuer} 
-                        compact={true}
+          {
+            !isDemoMode ? (
+              <div className="space-y-4 rounded-lg border p-4">
+                <h3 className="text-lg font-medium">Identity Provider Details</h3>
+                {/* Issuer URL for Auto-Discovery */}
+                <div className="space-y-2">
+                  <Label>Issuer URL (for Auto-Discovery)</Label>
+                  <div className="flex space-x-2">
+                    <div className="relative flex-1">
+                      <Input
+                        placeholder="https://example.com"
+                        value={issuerUrl}
+                        onChange={(e) => {
+                          setIssuerUrl(e.target.value)
+                          // Clear endpoints if issuer changes, allowing manual input or re-discovery
+                          setAuthEndpoint('')
+                          setTokenEndpoint('')
+                          setJwksEndpoint('')
+                          setEndpointsLocked(false)
+                        }}
+                        className="pr-10"
                       />
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                        <IssuerHistory onSelectIssuer={handleSelectIssuer} compact={true} />
+                      </div>
                     </div>
+                    <Button
+                      type="button"
+                      onClick={fetchOidcConfig}
+                      disabled={isLoadingDiscovery || !issuerUrl}
+                    >
+                      {isLoadingDiscovery ? 'Loading...' : 'Discover'}
+                    </Button>
                   </div>
-                  <Button 
-                    type="button" 
-                    onClick={fetchOidcConfig}
-                    disabled={isLoadingDiscovery || !issuerUrl}
-                  >
-                    {isLoadingDiscovery ? "Loading..." : "Discover"}
-                  </Button>
+                  <p className="text-sm text-muted-foreground">
+                    Enter the base URL of your IdP to attempt auto-discovery of endpoints via OIDC
+                    .well-known configuration.
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Enter the base URL of your IdP to attempt auto-discovery of endpoints via OIDC .well-known configuration.
-                </p>
-              </div>
 
-              {/* Manual/Discovered Endpoints */}
-              <FormFieldInput
-                label="Authorization Endpoint"
-                placeholder="https://example.com/authorize"
-                value={authEndpoint}
-                onChange={(e) => setAuthEndpoint(e.target.value)}
-                readOnly={endpointsLocked}
-                description={
-                  <span className="flex items-center gap-2">
-                    <span>Required endpoint for starting the authorization flow.</span>
-                    {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
-                  </span>
-                }
-              />
-              
-              <FormFieldInput
-                label="Token Endpoint"
-                placeholder="https://example.com/token"
-                value={tokenEndpoint}
-                onChange={(e) => setTokenEndpoint(e.target.value)}
-                readOnly={endpointsLocked}
-                description={
-                  <span className="flex items-center gap-2">
-                    <span>Required endpoint for exchanging the authorization code for tokens.</span>
-                    {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
-                  </span>
-                }
-              />
-              
-              <FormFieldInput
-                label="JWKS Endpoint (Optional)"
-                placeholder="https://example.com/.well-known/jwks.json"
-                value={jwksEndpoint}
-                onChange={(e) => setJwksEndpoint(e.target.value)}
-                readOnly={endpointsLocked}
-                description={
-                  <span className="flex items-center gap-2">
-                    <span>Endpoint for retrieving public keys to validate token signatures.</span>
-                    {endpointsLocked ? <Badge variant="secondary">Auto-discovered</Badge> : <span>(Enter manually if not discovered)</span>}
-                  </span>
-                }
-              />
-            </div>
-          ) : (
-            // Removed the empty div that previously held the static message
+                {/* Manual/Discovered Endpoints */}
+                <FormFieldInput
+                  label="Authorization Endpoint"
+                  placeholder="https://example.com/authorize"
+                  value={authEndpoint}
+                  onChange={(e) => setAuthEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                  description={
+                    <span className="flex items-center gap-2">
+                      <span>Required endpoint for starting the authorization flow.</span>
+                      {endpointsLocked ? (
+                        <Badge variant="secondary">Auto-discovered</Badge>
+                      ) : (
+                        <span>(Enter manually if not discovered)</span>
+                      )}
+                    </span>
+                  }
+                />
+
+                <FormFieldInput
+                  label="Token Endpoint"
+                  placeholder="https://example.com/token"
+                  value={tokenEndpoint}
+                  onChange={(e) => setTokenEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                  description={
+                    <span className="flex items-center gap-2">
+                      <span>
+                        Required endpoint for exchanging the authorization code for tokens.
+                      </span>
+                      {endpointsLocked ? (
+                        <Badge variant="secondary">Auto-discovered</Badge>
+                      ) : (
+                        <span>(Enter manually if not discovered)</span>
+                      )}
+                    </span>
+                  }
+                />
+
+                <FormFieldInput
+                  label="JWKS Endpoint (Optional)"
+                  placeholder="https://example.com/.well-known/jwks.json"
+                  value={jwksEndpoint}
+                  onChange={(e) => setJwksEndpoint(e.target.value)}
+                  readOnly={endpointsLocked}
+                  description={
+                    <span className="flex items-center gap-2">
+                      <span>Endpoint for retrieving public keys to validate token signatures.</span>
+                      {endpointsLocked ? (
+                        <Badge variant="secondary">Auto-discovered</Badge>
+                      ) : (
+                        <span>(Enter manually if not discovered)</span>
+                      )}
+                    </span>
+                  }
+                />
+              </div>
+            ) : // Removed the empty div that previously held the static message
             null // Or simply remove the entire else block if nothing else goes here
-          )}
+          }
 
           {/* Common Configuration */}
           <FormFieldInput
             label="Client ID"
-            placeholder={isDemoMode ? "demo-client" : "Your client ID"}
+            placeholder={isDemoMode ? 'demo-client' : 'Your client ID'}
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            description={isDemoMode 
-              ? "Any value is accepted in demo mode" 
-              : "The client ID registered with your Identity Provider"}
+            description={
+              isDemoMode
+                ? 'Any value is accepted in demo mode'
+                : 'The client ID registered with your Identity Provider'
+            }
           />
-          
+
           <FormFieldInput
             label="Redirect URI"
             value={redirectUri}
             readOnly
-            description={isDemoMode
-              ? "The URI where the demo server sends the response."
-              : "This is the required Redirect URI. You MUST register this exact URI with your Identity Provider for this client."}
+            description={
+              isDemoMode
+                ? 'The URI where the demo server sends the response.'
+                : 'This is the required Redirect URI. You MUST register this exact URI with your Identity Provider for this client.'
+            }
           />
-          
+
           <FormFieldInput
             label="Scopes"
             placeholder="openid profile email"
@@ -296,21 +313,21 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                 Regenerate
               </Button>
             </div>
-            
+
             <FormFieldInput
               label="Code Verifier"
               value={codeVerifier}
               readOnly
               description="Random string used to generate the code challenge"
             />
-            
+
             <FormFieldInput
               label="Code Challenge (S256)"
               value={codeChallenge}
               readOnly
               description="SHA-256 hash of the code verifier, Base64URL encoded"
             />
-            
+
             <FormFieldInput
               label="State"
               value={state}
@@ -325,7 +342,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
 
-export default ConfigurationForm;
+export default ConfigurationForm

@@ -46,6 +46,7 @@ bun run dev:all
 ```
 
 This will start:
+
 - Vite development server at http://localhost:5173
 - CORS proxy at http://localhost:8788
 

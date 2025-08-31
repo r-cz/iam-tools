@@ -1,7 +1,7 @@
 // OIDC Explorer page component
-import { PageContainer, PageHeader } from "@/components/page";
-import { FileJson } from "lucide-react";
-import { OidcExplorer } from "..";
+import { PageContainer, PageHeader } from '@/components/page'
+import { FileJson } from 'lucide-react'
+import { OidcExplorer } from '..'
 
 export default function OidcExplorerPage() {
   return (
@@ -14,5 +14,5 @@ export default function OidcExplorerPage() {
 
       <OidcExplorer />
     </PageContainer>
-  );
+  )
 }

@@ -1,6 +1,6 @@
-import { PageContainer, PageHeader } from "@/components/page";
-import { UserRoundSearch } from "lucide-react";
-import { UserInfo } from "../components/UserInfo";
+import { PageContainer, PageHeader } from '@/components/page'
+import { UserRoundSearch } from 'lucide-react'
+import { UserInfo } from '../components/UserInfo'
 
 export default function UserInfoPage() {
   return (
@@ -12,5 +12,5 @@ export default function UserInfoPage() {
       />
       <UserInfo />
     </PageContainer>
-  );
+  )
 }

@@ -1,23 +1,22 @@
 // ProviderInfo component imports
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 // Removed unused Badge import
-import { InfoIcon, ExternalLink } from 'lucide-react'; // Removed unused StarIcon import
-import { providerInfoData } from '../data/provider-info';
+import { InfoIcon, ExternalLink } from 'lucide-react' // Removed unused StarIcon import
+import { providerInfoData } from '../data/provider-info'
 // import { OidcConfiguration } from '../utils/types'; // Removed unused import
 
 interface ProviderInfoProps {
-  providerName: string | null;
-  issuerUrl: string;
+  providerName: string | null
+  issuerUrl: string
   // config: OidcConfiguration | null; // Remove unused config prop
-  reasons: string[]; // Add reasons prop
+  reasons: string[] // Add reasons prop
 }
 
-export function ProviderInfo({ providerName, issuerUrl, /* config, */ reasons }: ProviderInfoProps) {
+export function ProviderInfo({
+  providerName,
+  issuerUrl,
+  /* config, */ reasons,
+}: ProviderInfoProps) {
   if (!providerName || !providerInfoData[providerName]) {
     return (
       <Card>
@@ -30,17 +29,17 @@ export function ProviderInfo({ providerName, issuerUrl, /* config, */ reasons }:
         <CardContent>
           <div className="text-center py-4">
             <p className="text-muted-foreground">
-              {issuerUrl 
-                ? "Could not identify the provider from the issuer URL." 
-                : "Enter an issuer URL to see provider information."}
+              {issuerUrl
+                ? 'Could not identify the provider from the issuer URL.'
+                : 'Enter an issuer URL to see provider information.'}
             </p>
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  const providerInfo = providerInfoData[providerName];
+  const providerInfo = providerInfoData[providerName]
 
   return (
     <Card>
@@ -53,19 +52,17 @@ export function ProviderInfo({ providerName, issuerUrl, /* config, */ reasons }:
       <CardContent>
         <div className="space-y-4">
           <div>
-            <h3 className="text-xl font-bold mb-1">
-              {providerInfo.name}
-            </h3>
-            <p className="text-muted-foreground">
-              {providerInfo.description}
-            </p>
+            <h3 className="text-xl font-bold mb-1">{providerInfo.name}</h3>
+            <p className="text-muted-foreground">{providerInfo.description}</p>
           </div>
 
           {/* Add explanation for provider identification */}
           <div className="text-sm text-muted-foreground italic">
             <p>
-              This provider was identified based on analysis of the OIDC configuration fetched from <code className="bg-muted px-1 rounded">{issuerUrl}</code>. 
-              The identification logic checks for provider-specific markers in the configuration data and known patterns in the issuer URL.
+              This provider was identified based on analysis of the OIDC configuration fetched from{' '}
+              <code className="bg-muted px-1 rounded">{issuerUrl}</code>. The identification logic
+              checks for provider-specific markers in the configuration data and known patterns in
+              the issuer URL.
             </p>
           </div>
 
@@ -95,5 +92,5 @@ export function ProviderInfo({ providerName, issuerUrl, /* config, */ reasons }:
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

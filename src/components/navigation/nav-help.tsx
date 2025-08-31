@@ -1,12 +1,6 @@
-"use client"
+'use client'
 
-import {
-  ChevronsUpDown,
-  Github,
-  HelpCircle,
-  Mail,
-  ExternalLink
-} from "lucide-react"
+import { ChevronsUpDown, Github, HelpCircle, Mail, ExternalLink } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -16,13 +10,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar'
 
 export function NavHelp() {
   const { isMobile } = useSidebar()
@@ -48,7 +42,7 @@ export function NavHelp() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
@@ -56,9 +50,9 @@ export function NavHelp() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <a 
-                  href="https://github.com/r-cz/iam-tools/issues" 
-                  target="_blank" 
+                <a
+                  href="https://github.com/r-cz/iam-tools/issues"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
@@ -68,9 +62,9 @@ export function NavHelp() {
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <a 
-                  href="mailto:mail@ryancruz.com" 
-                  target="_blank" 
+                <a
+                  href="mailto:mail@ryancruz.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >

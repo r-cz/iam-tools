@@ -1,88 +1,95 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 export function DemoAuthPage() {
-  const [searchParams] = useSearchParams();
-  
+  const [searchParams] = useSearchParams()
+
   // Extract OAuth parameters from URL
-  const clientId = searchParams.get('client_id') || '';
-  const redirectUri = searchParams.get('redirect_uri') || '';
-  const state = searchParams.get('state') || '';
-  const scope = searchParams.get('scope') || '';
-  const codeChallenge = searchParams.get('code_challenge') || '';
-  const codeChallengeMethod = searchParams.get('code_challenge_method') || '';
-  
+  const clientId = searchParams.get('client_id') || ''
+  const redirectUri = searchParams.get('redirect_uri') || ''
+  const state = searchParams.get('state') || ''
+  const scope = searchParams.get('scope') || ''
+  const codeChallenge = searchParams.get('code_challenge') || ''
+  const codeChallengeMethod = searchParams.get('code_challenge_method') || ''
+
   // Form state
-  const [username, setUsername] = useState('demo-user');
-  const [error, setError] = useState<string | null>(null);
-  
+  const [username, setUsername] = useState('demo-user')
+  const [error, setError] = useState<string | null>(null)
+
   // Validate parameters
   useEffect(() => {
     if (!clientId) {
-      setError('Missing client_id parameter');
+      setError('Missing client_id parameter')
     } else if (!redirectUri) {
-      setError('Missing redirect_uri parameter');
+      setError('Missing redirect_uri parameter')
     } else if (!codeChallenge) {
-      setError('Missing code_challenge parameter');
+      setError('Missing code_challenge parameter')
     } else if (codeChallengeMethod !== 'S256') {
-      setError('Unsupported code_challenge_method. Only S256 is supported.');
+      setError('Unsupported code_challenge_method. Only S256 is supported.')
     }
-  }, [clientId, redirectUri, codeChallenge, codeChallengeMethod]);
-  
+  }, [clientId, redirectUri, codeChallenge, codeChallengeMethod])
+
   // Handle login
   const handleLogin = () => {
     if (!username.trim()) {
-      setError('Please enter a username');
-      return;
+      setError('Please enter a username')
+      return
     }
-    
+
     // Generate a mock authorization code
     // In a real system, this would be a secure random value
     // and would be associated with the authenticated user
-    const authCode = generateMockAuthCode(username, clientId);
-    
+    const authCode = generateMockAuthCode(username, clientId)
+
     // Construct the redirect URL with the code
-    const redirectUrl = new URL(redirectUri);
-    redirectUrl.searchParams.set('code', authCode);
-    
+    const redirectUrl = new URL(redirectUri)
+    redirectUrl.searchParams.set('code', authCode)
+
     // Add state if provided
     if (state) {
-      redirectUrl.searchParams.set('state', state);
+      redirectUrl.searchParams.set('state', state)
     }
-    
+
     // Redirect back to the client
-    window.location.href = redirectUrl.toString();
-  };
-  
+    window.location.href = redirectUrl.toString()
+  }
+
   // Generate a mock authorization code
   const generateMockAuthCode = (username: string, clientId: string): string => {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2);
-    return `${timestamp}-${username}-${clientId.substring(0, 4)}-${random}`;
-  };
-  
+    const timestamp = Date.now().toString(36)
+    const random = Math.random().toString(36).substring(2)
+    return `${timestamp}-${username}-${clientId.substring(0, 4)}-${random}`
+  }
+
   // Handle deny
   const handleDeny = () => {
     // Construct the redirect URL with the error
-    const redirectUrl = new URL(redirectUri);
-    redirectUrl.searchParams.set('error', 'access_denied');
-    redirectUrl.searchParams.set('error_description', 'The user denied the authorization request');
-    
+    const redirectUrl = new URL(redirectUri)
+    redirectUrl.searchParams.set('error', 'access_denied')
+    redirectUrl.searchParams.set('error_description', 'The user denied the authorization request')
+
     // Add state if provided
     if (state) {
-      redirectUrl.searchParams.set('state', state);
+      redirectUrl.searchParams.set('state', state)
     }
-    
+
     // Redirect back to the client
-    window.location.href = redirectUrl.toString();
-  };
-  
+    window.location.href = redirectUrl.toString()
+  }
+
   return (
     <div className="container py-10 flex flex-col items-center justify-center min-h-[70vh]">
       <Card className="w-full max-w-md">
@@ -103,13 +110,19 @@ export function DemoAuthPage() {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Authorization Request</h3>
                 <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-                  <p><strong>Client ID:</strong> {clientId}</p>
-                  {scope && <p><strong>Requested Scopes:</strong> {scope}</p>}
+                  <p>
+                    <strong>Client ID:</strong> {clientId}
+                  </p>
+                  {scope && (
+                    <p>
+                      <strong>Requested Scopes:</strong> {scope}
+                    </p>
+                  )}
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
@@ -120,7 +133,7 @@ export function DemoAuthPage() {
                     placeholder="Enter username"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <Input
@@ -140,30 +153,22 @@ export function DemoAuthPage() {
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <div className="grid grid-cols-2 gap-2 w-full">
-            <Button 
-              variant="outline" 
-              onClick={handleDeny}
-              disabled={!!error}
-            >
+            <Button variant="outline" onClick={handleDeny} disabled={!!error}>
               Deny
             </Button>
-            <Button 
-              onClick={handleLogin}
-              disabled={!!error}
-            >
+            <Button onClick={handleLogin} disabled={!!error}>
               Authorize
             </Button>
           </div>
-          
+
           <p className="text-xs text-center text-muted-foreground pt-2">
-            This is a simulated authorization server for demonstration purposes only.
-            No actual authentication is performed.
+            This is a simulated authorization server for demonstration purposes only. No actual
+            authentication is performed.
           </p>
         </CardFooter>
       </Card>
-      
     </div>
-  );
+  )
 }
 
-export default DemoAuthPage;
+export default DemoAuthPage

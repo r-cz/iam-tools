@@ -81,15 +81,6 @@ The Token Introspection feature allows you to inspect and validate access tokens
    - View the received tokens (access token, ID token, refresh token).
    - Inspect tokens using the Token Inspector feature.
 
-### Demo Mode
-
-Demo mode provides a simulated Identity Provider for testing the OAuth flow without needing a real IdP. It includes:
-
-- Simulated authorization server
-- Simple login page
-- Automatic token generation
-- JWKS endpoint for validation
-
 ## Implementation Details
 
 ### Real IdP Mode

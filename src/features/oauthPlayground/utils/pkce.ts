@@ -8,10 +8,10 @@
  * @returns A random string of 43-128 characters
  */
 export const generateCodeVerifier = (): string => {
-  const array = new Uint8Array(64); // 64 bytes will give us a reasonable length
-  window.crypto.getRandomValues(array);
-  return base64UrlEncode(array).slice(0, 128); // Trim to max 128 chars
-};
+  const array = new Uint8Array(64) // 64 bytes will give us a reasonable length
+  window.crypto.getRandomValues(array)
+  return base64UrlEncode(array).slice(0, 128) // Trim to max 128 chars
+}
 
 /**
  * Generates a code challenge based on the code verifier
@@ -19,11 +19,11 @@ export const generateCodeVerifier = (): string => {
  * @returns A Base64URL encoded string of the SHA-256 hash of the verifier
  */
 export const generateCodeChallenge = async (verifier: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(verifier);
-  const digest = await window.crypto.subtle.digest('SHA-256', data);
-  return base64UrlEncode(new Uint8Array(digest));
-};
+  const encoder = new TextEncoder()
+  const data = encoder.encode(verifier)
+  const digest = await window.crypto.subtle.digest('SHA-256', data)
+  return base64UrlEncode(new Uint8Array(digest))
+}
 
 /**
  * Converts a byte array to a Base64URL encoded string
@@ -34,18 +34,18 @@ export const base64UrlEncode = (buffer: Uint8Array): string => {
   return btoa(String.fromCharCode.apply(null, [...buffer]))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
-    .replace(/=+$/, '');
-};
+    .replace(/=+$/, '')
+}
 
 /**
  * Generates a random state parameter for CSRF protection
  * @returns A random string for use as state parameter
  */
 export const generateState = (): string => {
-  const array = new Uint8Array(32);
-  window.crypto.getRandomValues(array);
-  return base64UrlEncode(array);
-};
+  const array = new Uint8Array(32)
+  window.crypto.getRandomValues(array)
+  return base64UrlEncode(array)
+}
 
 /**
  * Validates that a state parameter matches the expected value
@@ -54,5 +54,5 @@ export const generateState = (): string => {
  * @returns True if the states match, false otherwise
  */
 export const validateState = (receivedState: string, expectedState: string): boolean => {
-  return receivedState === expectedState;
-};
+  return receivedState === expectedState
+}

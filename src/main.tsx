@@ -16,7 +16,9 @@ const OAuthPlaygroundPage = lazy(() => import('./features/oauthPlayground/pages'
 const OAuthCallbackPage = lazy(() => import('./features/oauthPlayground/pages/callback'))
 const DemoAuthPage = lazy(() => import('./features/oauthPlayground/pages/demo-auth'))
 const AuthCodeWithPkcePage = lazy(() => import('./features/oauthPlayground/pages/auth-code-pkce'))
-const ClientCredentialsPage = lazy(() => import('./features/oauthPlayground/pages/client-credentials'))
+const ClientCredentialsPage = lazy(
+  () => import('./features/oauthPlayground/pages/client-credentials')
+)
 const IntrospectionPage = lazy(() => import('./features/oauthPlayground/pages/introspection'))
 const UserInfoPage = lazy(() => import('./features/oauthPlayground/pages/userinfo'))
 const SamlResponseDecoderPage = lazy(() => import('./features/saml/pages/response-decoder'))
@@ -35,8 +37,14 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="token-inspector" element={<TokenInspectorPage />} />
                   <Route path="oidc-explorer" element={<OidcExplorerPage />} />
                   <Route path="oauth-playground" element={<OAuthPlaygroundPage />} />
-                  <Route path="oauth-playground/auth-code-pkce" element={<AuthCodeWithPkcePage />} />
-                  <Route path="oauth-playground/client-credentials" element={<ClientCredentialsPage />} />
+                  <Route
+                    path="oauth-playground/auth-code-pkce"
+                    element={<AuthCodeWithPkcePage />}
+                  />
+                  <Route
+                    path="oauth-playground/client-credentials"
+                    element={<ClientCredentialsPage />}
+                  />
                   <Route path="oauth-playground/introspection" element={<IntrospectionPage />} />
                   <Route path="oauth-playground/userinfo" element={<UserInfoPage />} />
                   <Route path="saml/response-decoder" element={<SamlResponseDecoderPage />} />
@@ -49,5 +57,5 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </AppStateProvider>
     </ThemeProvider>
-  </StrictMode>,
+  </StrictMode>
 )

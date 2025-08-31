@@ -1,12 +1,8 @@
-import { Outlet } from 'react-router-dom';
-import { AppSidebar } from '@/components/navigation/app-sidebar';
-import { ThemeMeta } from '@/components/theme';
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
+import { Outlet } from 'react-router-dom'
+import { AppSidebar } from '@/components/navigation/app-sidebar'
+import { ThemeMeta } from '@/components/theme'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,32 +10,34 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import { useLocation, Link } from 'react-router-dom';
+} from '@/components/ui/breadcrumb'
+import { useLocation, Link } from 'react-router-dom'
 
 export function Layout() {
-  const location = useLocation();
+  const location = useLocation()
 
   // Generate page title based on route
   const getPageTitle = () => {
-    const path = location.pathname;
-    if (path === '/') return 'Home';
+    const path = location.pathname
+    if (path === '/') return 'Home'
     // Simple title generation, might need refinement for complex paths
-    return path.substring(1).split('-').map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
+    return path
+      .substring(1)
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
 
   // Generate breadcrumb items based on route
   const getBreadcrumbItems = () => {
-    const path = location.pathname;
+    const path = location.pathname
     if (path === '/') {
       return (
         <BreadcrumbItem>
           {/* Current page, not a link */}
           <BreadcrumbPage>Home</BreadcrumbPage>
         </BreadcrumbItem>
-      );
+      )
     }
 
     return (
@@ -56,8 +54,8 @@ export function Layout() {
           <BreadcrumbPage>{getPageTitle()}</BreadcrumbPage>
         </BreadcrumbItem>
       </>
-    );
-  };
+    )
+  }
 
   return (
     <SidebarProvider>
@@ -69,9 +67,7 @@ export function Layout() {
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
-              <BreadcrumbList>
-                {getBreadcrumbItems()}
-              </BreadcrumbList>
+              <BreadcrumbList>{getBreadcrumbItems()}</BreadcrumbList>
             </Breadcrumb>
             <div className="ml-auto">
               {/* Theme toggle removed as it's now in the settings menu */}
@@ -82,5 +78,5 @@ export function Layout() {
         <Outlet />
       </SidebarInset>
     </SidebarProvider>
-  );
+  )
 }

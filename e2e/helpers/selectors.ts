@@ -60,4 +60,4 @@ export const selectors = {
     error: '[role="status"]:has-text("error")',
     close: 'button[aria-label="Close toast"]',
   },
-};
+}

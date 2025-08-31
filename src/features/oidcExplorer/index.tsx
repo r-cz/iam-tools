@@ -1,109 +1,103 @@
-import { useState, useEffect, useRef } from "react";
-import { useOidcConfig } from "@/hooks/data-fetching/useOidcConfig";
-import { useJwks } from "@/hooks/data-fetching/useJwks";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { useState, useEffect, useRef } from 'react'
+import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig'
+import { useJwks } from '@/hooks/data-fetching/useJwks'
+import { Card, CardContent } from '@/components/ui/card'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
-import { 
-  ConfigInput, 
-  ConfigDisplay, 
-  JwksDisplay, 
-  ProviderInfo
-} from "./components";
-import { detectProvider } from "./utils/config-helpers";
-import { useIssuerHistory } from "../../lib/state";
+import { ConfigInput, ConfigDisplay, JwksDisplay, ProviderInfo } from './components'
+import { detectProvider } from './utils/config-helpers'
+import { useIssuerHistory } from '../../lib/state'
 
 export function OidcExplorer() {
   // Instantiate hooks
-  const oidcConfigHook = useOidcConfig();
-  const jwksHook = useJwks();
-  const { addIssuer } = useIssuerHistory();
+  const oidcConfigHook = useOidcConfig()
+  const jwksHook = useJwks()
+  const { addIssuer } = useIssuerHistory()
 
   // Local state for derived/UI data
-  const [providerName, setProviderName] = useState<string | null>(null);
-  const [detectionReasons, setDetectionReasons] = useState<string[]>([]);
-  const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>('');
-  const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('');
-  const [lastFetchedJwksUri, setLastFetchedJwksUri] = useState<string | null>(null);
-  
+  const [providerName, setProviderName] = useState<string | null>(null)
+  const [detectionReasons, setDetectionReasons] = useState<string[]>([])
+  const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>('')
+  const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('')
+  const [lastFetchedJwksUri, setLastFetchedJwksUri] = useState<string | null>(null)
+
   // Use a ref to track if we've already added this URL to history
-  const processedUrls = useRef<Set<string>>(new Set());
+  const processedUrls = useRef<Set<string>>(new Set())
 
   // Effect for successful OIDC config fetch
   useEffect(() => {
     if (oidcConfigHook.data) {
-      const config = oidcConfigHook.data;
-      console.log('OIDC Config loaded via hook:', config);
-      setCurrentIssuerUrl(config.issuer); // Store the issuer from the fetched config
-      
+      const config = oidcConfigHook.data
+      console.log('OIDC Config loaded via hook:', config)
+      setCurrentIssuerUrl(config.issuer) // Store the issuer from the fetched config
+
       // Only add to history if we haven't processed this URL yet
-      if (inputIssuerUrl && 
-          inputIssuerUrl.trim().length > 0 && 
-          !processedUrls.current.has(inputIssuerUrl)) {
+      if (
+        inputIssuerUrl &&
+        inputIssuerUrl.trim().length > 0 &&
+        !processedUrls.current.has(inputIssuerUrl)
+      ) {
         // Mark as processed to prevent re-adding
-        processedUrls.current.add(inputIssuerUrl);
-        addIssuer(inputIssuerUrl);
+        processedUrls.current.add(inputIssuerUrl)
+        addIssuer(inputIssuerUrl)
       }
 
       // Detect provider and reasons
-      const { name: detectedProvider, reasons } = detectProvider(config.issuer, config);
-      setProviderName(detectedProvider);
-      setDetectionReasons(reasons);
+      const { name: detectedProvider, reasons } = detectProvider(config.issuer, config)
+      setProviderName(detectedProvider)
+      setDetectionReasons(reasons)
 
       // Automatically trigger JWKS fetch if URI exists and hasn't been fetched already
       if (config.jwks_uri && config.jwks_uri !== lastFetchedJwksUri) {
-        console.log(`OIDC config has jwks_uri, fetching JWKS from: ${config.jwks_uri}`);
-        setLastFetchedJwksUri(config.jwks_uri);
-        jwksHook.fetchJwks(config.jwks_uri);
+        console.log(`OIDC config has jwks_uri, fetching JWKS from: ${config.jwks_uri}`)
+        setLastFetchedJwksUri(config.jwks_uri)
+        jwksHook.fetchJwks(config.jwks_uri)
       } else if (!config.jwks_uri) {
-        console.log('OIDC config does not have jwks_uri.');
+        console.log('OIDC config does not have jwks_uri.')
       } else {
-        console.log(`JWKS already fetched for URI: ${config.jwks_uri}`);
+        console.log(`JWKS already fetched for URI: ${config.jwks_uri}`)
       }
     }
-  }, [oidcConfigHook.data, addIssuer]); // Removed inputIssuerUrl dependency
+  }, [oidcConfigHook.data, addIssuer]) // Removed inputIssuerUrl dependency
 
   // Effect for successful JWKS fetch
   useEffect(() => {
     if (jwksHook.data) {
-      console.log('JWKS loaded via hook:', jwksHook.data);
+      console.log('JWKS loaded via hook:', jwksHook.data)
       toast.success('Successfully fetched JWKS', {
         description: `Found ${jwksHook.data.keys.length} keys`,
         duration: 5000,
-      });
+      })
     }
-  }, [jwksHook.data]);
+  }, [jwksHook.data])
 
   // Effect for handling errors from either hook
   useEffect(() => {
-    const error = oidcConfigHook.error || jwksHook.error;
+    const error = oidcConfigHook.error || jwksHook.error
     if (error) {
-      console.error('Error fetching OIDC config or JWKS:', error);
+      console.error('Error fetching OIDC config or JWKS:', error)
       toast.error('Failed to fetch data', {
         description: error.message,
         duration: 8000,
-      });
+      })
       // Reset provider name on error
-      setProviderName(null);
+      setProviderName(null)
     }
-  }, [oidcConfigHook.error, jwksHook.error]);
+  }, [oidcConfigHook.error, jwksHook.error])
 
   // Handle fetch request from ConfigInput or IssuerHistory
   const handleFetchConfig = (issuerUrl: string) => {
-    setInputIssuerUrl(issuerUrl); // Store the URL that was input
-    oidcConfigHook.fetchConfig(issuerUrl);
-  };
+    setInputIssuerUrl(issuerUrl) // Store the URL that was input
+    oidcConfigHook.fetchConfig(issuerUrl)
+  }
 
   // Combine loading states
-  const isLoading = oidcConfigHook.isLoading || jwksHook.isLoading;
+  const isLoading = oidcConfigHook.isLoading || jwksHook.isLoading
   // Combine error states
-  const error = oidcConfigHook.error || jwksHook.error;
+  const error = oidcConfigHook.error || jwksHook.error
 
   return (
     <div className="space-y-6">
@@ -111,10 +105,7 @@ export function OidcExplorer() {
       <Card>
         <CardContent className="p-5">
           {/* Config Input Component */}
-          <ConfigInput
-            onFetchRequested={handleFetchConfig}
-            isLoading={isLoading}
-          />
+          <ConfigInput onFetchRequested={handleFetchConfig} isLoading={isLoading} />
         </CardContent>
       </Card>
 
@@ -167,10 +158,7 @@ export function OidcExplorer() {
           {oidcConfigHook.data.jwks_uri && (
             <TabsContent value="jwks" className="mt-4">
               {jwksHook.data ? (
-                <JwksDisplay
-                  jwks={jwksHook.data as any}
-                  jwksUri={oidcConfigHook.data.jwks_uri!}
-                />
+                <JwksDisplay jwks={jwksHook.data as any} jwksUri={oidcConfigHook.data.jwks_uri!} />
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   {jwksHook.isLoading ? 'Loading JWKS...' : 'JWKS data not yet available.'}
@@ -178,9 +166,8 @@ export function OidcExplorer() {
               )}
             </TabsContent>
           )}
-
         </Tabs>
       )}
     </div>
-  );
+  )
 }
