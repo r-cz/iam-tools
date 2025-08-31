@@ -1,5 +1,5 @@
 /**
- * Type definitions for Cloudflare Pages Functions
+ * Type definitions for Cloudflare Pages Functions (legacy) and general Worker context helpers
  */
 
 declare interface PagesFunction<Env = unknown, Params extends string = any, Data extends Record<string, unknown> = {}> {

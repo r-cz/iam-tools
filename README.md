@@ -10,7 +10,7 @@ A collection of specialized tools for Identity and Access Management (IAM) devel
 - **Package Manager**: Bun
 - **Routing**: React Router
 - **Testing**: Bun Test + React Testing Library + Playwright
-- **Deployment**: Cloudflare Pages + Cloudflare Functions
+- **Deployment**: Cloudflare Workers (with static assets)
 
 ## Development
 
@@ -21,10 +21,10 @@ bun install
 # Start development server (Vite only)
 bun run dev
 
-# Start CORS proxy server
+# Start API worker (CORS proxy, JWKS, etc.)
 bun run proxy
 
-# Start both development server and CORS proxy (blocks terminal)
+# Start both development server and API worker (blocks terminal)
 bun run dev:all
 
 # Start servers detached (runs in background with logs in .logs directory)
@@ -133,7 +133,7 @@ The proxy works by:
 
 ### Local Development
 
-For local development, the CORS proxy runs on port 8788. You can start both the Vite development server and the CORS proxy in several ways:
+For local development, the API worker (including the CORS proxy) runs on port 8788. You can start both the Vite development server and the worker in several ways:
 
 ```bash
 # Start both servers (blocks terminal):
@@ -148,7 +148,7 @@ bun run dev:detach:proxy # Only proxy
 bun run dev:stop
 ```
 
-To start only the CORS proxy:
+To start only the API worker:
 
 ```bash
 bun run proxy
@@ -201,10 +201,7 @@ We use a feature-based organization pattern that groups code by functionality:
 - `src/lib` - Utility functions and shared libraries
 - `src/hooks` - Custom React hooks (useIsMobile, useLocalStorage, useDebounce, useClipboard)
 - `src/tests` - Test files following the same structure as the application
-- `functions/` - Cloudflare Functions (backend API)
-  - `functions/_middleware.ts` - Global middleware for all functions
-  - `functions/_routes.json` - Custom routing rules
-  - `functions/api/cors-proxy/` - CORS proxy implementation
+- `src/worker.ts` - Cloudflare Worker (backend API and static asset serving)
 
 See [docs/file-structure.md](docs/file-structure.md) for more details on the codebase organization.
 
@@ -245,11 +242,10 @@ See [OAuth Playground Documentation](docs/feature-guides/oauth-playground.md) fo
 
 ## Deployment
 
-The application is deployed via Cloudflare Pages whenever changes are pushed to the main branch. The deployment process includes:
+The application deploys as a Cloudflare Worker (serving both API routes and static assets). A typical deployment includes:
 
 1. Building the application with `bun run build`
-2. Deploying static assets to Cloudflare's edge network
-3. Deploying Cloudflare Functions alongside the static assets
+2. Deploying static assets (dist/) and the Worker via Wrangler
 
 For more information about the deployment process, see [Deployment Documentation](docs/deployment.md).
 

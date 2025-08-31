@@ -17,9 +17,9 @@ export async function signToken(
   let privateKey: CryptoKey;
   try {
     // 1. Import the private key
-    console.log("[signToken] Importing private key...");
+    if (import.meta?.env?.DEV) console.log("[signToken] Importing private key...");
     privateKey = await importPrivateKey(DEMO_PRIVATE_KEY);
-    console.log("[signToken] Private key imported successfully.");
+    if (import.meta?.env?.DEV) console.log("[signToken] Private key imported successfully.");
 
   } catch (importError: any) {
     console.error('[signToken] Error importing private key:', importError);
@@ -28,7 +28,7 @@ export async function signToken(
 
   try {
     // 2. Prepare the JWT with headers using jose
-    console.log("[signToken] Preparing JWT for signing with jose...");
+    if (import.meta?.env?.DEV) console.log("[signToken] Preparing JWT for signing with jose...");
     let jwt = new SignJWT(payload)
       .setProtectedHeader({
         alg: 'RS256', // Algorithm defined in your key
@@ -42,9 +42,9 @@ export async function signToken(
     if (!payload.exp) jwt = jwt.setExpirationTime('1h'); // Default 1 hour expiry
 
     // 3. Sign the JWT using jose and the imported key
-    console.log('[signToken] Attempting to sign JWT with jose...');
+    if (import.meta?.env?.DEV) console.log('[signToken] Attempting to sign JWT with jose...');
     const signedToken = await jwt.sign(privateKey);
-    console.log('[signToken] JWT signed successfully with jose.');
+    if (import.meta?.env?.DEV) console.log('[signToken] JWT signed successfully with jose.');
     return signedToken;
 
   } catch (joseSignError: any) {

@@ -13,16 +13,16 @@ bun install
 # Start development server (Vite only)
 bun run dev
 
-# Start CORS proxy server
+# Start API worker (CORS proxy, JWKS, etc.)
 bun run proxy
 
-# Start both Vite and CORS proxy concurrently (blocks terminal)
+# Start both Vite and API worker concurrently (blocks terminal)
 bun run dev:all
 
 # Start servers detached (background with logs in .logs directory)
-bun run dev:detach          # Both Vite and CORS proxy
+bun run dev:detach          # Both Vite and API worker
 bun run dev:detach:vite     # Only Vite dev server
-bun run dev:detach:proxy    # Only CORS proxy
+bun run dev:detach:proxy    # Only API worker
 
 # Stop all running development servers
 bun run dev:stop
@@ -73,7 +73,7 @@ IAM Tools is built with a feature-based architecture pattern that organizes code
 - **Package Manager**: Bun
 - **Routing**: React Router
 - **Testing**: Bun Test + React Testing Library
-- **Deployment**: Cloudflare Pages + Cloudflare Functions
+- **Deployment**: Cloudflare Workers (with static assets)
 
 ### Key Architecture Principles
 
@@ -108,7 +108,7 @@ IAM Tools is built with a feature-based architecture pattern that organizes code
 
 The application includes a CORS proxy to access external APIs that don't have CORS headers:
 
-- Implemented in `functions/api/cors-proxy/[[path]].ts`
+- Implemented in the Cloudflare Worker (`src/worker.ts`)
 - Accessed via `/api/cors-proxy/{url}`
 - Primarily used for fetching OIDC configurations and JWKS URIs
 - Security-restricted to only allow specific endpoint types
@@ -134,9 +134,7 @@ The application includes a CORS proxy to access external APIs that don't have CO
 │   ├── lib/                # Utility functions and shared libraries
 │   ├── types/              # TypeScript type definitions
 │   └── main.tsx            # Application entry point
-├── functions/              # Cloudflare Functions (backend API)
-│   └── api/
-│       └── cors-proxy/     # CORS proxy implementation
+├── src/worker.ts           # Cloudflare Worker (API + static assets)
 └── docs/                   # Documentation
 ```
 
