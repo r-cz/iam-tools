@@ -53,6 +53,7 @@ This repo deploys preview Workers per pull request via GitHub Actions:
 - Workflow: `.github/workflows/wrangler-preview.yml`
 - Worker name pattern: `iam-tools-pr-<PR_NUMBER>`
 - Deployed on PR open/update; deleted on PR close (best-effort)
+
  - Previews are skipped for forked pull requests (no repository secrets available on forks)
 
 ### Using the Cloudflare Workers GitHub App (Pretty PRs)
@@ -71,6 +72,7 @@ For richer PR checks and automatic preview links, enable the official Cloudflare
    - Settings → Secrets and variables → Actions → Variables → Add `CF_GITHUB_APP_ENABLED=true`
    - This gates `.github/workflows/wrangler-deploy.yml` and `.github/workflows/wrangler-preview.yml` to avoid duplicate deploys.
 5. (Optional) Disable or delete any existing Cloudflare Pages project to prevent double deploys.
+
 
 ### API URLs
 
