@@ -8,7 +8,8 @@ on:
 
 jobs:
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Skip if using the Cloudflare Workers GitHub App integration
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && vars.CF_GITHUB_APP_ENABLED != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
