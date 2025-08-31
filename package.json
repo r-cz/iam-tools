@@ -82,6 +82,7 @@
     "@vitejs/plugin-react": "^5.0.1",
     "@cloudflare/vite-plugin": "^0.6.0",
     "bun-types": "^1.2.20",
+    "prettier": "^3.3.3",
     "concurrently": "^9.2.0",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
