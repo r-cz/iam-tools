@@ -1,12 +1,12 @@
 export interface DecodedJWT {
-  header: Record<string, unknown>;
-  payload: Record<string, unknown>;
-  signature: string;
+  header: Record<string, unknown>
+  payload: Record<string, unknown>
+  signature: string
   raw: {
-    header: string;
-    payload: string;
-    signature: string;
-  };
+    header: string
+    payload: string
+    signature: string
+  }
 }
 
 /**
@@ -14,12 +14,12 @@ export interface DecodedJWT {
  */
 export function base64UrlDecode(str: string): string {
   // Replace URL-safe characters with base64 standard characters
-  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-  
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/')
+
   // Add padding if necessary
-  const padding = '='.repeat((4 - base64.length % 4) % 4);
-  
-  return atob(base64 + padding);
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4)
+
+  return atob(base64 + padding)
 }
 
 /**
@@ -31,24 +31,24 @@ export function decodeJWT(token: string): DecodedJWT | null {
   try {
     // Check if token is valid format
     if (!token || typeof token !== 'string') {
-      return null;
+      return null
     }
 
     // Split the token into its three parts
-    const parts = token.split('.');
+    const parts = token.split('.')
     if (parts.length !== 3) {
-      return null;
+      return null
     }
 
-    const [encodedHeader, encodedPayload, signature] = parts;
+    const [encodedHeader, encodedPayload, signature] = parts
 
     // Decode header
-    const decodedHeader = base64UrlDecode(encodedHeader);
-    const header = JSON.parse(decodedHeader);
+    const decodedHeader = base64UrlDecode(encodedHeader)
+    const header = JSON.parse(decodedHeader)
 
     // Decode payload
-    const decodedPayload = base64UrlDecode(encodedPayload);
-    const payload = JSON.parse(decodedPayload);
+    const decodedPayload = base64UrlDecode(encodedPayload)
+    const payload = JSON.parse(decodedPayload)
 
     return {
       header,
@@ -57,12 +57,12 @@ export function decodeJWT(token: string): DecodedJWT | null {
       raw: {
         header: encodedHeader,
         payload: encodedPayload,
-        signature
-      }
-    };
+        signature,
+      },
+    }
   } catch {
     // Return null for any decoding errors
-    return null;
+    return null
   }
 }
 
@@ -72,8 +72,8 @@ export function decodeJWT(token: string): DecodedJWT | null {
  * @returns The decoded payload or null if invalid
  */
 export function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const decoded = decodeJWT(token);
-  return decoded?.payload || null;
+  const decoded = decodeJWT(token)
+  return decoded?.payload || null
 }
 
 /**
@@ -82,8 +82,8 @@ export function decodeJwtPayload(token: string): Record<string, unknown> | null 
  * @returns The decoded header or null if invalid
  */
 export function decodeJwtHeader(token: string): Record<string, unknown> | null {
-  const decoded = decodeJWT(token);
-  return decoded?.header || null;
+  const decoded = decodeJWT(token)
+  return decoded?.header || null
 }
 
 /**
@@ -92,13 +92,13 @@ export function decodeJwtHeader(token: string): Record<string, unknown> | null {
  * @returns true if the token is expired, false otherwise
  */
 export function isJwtExpired(token: string): boolean {
-  const payload = decodeJwtPayload(token);
+  const payload = decodeJwtPayload(token)
   if (!payload || typeof payload.exp !== 'number') {
-    return false; // If no exp claim, assume not expired
+    return false // If no exp claim, assume not expired
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  return payload.exp < now;
+  const now = Math.floor(Date.now() / 1000)
+  return payload.exp < now
 }
 
 /**
@@ -107,10 +107,10 @@ export function isJwtExpired(token: string): boolean {
  * @returns The expiration date or null if no exp claim
  */
 export function getJwtExpiration(token: string): Date | null {
-  const payload = decodeJwtPayload(token);
+  const payload = decodeJwtPayload(token)
   if (!payload || typeof payload.exp !== 'number') {
-    return null;
+    return null
   }
 
-  return new Date(payload.exp * 1000);
+  return new Date(payload.exp * 1000)
 }

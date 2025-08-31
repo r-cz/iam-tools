@@ -3,5 +3,5 @@
  * Example tokens are now generated dynamically in generate-token.ts
  */
 export const exampleTokens = {
-  standard: "", // Empty since we now generate tokens dynamically
-};
+  standard: '', // Empty since we now generate tokens dynamically
+}

@@ -54,6 +54,7 @@ To add a new feature:
 ## Navigation Structure
 
 The navigation system is organized in:
+
 - `src/components/navigation/app-sidebar.tsx`: Main sidebar component
 - `src/components/navigation/nav-main.tsx`: Primary navigation items
 - `src/components/navigation/nav-help.tsx`: Help and support navigation

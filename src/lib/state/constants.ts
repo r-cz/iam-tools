@@ -8,10 +8,10 @@ export const STORAGE_KEYS = {
   TOKEN_HISTORY: 'iam-tools-token-history',
   ISSUER_HISTORY: 'iam-tools-issuer-history',
   USER_SETTINGS: 'iam-tools-user-settings',
-};
+}
 
 // Max history items
-export const DEFAULT_MAX_HISTORY_ITEMS = 10;
+export const DEFAULT_MAX_HISTORY_ITEMS = 10
 
 // Version for schema migrations
-export const STATE_VERSION = '1.0';
+export const STATE_VERSION = '1.0'

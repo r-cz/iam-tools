@@ -1,37 +1,37 @@
-import React, { useState } from 'react'; // Removed useEffect
+import React, { useState } from 'react' // Removed useEffect
 // Removed hook import: import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig';
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { ShuffleIcon } from "lucide-react";
-import { IssuerHistory } from "@/components/common";
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
+import { ShuffleIcon } from 'lucide-react'
+import { IssuerHistory } from '@/components/common'
 // No OIDC types needed here anymore
 // import { OidcConfiguration } from '../utils/types';
 
 interface ConfigInputProps {
-  onFetchRequested: (issuerUrl: string) => void; // Renamed prop
-  isLoading: boolean; // Added back isLoading prop
+  onFetchRequested: (issuerUrl: string) => void // Renamed prop
+  isLoading: boolean // Added back isLoading prop
 }
 
 export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
-  const [issuerUrl, setIssuerUrl] = useState('');
+  const [issuerUrl, setIssuerUrl] = useState('')
   // Removed hook instantiation
 
   // Removed useEffect hooks
 
   const handleFetchConfig = () => {
-    if (!issuerUrl) return;
-    console.log(`Requesting fetch for: ${issuerUrl}`);
-    onFetchRequested(issuerUrl); // Call the prop function
-  };
+    if (!issuerUrl) return
+    console.log(`Requesting fetch for: ${issuerUrl}`)
+    onFetchRequested(issuerUrl) // Call the prop function
+  }
 
   // Define handleKeyDown correctly
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleFetchConfig();
+      handleFetchConfig()
     }
-  };
+  }
 
   // Removed exampleIssuers array
 
@@ -42,7 +42,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     { name: 'Southwest', url: 'https://secure.southwest.com' },
     { name: 'FedEx', url: 'https://auth.fedex.com' },
     { name: 'Delta Airlines', url: 'https://signin.delta.com' },
-    
+
     // Popular identity providers
     { name: 'Google', url: 'https://accounts.google.com' },
     { name: 'Microsoft', url: 'https://login.microsoftonline.com/common' },
@@ -52,24 +52,28 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     { name: 'Spotify', url: 'https://accounts.spotify.com' },
     { name: 'Discord', url: 'https://discord.com' },
     { name: 'Apple', url: 'https://appleid.apple.com' },
-  ];
+  ]
 
   // Removed handleExampleClick function
 
   const handleRandomExample = () => {
-    const randomIndex = Math.floor(Math.random() * realWorldIssuers.length);
-    const selectedIssuer = realWorldIssuers[randomIndex];
-    setIssuerUrl(selectedIssuer.url);
+    const randomIndex = Math.floor(Math.random() * realWorldIssuers.length)
+    const selectedIssuer = realWorldIssuers[randomIndex]
+    setIssuerUrl(selectedIssuer.url)
     toast.info(
       <div>
-        <p><strong>Random Issuer Selected</strong></p>
-        <p>{selectedIssuer.name}: {selectedIssuer.url}</p>
+        <p>
+          <strong>Random Issuer Selected</strong>
+        </p>
+        <p>
+          {selectedIssuer.name}: {selectedIssuer.url}
+        </p>
       </div>,
       {
         duration: 3000,
       }
-    );
-  };
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -80,8 +84,8 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
           </label>
           <Popover>
             <PopoverTrigger>
-              <span 
-                className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help" 
+              <span
+                className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help"
                 aria-label="Issuer URL info"
               >
                 ?
@@ -91,17 +95,20 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
               <div className="max-w-xs">
                 <p className="font-medium">What is an OpenID Provider URL?</p>
                 <p className="mt-1">
-                  This is the base URL of the identity provider that implements OpenID Connect. The app will append 
-                  <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch configuration info.
+                  This is the base URL of the identity provider that implements OpenID Connect. The
+                  app will append
+                  <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch
+                  configuration info.
                 </p>
                 <p className="mt-2 text-xs">
-                  Click the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button next to the input field to load a real-world example.
+                  Click the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button next
+                  to the input field to load a real-world example.
                 </p>
               </div>
             </PopoverContent>
           </Popover>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Input
@@ -114,10 +121,10 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
               className="pr-20"
             />
             <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
-              <IssuerHistory 
+              <IssuerHistory
                 onSelectIssuer={(url) => {
-                  setIssuerUrl(url);
-                  onFetchRequested(url);
+                  setIssuerUrl(url)
+                  onFetchRequested(url)
                 }}
                 compact={true}
               />
@@ -143,5 +150,5 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

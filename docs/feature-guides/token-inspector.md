@@ -26,7 +26,7 @@ The Token Inspector is a tool for inspecting and validating JWT (JSON Web Tokens
 
 For a token like:
 
-```
+```text
 eyJhbGciOiJSUzI1NiIsImtpZCI6ImV4YW1wbGUta2V5LWlkIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.signature
 ```
 

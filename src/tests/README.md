@@ -58,22 +58,22 @@ API calls are mocked using the `test-api-mocks.ts` utility, which provides:
 Example usage:
 
 ```typescript
-import { setupApiMocks, sampleOidcConfigResponse } from '../utils/test-api-mocks';
+import { setupApiMocks, sampleOidcConfigResponse } from '../utils/test-api-mocks'
 
 describe('My Test Suite', () => {
-  const apiMocks = setupApiMocks();
-  
+  const apiMocks = setupApiMocks()
+
   beforeEach(() => {
-    apiMocks.reset(); // Reset mocks between tests
-  });
-  
+    apiMocks.reset() // Reset mocks between tests
+  })
+
   test('should handle API response', () => {
     // Set up mock response for specific URL
-    apiMocks.mockSuccess('https://example.com/api', { result: 'success' });
-    
+    apiMocks.mockSuccess('https://example.com/api', { result: 'success' })
+
     // Test logic that uses fetch...
-  });
-});
+  })
+})
 ```
 
 ## Future Improvements
@@ -96,13 +96,13 @@ When adding new tests:
 Example:
 
 ```typescript
-import { describe, expect, test } from 'bun:test';
-import { someFunction } from '../path-to-function';
+import { describe, expect, test } from 'bun:test'
+import { someFunction } from '../path-to-function'
 
 describe('someFunction', () => {
   test('should return expected result', () => {
-    const result = someFunction();
-    expect(result).toBe(expectedValue);
-  });
-});
+    const result = someFunction()
+    expect(result).toBe(expectedValue)
+  })
+})
 ```

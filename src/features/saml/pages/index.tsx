@@ -1,1 +1,1 @@
-export { SamlResponseDecoder } from './response-decoder';
+export { SamlResponseDecoder } from './response-decoder'

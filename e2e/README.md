@@ -88,8 +88,7 @@ For dynamic text-based selection:
 page.locator('button:has-text("Button Text")')
 
 // Or using JavaScript
-Array.from(document.querySelectorAll('button'))
-  .find(el => el.textContent.includes('Button Text'))
+Array.from(document.querySelectorAll('button')).find((el) => el.textContent.includes('Button Text'))
 ```
 
 ## Writing Tests
@@ -97,16 +96,16 @@ Array.from(document.querySelectorAll('button'))
 1. Use the `TestUtils` class for common operations:
 
 ```typescript
-const utils = new TestUtils(page);
-await utils.navigateTo('/token-inspector');
-await utils.clickAndWait('#submit', '.results');
+const utils = new TestUtils(page)
+await utils.navigateTo('/token-inspector')
+await utils.clickAndWait('#submit', '.results')
 ```
 
 1. Use the centralized selectors:
 
 ```typescript
-import { selectors } from '../helpers/selectors';
-await page.click(selectors.buttons.primary);
+import { selectors } from '../helpers/selectors'
+await page.click(selectors.buttons.primary)
 ```
 
 1. Follow the test pattern:
@@ -138,48 +137,48 @@ Based on recent fixes, here are patterns that work well:
 
 ```typescript
 // Use placeholder text for inputs
-await page.fill('input[placeholder*="client"]', 'test-client');
+await page.fill('input[placeholder*="client"]', 'test-client')
 
 // Use button text for actions
-const button = await utils.getButtonByText('Continue to Authorization');
-await button.click();
+const button = await utils.getButtonByText('Continue to Authorization')
+await button.click()
 
 // Handle multiple matches with .first()
-await expect(page.locator('text=iss').first()).toBeVisible();
+await expect(page.locator('text=iss').first()).toBeVisible()
 ```
 
 ### Waiting for UI Updates
 
 ```typescript
 // Wait for specific elements instead of toasts
-await page.waitForSelector('text=Result', { timeout: 5000 });
+await page.waitForSelector('text=Result', { timeout: 5000 })
 
 // Small delay for UI state changes
-await page.waitForTimeout(500);
+await page.waitForTimeout(500)
 
 // Wait for network idle after navigation
-await page.waitForLoadState('networkidle');
+await page.waitForLoadState('networkidle')
 ```
 
 ### Demo Mode Testing
 
 ```typescript
 // Enable demo mode
-await page.click('#demo-mode-switch');
-await page.waitForTimeout(500);
+await page.click('#demo-mode-switch')
+await page.waitForTimeout(500)
 
 // Client ID is required even in demo mode
-await page.fill('input[placeholder*="client"]', 'test-client');
+await page.fill('input[placeholder*="client"]', 'test-client')
 ```
 
 ### Tab Navigation
 
 ```typescript
 // Click on tab and verify content changes
-await page.click('button[role="tab"]:has-text("Claims")');
-await page.waitForTimeout(300);
+await page.click('button[role="tab"]:has-text("Claims")')
+await page.waitForTimeout(300)
 
 // Verify tab is selected
-const claimsTab = page.locator('[role="tab"]:has-text("Claims")');
-await expect(claimsTab).toHaveAttribute('aria-selected', 'true');
+const claimsTab = page.locator('[role="tab"]:has-text("Claims")')
+await expect(claimsTab).toHaveAttribute('aria-selected', 'true')
 ```

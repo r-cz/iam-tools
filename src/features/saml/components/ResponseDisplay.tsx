@@ -1,58 +1,63 @@
-import { DecodedSamlResponse } from "../utils/saml-decoder";
-import { Badge } from "@/components/ui/badge";
-import { CopyButton, JsonDisplay } from "@/components/common";
+import { DecodedSamlResponse } from '../utils/saml-decoder'
+import { Badge } from '@/components/ui/badge'
+import { CopyButton, JsonDisplay } from '@/components/common'
 
 interface ResponseDisplayProps {
-  response: DecodedSamlResponse;
+  response: DecodedSamlResponse
 }
 
 export function ResponseDisplay({ response }: ResponseDisplayProps) {
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleString();
+      return new Date(dateString).toLocaleString()
     } catch {
-      return dateString;
+      return dateString
     }
-  };
+  }
 
   const formatXml = (xml: string): string => {
     try {
       // Parse the XML with proper MIME type
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xml, 'application/xml');
-      
+      const parser = new DOMParser()
+      const xmlDoc = parser.parseFromString(xml, 'application/xml')
+
       // Check for parsing errors
-      const parserError = xmlDoc.querySelector('parsererror');
+      const parserError = xmlDoc.querySelector('parsererror')
       if (parserError || xmlDoc.documentElement.nodeName === 'parsererror') {
-        return xml; // Return original if parsing fails
+        return xml // Return original if parsing fails
       }
-      
+
       // Format the XML with proper indentation
-      const serializer = new XMLSerializer();
-      const formatted = serializer.serializeToString(xmlDoc);
-      
+      const serializer = new XMLSerializer()
+      const formatted = serializer.serializeToString(xmlDoc)
+
       // Add indentation
-      let indent = 0;
+      let indent = 0
       const lines = formatted
         .replace(/></g, '>\n<')
         .split('\n')
-        .map(line => {
-          const trimmed = line.trim();
+        .map((line) => {
+          const trimmed = line.trim()
           if (trimmed.startsWith('</')) {
-            indent = Math.max(0, indent - 2);
+            indent = Math.max(0, indent - 2)
           }
-          const indented = ' '.repeat(indent) + trimmed;
-          if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.endsWith('/>') && !trimmed.includes('</')) {
-            indent += 2;
+          const indented = ' '.repeat(indent) + trimmed
+          if (
+            trimmed.startsWith('<') &&
+            !trimmed.startsWith('</') &&
+            !trimmed.endsWith('/>') &&
+            !trimmed.includes('</')
+          ) {
+            indent += 2
           }
-          return indented;
-        });
-      
-      return lines.join('\n');
+          return indented
+        })
+
+      return lines.join('\n')
     } catch {
-      return xml; // Return original if formatting fails
+      return xml // Return original if formatting fails
     }
-  };
+  }
 
   return (
     <div className="space-y-4">
@@ -96,9 +101,13 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
         <div className="grid grid-cols-[120px_1fr] gap-2 items-start">
           <span className="text-sm font-medium text-muted-foreground">Status:</span>
           <div className="flex items-center gap-2">
-            <Badge 
-              variant="outline" 
-              className={response.status === "Success" ? "bg-green-500/20 text-green-700" : "bg-red-500/20 text-red-700"}
+            <Badge
+              variant="outline"
+              className={
+                response.status === 'Success'
+                  ? 'bg-green-500/20 text-green-700'
+                  : 'bg-red-500/20 text-red-700'
+              }
             >
               {response.status}
             </Badge>
@@ -116,12 +125,8 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
 
       {/* Raw XML */}
       <div className="mt-6">
-        <JsonDisplay 
-          data={formatXml(response.xml)}
-          language="xml"
-          containerClassName="relative"
-        />
+        <JsonDisplay data={formatXml(response.xml)} language="xml" containerClassName="relative" />
       </div>
     </div>
-  );
+  )
 }

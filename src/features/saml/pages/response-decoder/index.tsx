@@ -1,10 +1,10 @@
-import { PageContainer, PageHeader } from "@/components/page";
-import { SamlResponseDecoder } from "../../components/SamlResponseDecoder";
-import { Shield } from "lucide-react";
+import { PageContainer, PageHeader } from '@/components/page'
+import { SamlResponseDecoder } from '../../components/SamlResponseDecoder'
+import { Shield } from 'lucide-react'
 
 export default function SamlResponseDecoderPage() {
   return (
-    <PageContainer maxWidth='full'>
+    <PageContainer maxWidth="full">
       <PageHeader
         title="SAML Response Decoder"
         description="Decode and analyze SAML responses and assertions. Extract attributes, validate structure, and inspect authentication statements."
@@ -12,7 +12,7 @@ export default function SamlResponseDecoderPage() {
       />
       <SamlResponseDecoder />
     </PageContainer>
-  );
+  )
 }
 
-export { SamlResponseDecoder };
+export { SamlResponseDecoder }

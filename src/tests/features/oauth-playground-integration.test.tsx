@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'bun:test';
-import { setupApiMocks } from '../utils/test-api-mocks';
-import { OAuthFlowType } from '@/features/oauthPlayground/utils/types';
+import { describe, expect, test } from 'bun:test'
+import { setupApiMocks } from '../utils/test-api-mocks'
+import { OAuthFlowType } from '@/features/oauthPlayground/utils/types'
 
 /**
  * Basic tests for the OAuth Playground functionality.
@@ -9,8 +9,8 @@ import { OAuthFlowType } from '@/features/oauthPlayground/utils/types';
  */
 describe('OAuth Playground Core Functionality', () => {
   // Setup API mocks
-  const apiMocks = setupApiMocks();
-  
+  const apiMocks = setupApiMocks()
+
   test('should have valid OAuth configuration types', () => {
     // Test basic structure of OAuth config types from the playground
     const validFlowTypes = [
@@ -18,47 +18,47 @@ describe('OAuth Playground Core Functionality', () => {
       OAuthFlowType.CLIENT_CREDENTIALS,
       OAuthFlowType.AUTH_CODE,
       OAuthFlowType.IMPLICIT,
-      OAuthFlowType.PASSWORD
-    ];
-    
+      OAuthFlowType.PASSWORD,
+    ]
+
     // Each flow type should be a string
-    validFlowTypes.forEach(flowType => {
-      expect(typeof flowType).toBe('string');
-      expect(flowType.length).toBeGreaterThan(0);
-    });
-  });
-  
+    validFlowTypes.forEach((flowType) => {
+      expect(typeof flowType).toBe('string')
+      expect(flowType.length).toBeGreaterThan(0)
+    })
+  })
+
   test('should have the expected OAuth flow types defined', () => {
     // Check that the enum has the expected values
-    expect(OAuthFlowType.AUTH_CODE_PKCE).toBe('authorization_code_pkce');
-    expect(OAuthFlowType.CLIENT_CREDENTIALS).toBe('client_credentials');
-    
+    expect(OAuthFlowType.AUTH_CODE_PKCE).toBe('authorization_code_pkce')
+    expect(OAuthFlowType.CLIENT_CREDENTIALS).toBe('client_credentials')
+
     // These values should exist even if not fully implemented yet
-    expect(OAuthFlowType.AUTH_CODE).toBe('authorization_code');
-    expect(OAuthFlowType.IMPLICIT).toBe('implicit');
-    expect(OAuthFlowType.PASSWORD).toBe('password');
-  });
-  
+    expect(OAuthFlowType.AUTH_CODE).toBe('authorization_code')
+    expect(OAuthFlowType.IMPLICIT).toBe('implicit')
+    expect(OAuthFlowType.PASSWORD).toBe('password')
+  })
+
   test('should have token introspection endpoint type', () => {
     // Token introspection is a key part of OAuth 2.0
     // Should be available as part of the OAuth playground
-    
+
     // Mock introspection endpoint would be structured like:
-    const introspectionEndpoint = '/oauth/introspect';
-    expect(introspectionEndpoint).toContain('introspect');
-    
+    const introspectionEndpoint = '/oauth/introspect'
+    expect(introspectionEndpoint).toContain('introspect')
+
     // Mock introspection request would have these params
     const introspectionParams = {
       token: 'sample_access_token',
       client_id: 'sample_client',
-      client_secret: 'sample_secret'
-    };
-    
-    expect(introspectionParams).toHaveProperty('token');
-    expect(introspectionParams).toHaveProperty('client_id');
-  });
-  
+      client_secret: 'sample_secret',
+    }
+
+    expect(introspectionParams).toHaveProperty('token')
+    expect(introspectionParams).toHaveProperty('client_id')
+  })
+
   // Note: We've removed tests for PKCE generation since they require browser crypto APIs
-  // These would be better tested in a browser environment or with a proper DOM 
+  // These would be better tested in a browser environment or with a proper DOM
   // environment setup with window.crypto mocked.
-});
+})

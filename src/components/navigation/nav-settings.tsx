@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import {
   ChevronsUpDown,
@@ -10,8 +10,8 @@ import {
   Moon,
   Monitor,
   Trash,
-  Save
-} from "lucide-react"
+  Save,
+} from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -26,50 +26,50 @@ import {
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { useTheme } from "@/components/theme";
-import { useSettings, useTokenHistory, useIssuerHistory } from "@/lib/state";
-import { oidcConfigCache } from "@/lib/cache/oidc-config-cache";
-import { jwksCache } from "@/lib/cache/jwks-cache";
-import { toast } from "sonner";
+} from '@/components/ui/sidebar'
+import { useTheme } from '@/components/theme'
+import { useSettings, useTokenHistory, useIssuerHistory } from '@/lib/state'
+import { oidcConfigCache } from '@/lib/cache/oidc-config-cache'
+import { jwksCache } from '@/lib/cache/jwks-cache'
+import { toast } from 'sonner'
 
 export function NavSettings() {
-  const { isMobile } = useSidebar();
-  const { theme, setTheme } = useTheme();
-  const { settings, updateSettings, resetSettings } = useSettings();
-  const { clearTokens } = useTokenHistory();
-  const { clearIssuers } = useIssuerHistory();
+  const { isMobile } = useSidebar()
+  const { theme, setTheme } = useTheme()
+  const { settings, updateSettings, resetSettings } = useSettings()
+  const { clearTokens } = useTokenHistory()
+  const { clearIssuers } = useIssuerHistory()
 
   const handleClearAllHistory = () => {
-    clearTokens();
-    clearIssuers();
-    oidcConfigCache.clear();
-    jwksCache.clear();
-    toast.success("All data cleared", {
-      description: "Token history, issuer history, and cache have been cleared."
-    });
-  };
+    clearTokens()
+    clearIssuers()
+    oidcConfigCache.clear()
+    jwksCache.clear()
+    toast.success('All data cleared', {
+      description: 'Token history, issuer history, and cache have been cleared.',
+    })
+  }
 
   const handleMaxHistoryChange = (value: string) => {
-    const maxItems = parseInt(value, 10);
-    updateSettings({ maxHistoryItems: maxItems });
-    toast.success("Settings updated", {
-      description: `Maximum history items set to ${maxItems}.`
-    });
-  };
+    const maxItems = parseInt(value, 10)
+    updateSettings({ maxHistoryItems: maxItems })
+    toast.success('Settings updated', {
+      description: `Maximum history items set to ${maxItems}.`,
+    })
+  }
 
   const handleResetSettings = () => {
-    resetSettings();
-    toast.success("Settings reset", {
-      description: "All settings have been reset to default values."
-    });
-  };
+    resetSettings()
+    toast.success('Settings reset', {
+      description: 'All settings have been reset to default values.',
+    })
+  }
 
   return (
     <SidebarMenu>
@@ -92,19 +92,19 @@ export function NavSettings() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
             <DropdownMenuLabel>Settings</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            
+
             {/* Theme Settings */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="flex items-center gap-2">
-                {theme === "light" ? (
+                {theme === 'light' ? (
                   <Sun className="h-4 w-4" />
-                ) : theme === "dark" ? (
+                ) : theme === 'dark' ? (
                   <Moon className="h-4 w-4" />
                 ) : (
                   <Monitor className="h-4 w-4" />
@@ -112,7 +112,10 @@ export function NavSettings() {
                 <span>Theme</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as "light" | "dark" | "system")}>
+                <DropdownMenuRadioGroup
+                  value={theme}
+                  onValueChange={(value) => setTheme(value as 'light' | 'dark' | 'system')}
+                >
                   <DropdownMenuRadioItem value="light" className="flex items-center gap-2">
                     <Sun className="h-4 w-4" />
                     <span>Light</span>
@@ -128,7 +131,7 @@ export function NavSettings() {
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            
+
             {/* Storage Settings */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="flex items-center gap-2">
@@ -136,8 +139,8 @@ export function NavSettings() {
                 <span>History Size</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup 
-                  value={settings.maxHistoryItems.toString()} 
+                <DropdownMenuRadioGroup
+                  value={settings.maxHistoryItems.toString()}
                   onValueChange={handleMaxHistoryChange}
                 >
                   <DropdownMenuRadioItem value="5">5 items</DropdownMenuRadioItem>
@@ -147,35 +150,32 @@ export function NavSettings() {
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            
+
             {/* Clear Data */}
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="flex items-center gap-2 text-destructive focus:text-destructive"
               onClick={handleClearAllHistory}
             >
               <Trash className="h-4 w-4" />
               <span>Clear All Data</span>
             </DropdownMenuItem>
-            
+
             {/* Reset Settings */}
-            <DropdownMenuItem 
-              className="flex items-center gap-2"
-              onClick={handleResetSettings}
-            >
+            <DropdownMenuItem className="flex items-center gap-2" onClick={handleResetSettings}>
               <Settings className="h-4 w-4" />
               <span>Reset Settings</span>
             </DropdownMenuItem>
-            
+
             <DropdownMenuSeparator />
-            
+
             <DropdownMenuLabel>Help</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            
+
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <a 
-                  href="https://github.com/r-cz/iam-tools/issues" 
-                  target="_blank" 
+                <a
+                  href="https://github.com/r-cz/iam-tools/issues"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
@@ -185,9 +185,9 @@ export function NavSettings() {
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <a 
-                  href="mailto:mail@ryancruz.com" 
-                  target="_blank" 
+                <a
+                  href="mailto:mail@ryancruz.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >

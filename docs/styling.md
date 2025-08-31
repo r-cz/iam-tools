@@ -9,7 +9,7 @@ This project uses Tailwind CSS v4 with a CSS‑first configuration, system dark 
 
 ```css
 /* src/index.css */
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is(.dark *));
 ```
@@ -23,11 +23,13 @@ Tokens are plain CSS variables declared in `:root` (light) and overridden in `.d
 - Tailwind theme maps variables via `@theme inline` to `--color-*` and `--radius-*` for utilities like `bg-background`, `text-foreground`, `rounded-lg`, etc.
 
 Where to edit:
+
 - Light mode: `src/index.css :root`
 - Dark mode: `src/index.css .dark`
 - Theme mapping: `src/index.css @theme inline`
 
 Example utilities in components:
+
 - Background/foreground: `bg-background text-foreground`
 - Borders: `border-border`
 - Primary button: `bg-primary text-primary-foreground`
@@ -42,6 +44,7 @@ Example utilities in components:
 - Modes: `light`, `dark`, `system` (respects `prefers-color-scheme`).
 
 Usage tips:
+
 - To apply dark-only styles: `dark:bg-muted`
 - Avoid hard-coded colors; rely on tokens so both themes stay in sync.
 
@@ -55,6 +58,7 @@ bunx --bun shadcn@latest add button card tabs
 ```
 
 Customization:
+
 - Use existing tokens (e.g., `--radius`, `--color-*`) instead of static values.
 - Prefer `variant` and `size` props on shadcn components to keep styles consistent.
 - If a component needs new tokens, add them to `:root` and `.dark`, then map in `@theme inline`.
@@ -76,4 +80,3 @@ Customization:
 - Utility not reflecting theme? Confirm it maps via `@theme inline` to a `--color-*` variable.
 - Dark styles not applying? Ensure `<html>` gets `.dark` via the `ThemeProvider` and the `@custom-variant` line exists.
 - Newly added token not working? Define it in both `:root` and `.dark`, then map it in `@theme inline`.
-

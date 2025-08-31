@@ -1,13 +1,9 @@
-"use client"
+'use client'
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
-import { Link } from 'react-router-dom';
+import { ChevronRight, type LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -17,26 +13,26 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar'
 
 // Define recursive types for nested menu items
 interface SubMenuItem {
-  title: string;
-  url: string;
-  icon?: LucideIcon;
-  items?: SubMenuItem[];
+  title: string
+  url: string
+  icon?: LucideIcon
+  items?: SubMenuItem[]
 }
 
 interface MenuItem {
-  title: string;
-  url: string;
-  icon: LucideIcon;
-  isActive?: boolean;
-  items?: SubMenuItem[];
+  title: string
+  url: string
+  icon: LucideIcon
+  isActive?: boolean
+  items?: SubMenuItem[]
 }
 
 interface NavMainProps {
-  items: MenuItem[];
+  items: MenuItem[]
 }
 
 // Recursive submenu component
@@ -47,10 +43,7 @@ function SubMenu({ items }: { items: SubMenuItem[] }) {
         <SidebarMenuSubItem key={subItem.title}>
           {subItem.items && subItem.items.length > 0 ? (
             // If it has children, render as a collapsible
-            <Collapsible
-              asChild
-              className="group/subcollapsible w-full"
-            >
+            <Collapsible asChild className="group/subcollapsible w-full">
               <>
                 <CollapsibleTrigger asChild>
                   <SidebarMenuSubButton className="w-full">
@@ -78,7 +71,7 @@ function SubMenu({ items }: { items: SubMenuItem[] }) {
         </SidebarMenuSubItem>
       ))}
     </SidebarMenuSub>
-  );
+  )
 }
 
 export function NavMain({ items }: NavMainProps) {

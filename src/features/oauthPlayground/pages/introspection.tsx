@@ -1,6 +1,6 @@
-import { PageContainer, PageHeader } from "@/components/page";
-import { SearchCheck } from "lucide-react";
-import { TokenIntrospection } from "../components/TokenIntrospection";
+import { PageContainer, PageHeader } from '@/components/page'
+import { SearchCheck } from 'lucide-react'
+import { TokenIntrospection } from '../components/TokenIntrospection'
 
 export default function IntrospectionPage() {
   return (
@@ -12,5 +12,5 @@ export default function IntrospectionPage() {
       />
       <TokenIntrospection />
     </PageContainer>
-  );
+  )
 }

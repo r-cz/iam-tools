@@ -2,53 +2,53 @@ name: Bun Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: latest
-    
-    - name: Install dependencies
-      run: bun install
-      
-    - name: Build application
-      run: bun run build
-    
-    - name: Run Bun tests
-      run: bun test
-      
-    - name: Run coverage tests
-      run: bun test:coverage
-    
-    - name: Install Playwright browsers
-      run: bun run e2e:install
-    
-    - name: Run e2e tests
-      run: bun run e2e
-    
-    - name: Upload test coverage
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage/
-        retention-days: 30
-        
-    - name: Upload e2e test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: e2e-test-results
-        path: e2e/test-results/
-        retention-days: 30
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build application
+        run: bun run build
+
+      - name: Run Bun tests
+        run: bun test
+
+      - name: Run coverage tests
+        run: bun test:coverage
+
+      - name: Install Playwright browsers
+        run: bun run e2e:install
+
+      - name: Run e2e tests
+        run: bun run e2e
+
+      - name: Upload test coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+
+      - name: Upload e2e test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: e2e/test-results/
+          retention-days: 30

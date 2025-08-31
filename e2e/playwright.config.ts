@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests',
@@ -41,4 +41,4 @@ export default defineConfig({
     reuseExistingServer: true, // Always reuse existing server
     timeout: 60 * 1000, // Allow up to 60s for first startup in CI
   },
-});
+})

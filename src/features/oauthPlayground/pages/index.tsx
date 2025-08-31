@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { PageContainer, PageHeader } from '@/components/page';
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink, UserRoundCheck, Server, SearchCheck, UserRoundSearch } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react'
+import { PageContainer, PageHeader } from '@/components/page'
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { ExternalLink, UserRoundCheck, Server, SearchCheck, UserRoundSearch } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 
 export function OAuthPlaygroundPage() {
   const [flows] = useState([
@@ -18,7 +18,8 @@ export function OAuthPlaygroundPage() {
     {
       id: 'client-credentials',
       title: 'Client Credentials',
-      description: 'OAuth 2.0 flow for server-to-server API access and machine-to-machine communication.',
+      description:
+        'OAuth 2.0 flow for server-to-server API access and machine-to-machine communication.',
       icon: Server,
       url: '/oauth-playground/client-credentials',
       active: true,
@@ -26,7 +27,8 @@ export function OAuthPlaygroundPage() {
     {
       id: 'introspection',
       title: 'Introspection',
-      description: 'Verify the state and validity of OAuth tokens against an introspection endpoint.',
+      description:
+        'Verify the state and validity of OAuth tokens against an introspection endpoint.',
       icon: SearchCheck,
       url: '/oauth-playground/introspection',
       active: true,
@@ -39,7 +41,7 @@ export function OAuthPlaygroundPage() {
       url: '/oauth-playground/userinfo',
       active: true,
     },
-  ]);
+  ])
 
   return (
     <PageContainer>
@@ -74,7 +76,7 @@ export function OAuthPlaygroundPage() {
         ))}
       </div>
     </PageContainer>
-  );
+  )
 }
 
-export default OAuthPlaygroundPage;
+export default OAuthPlaygroundPage

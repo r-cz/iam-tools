@@ -1,15 +1,15 @@
-import { ReactNode, forwardRef } from 'react';
-import { cn } from '@/lib/utils';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { ReactNode, forwardRef } from 'react'
+import { cn } from '@/lib/utils'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 
 export interface FormFieldProps {
-  label: string;
-  description?: ReactNode;
-  error?: string;
-  required?: boolean;
-  className?: string;
-  children?: ReactNode;
+  label: string
+  description?: ReactNode
+  error?: string
+  required?: boolean
+  className?: string
+  children?: ReactNode
 }
 
 export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(
@@ -21,38 +21,34 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(
           {required && <span className="text-destructive ml-1">*</span>}
         </Label>
         {children}
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        )}
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
-    );
+    )
   }
-);
+)
 
-FormField.displayName = 'FormField';
+FormField.displayName = 'FormField'
 
 interface FormFieldInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  description?: ReactNode;
-  error?: string;
-  required?: boolean;
-  containerClassName?: string;
+  label: string
+  description?: ReactNode
+  error?: string
+  required?: boolean
+  containerClassName?: string
 }
 
 export const FormFieldInput = forwardRef<HTMLInputElement, FormFieldInputProps>(
   ({ label, description, error, required, containerClassName, className, ...props }, ref) => {
     return (
-      <FormField 
+      <FormField
         label={label}
         description={description}
         error={error}
         required={required}
         className={containerClassName}
       >
-        <Input 
+        <Input
           ref={ref}
           className={cn(error && 'border-destructive', className)}
           aria-invalid={!!error}
@@ -60,24 +56,24 @@ export const FormFieldInput = forwardRef<HTMLInputElement, FormFieldInputProps>(
           {...props}
         />
       </FormField>
-    );
+    )
   }
-);
+)
 
-FormFieldInput.displayName = 'FormFieldInput';
+FormFieldInput.displayName = 'FormFieldInput'
 
 export const FormFieldTextarea = forwardRef<
   HTMLTextAreaElement,
   React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
-    label: string;
-    description?: ReactNode;
-    error?: string;
-    required?: boolean;
-    containerClassName?: string;
+    label: string
+    description?: ReactNode
+    error?: string
+    required?: boolean
+    containerClassName?: string
   }
 >(({ label, description, error, required, containerClassName, className, ...props }, ref) => {
   return (
-    <FormField 
+    <FormField
       label={label}
       description={description}
       error={error}
@@ -96,7 +92,7 @@ export const FormFieldTextarea = forwardRef<
         {...props}
       />
     </FormField>
-  );
-});
+  )
+})
 
-FormFieldTextarea.displayName = 'FormFieldTextarea';
+FormFieldTextarea.displayName = 'FormFieldTextarea'

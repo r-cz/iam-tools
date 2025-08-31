@@ -71,11 +71,13 @@ This repo deploys preview Workers per pull request via GitHub Actions:
 If you need to deploy manually:
 
 1. Build the project:
+
    ```bash
    bun run build
    ```
 
 2. Deploy using Wrangler CLI (Cloudflare's deployment tool):
+
    ```bash
    bunx wrangler deploy
    ```

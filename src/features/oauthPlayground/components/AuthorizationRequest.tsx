@@ -1,54 +1,72 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { OAuthConfig, PkceParams } from '../utils/types';
-import { CodeBlock } from '@/components/ui/code-block';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useState, useEffect } from 'react'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { OAuthConfig, PkceParams } from '../utils/types'
+import { CodeBlock } from '@/components/ui/code-block'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 interface AuthorizationRequestProps {
-  config: OAuthConfig;
-  pkce: PkceParams;
-  onAuthorizationComplete: (code: string) => void;
+  config: OAuthConfig
+  pkce: PkceParams
+  onAuthorizationComplete: (code: string) => void
 }
 
-export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: AuthorizationRequestProps) {
-  const [authUrl, setAuthUrl] = useState<string>('');
-  const [authWindow, setAuthWindow] = useState<Window | null>(null);
-  
+export function AuthorizationRequest({
+  config,
+  pkce,
+  onAuthorizationComplete,
+}: AuthorizationRequestProps) {
+  const [authUrl, setAuthUrl] = useState<string>('')
+  const [authWindow, setAuthWindow] = useState<Window | null>(null)
+
   // Listen for messages from the popup window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Make sure the message is from our domain
-      if (event.origin !== window.location.origin) return;
-      
+      if (event.origin !== window.location.origin) return
+
       // Check if it's our OAuth callback message
       if (event.data?.type === 'oauth_callback' && event.data?.code) {
-        onAuthorizationComplete(event.data.code);
-        
+        onAuthorizationComplete(event.data.code)
+
         // Close the popup if it's still open
         if (authWindow && !authWindow.closed) {
-          authWindow.close();
+          authWindow.close()
         }
       }
-    };
-    
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [authWindow, onAuthorizationComplete]);
-  
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [authWindow, onAuthorizationComplete])
+
   // Build the authorization URL
   useEffect(() => {
     const buildAuthorizationUrl = () => {
-      let baseUrl: string;
-      
+      let baseUrl: string
+
       if (config.demoMode) {
         // In demo mode, use our custom demo auth page
-        baseUrl = `${window.location.origin}/oauth-playground/demo-auth`;
+        baseUrl = `${window.location.origin}/oauth-playground/demo-auth`
       } else {
         // In real mode, use the configured auth endpoint
-        baseUrl = config.authEndpoint!;
+        baseUrl = config.authEndpoint!
       }
-      
+
       // Construct the authorization URL
       const params = new URLSearchParams({
         response_type: 'code',
@@ -57,56 +75,56 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
         code_challenge: pkce.codeChallenge,
         code_challenge_method: 'S256',
         state: pkce.state,
-      });
-      
+      })
+
       // Add scopes
       if (config.scopes && config.scopes.length > 0) {
-        params.set('scope', config.scopes.join(' '));
+        params.set('scope', config.scopes.join(' '))
       }
-      
-      const constructedUrl = `${baseUrl}?${params.toString()}`;
+
+      const constructedUrl = `${baseUrl}?${params.toString()}`
       try {
-        const sanitizedUrl = new URL(constructedUrl);
-        setAuthUrl(sanitizedUrl.toString());
+        const sanitizedUrl = new URL(constructedUrl)
+        setAuthUrl(sanitizedUrl.toString())
       } catch (error) {
-        console.error('Invalid authorization URL:', error);
-        setAuthUrl('');
+        console.error('Invalid authorization URL:', error)
+        setAuthUrl('')
       }
-    };
-    
-    buildAuthorizationUrl();
-  }, [config, pkce]);
-  
+    }
+
+    buildAuthorizationUrl()
+  }, [config, pkce])
+
   // Launch the authorization request
   const launchAuthorization = () => {
     // Save the configuration and PKCE data to localStorage for retrieval after redirect
-    localStorage.setItem('oauth_playground_config', JSON.stringify(config));
-    localStorage.setItem('oauth_playground_pkce', JSON.stringify(pkce));
-    
+    localStorage.setItem('oauth_playground_config', JSON.stringify(config))
+    localStorage.setItem('oauth_playground_pkce', JSON.stringify(pkce))
+
     // Store the current flow path to redirect back to the right flow page
-    localStorage.setItem('oauth_playground_flow_path', window.location.pathname);
-    
+    localStorage.setItem('oauth_playground_flow_path', window.location.pathname)
+
     // Open the authorization URL in a popup window
-    const width = 600; // Reduced width
-    const height = 724; // Reduced height
-    const left = (window.innerWidth - width) / 2;
-    const top = (window.innerHeight - height) / 2;
-    const features = `width=${width},height=${height},left=${left},top=${top}`;
-    
-    const popupWindow = window.open(authUrl, 'oauth-authorization', features);
-    setAuthWindow(popupWindow);
-    
+    const width = 600 // Reduced width
+    const height = 724 // Reduced height
+    const left = (window.innerWidth - width) / 2
+    const top = (window.innerHeight - height) / 2
+    const features = `width=${width},height=${height},left=${left},top=${top}`
+
+    const popupWindow = window.open(authUrl, 'oauth-authorization', features)
+    setAuthWindow(popupWindow)
+
     // Check if popup was blocked
     if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {
       // Popup was blocked, try redirecting instead
       if (authUrl) {
-        window.location.href = authUrl;
+        window.location.href = authUrl
       } else {
-        console.error('Authorization URL is invalid or empty.');
+        console.error('Authorization URL is invalid or empty.')
       }
     }
-  };
-  
+  }
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -121,7 +139,7 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
           <h3 className="text-sm font-medium mb-2">Authorization URL</h3>
           <CodeBlock code={authUrl} language="text" />
         </div>
-        
+
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Request Parameters</h3>
           <Table>
@@ -163,27 +181,23 @@ export function AuthorizationRequest({ config, pkce, onAuthorizationComplete }: 
             </TableBody>
           </Table>
         </div>
-        
+
         <div className="bg-muted/50 p-4 rounded-md">
           <h3 className="text-sm font-medium mb-2">What happens next?</h3>
           <p className="text-sm text-muted-foreground">
             Clicking the button below will open the authorization page from your identity provider.
-            You'll need to authenticate and authorize the application, after which you'll be redirected
-            back with an authorization code.
+            You'll need to authenticate and authorize the application, after which you'll be
+            redirected back with an authorization code.
           </p>
         </div>
       </CardContent>
       <CardFooter>
-        <Button 
-          onClick={launchAuthorization}
-          disabled={!authUrl}
-          className="w-full"
-        >
+        <Button onClick={launchAuthorization} disabled={!authUrl} className="w-full">
           Launch Authorization Request
         </Button>
       </CardFooter>
     </Card>
-  );
+  )
 }
 
-export default AuthorizationRequest;
+export default AuthorizationRequest
