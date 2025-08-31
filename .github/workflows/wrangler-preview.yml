@@ -9,10 +9,14 @@ env:
 
 jobs:
   deploy-preview:
-    if: ${{ github.event.action != 'closed' }}
+    # Skip preview deploys for forks: secrets are not available on forked PRs
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    concurrency:
+      group: preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +40,8 @@ jobs:
           command: deploy --name ${{ env.PREVIEW_NAME }}
 
   delete-preview:
-    if: ${{ github.event.action == 'closed' }}
+    # Skip deletion for forks as well; forked PRs never deployed a preview
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,4 +53,4 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: delete --name ${{ env.PREVIEW_NAME }}
         continue-on-error: true
-
+        
