@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b tsconfig.app.json && vite build",
+    "build": "bun scripts/generate-csp-hash.ts && tsc -b tsconfig.app.json && vite build",
     "lint": "eslint .",
     "format": "prettier --write .",
     "preview": "vite preview",

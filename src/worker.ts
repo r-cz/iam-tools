@@ -1,8 +1,8 @@
 // Cloudflare Worker entry for IAM Tools
 // Serves API routes and static assets (dist/) with SPA fallback
 
-import type { JSONWebKeySet } from 'jose'
 import { DEMO_JWKS } from './lib/jwt/demo-key'
+import { CSP_INLINE_SCRIPT_SHA256 } from './csp-hashes'
 
 interface Env {
   ASSETS: Fetcher
@@ -157,11 +157,18 @@ function withSecurityHeaders(response: Response): Response {
   headers.set('X-Content-Type-Options', 'nosniff')
   headers.set('X-Frame-Options', 'DENY')
   headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+  const scriptDirectives = ["'self'"]
+  if (CSP_INLINE_SCRIPT_SHA256 && CSP_INLINE_SCRIPT_SHA256.length > 0) {
+    scriptDirectives.push(CSP_INLINE_SCRIPT_SHA256)
+  } else {
+    // Dev/unknown: allow inline to avoid blocking if hash missing
+    scriptDirectives.push("'unsafe-inline'")
+  }
   headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src ${scriptDirectives.join(' ')}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self' data:",
