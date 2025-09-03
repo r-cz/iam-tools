@@ -40,8 +40,7 @@ export default function SamlRequestBuilderPage() {
   const [relayState, setRelayState] = useState('')
   const [binding, setBinding] = useState<Binding>('HTTP-POST')
   const [requestId, setRequestId] = useState<string>('_' + crypto.randomUUID())
-  const [includeIsPassive, setIncludeIsPassive] = useState(false)
-  const [isPassive, setIsPassive] = useState(false)
+  const [isPassive, setIsPassive] = useState<'unset' | 'true' | 'false'>('unset')
 
   const xml = useMemo(
     () =>
@@ -52,9 +51,9 @@ export default function SamlRequestBuilderPage() {
         nameIdFormat,
         forceAuthn,
         requestId,
-        isPassive: includeIsPassive ? isPassive : undefined,
+        isPassive: isPassive === 'unset' ? undefined : isPassive === 'true',
       }),
-    [issuer, destination, acsUrl, nameIdFormat, forceAuthn, requestId, includeIsPassive, isPassive]
+    [issuer, destination, acsUrl, nameIdFormat, forceAuthn, requestId, isPassive]
   )
 
   const [redirectEncoded, setRedirectEncoded] = useState<string>('')
@@ -207,19 +206,26 @@ export default function SamlRequestBuilderPage() {
                 <Button variant="outline" onClick={regenerateId}>New</Button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <Switch checked={forceAuthn} onCheckedChange={setForceAuthn} />
-                <span className="text-sm">ForceAuthn</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={includeIsPassive} onCheckedChange={setIncludeIsPassive} />
-                <span className="text-sm">Include IsPassive</span>
-                <Switch checked={isPassive} onCheckedChange={setIsPassive} disabled={!includeIsPassive} />
-                <span className={`text-sm ${includeIsPassive ? '' : 'text-muted-foreground'}`}>IsPassive</span>
-              </div>
+          <div className="grid md:grid-cols-2 gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Switch checked={forceAuthn} onCheckedChange={setForceAuthn} />
+              <span className="text-sm">ForceAuthn</span>
+            </div>
+            <div className="grid gap-2 min-w-0">
+              <label className="text-sm">IsPassive</label>
+              <Select value={isPassive} onValueChange={setIsPassive}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Not included" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">Not included</SelectItem>
+                  <SelectItem value="true">true</SelectItem>
+                  <SelectItem value="false">false</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </div>
 
           <Tabs defaultValue="xml" className="min-w-0">
             <TabsList>
