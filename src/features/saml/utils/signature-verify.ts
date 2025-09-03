@@ -2,7 +2,6 @@
 // Note: xmldsigjs API surface differs across versions; we use `any` where needed to keep compatibility.
 
 import * as xmldsig from 'xmldsigjs'
-import DOMPurify from 'dompurify'
 
 export type ElementVerifyResult = {
   present: boolean
@@ -67,9 +66,8 @@ export async function verifySamlResponseSignatures(
   certPem: string
 ): Promise<ResponseVerifyResult> {
   const parser = new DOMParser()
-  // Sanitize XML input before parsing
-  const sanitizedXml = DOMPurify.sanitize(xml, { FORCE_XML: true })
-  const doc = parser.parseFromString(sanitizedXml, 'application/xml')
+  // Parse as XML; we do not inject into DOM, so no HTML sanitization required
+  const doc = parser.parseFromString(xml, 'application/xml')
 
   const responseEl = doc.documentElement
   const result: ResponseVerifyResult = {
@@ -145,4 +143,3 @@ function findDescendantsByLocalName(parent: Element, localName: string): Element
   const all = parent.getElementsByTagName('*')
   return Array.from(all).filter((e) => e.localName === localName || e.nodeName.endsWith(':' + localName))
 }
-
