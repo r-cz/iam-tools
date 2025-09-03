@@ -187,7 +187,8 @@ function parseMetadata(xml: string): {
 } | null {
   if (!xml.trim()) return null
   try {
-    const doc = new DOMParser().parseFromString(xml, 'application/xml')
+    const safeXml = sanitizeXmlInput(xml)
+    const doc = new DOMParser().parseFromString(safeXml, 'application/xml')
     const parserError = doc.getElementsByTagName('parsererror')[0]
     if (parserError) throw new Error('XML parse error')
 
@@ -231,4 +232,22 @@ function parseMetadata(xml: string): {
       warnings: ['Failed to parse metadata'],
     }
   }
+}
+
+/**
+ * Basic XML sanitizer: removes <!DOCTYPE ...>, <!ENTITY ...>, and trims leading/trailing whitespace.
+ * Only allows parsing if the root tag is EntityDescriptor (SAML metadata).
+ */
+function sanitizeXmlInput(xml: string): string {
+  // Remove DOCTYPE declarations
+  let cleaned = xml.replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+  // Remove ENTITY declarations
+  cleaned = cleaned.replace(/<!ENTITY[\s\S]*?>/gi, '')
+  // Trim whitespace
+  cleaned = cleaned.trim()
+  // Optionally: enforce root tag (can be customized for SAML metadata)
+  if (!/^<\s*EntityDescriptor[\s>]/.test(cleaned)) {
+    throw new Error('Invalid SAML metadata XML: Root element must be EntityDescriptor')
+  }
+  return cleaned
 }
