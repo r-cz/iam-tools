@@ -2,6 +2,7 @@
 // Note: xmldsigjs API surface differs across versions; we use `any` where needed to keep compatibility.
 
 import * as xmldsig from 'xmldsigjs'
+import DOMPurify from 'dompurify'
 
 export type ElementVerifyResult = {
   present: boolean
@@ -66,7 +67,9 @@ export async function verifySamlResponseSignatures(
   certPem: string
 ): Promise<ResponseVerifyResult> {
   const parser = new DOMParser()
-  const doc = parser.parseFromString(xml, 'application/xml')
+  // Sanitize XML input before parsing
+  const sanitizedXml = DOMPurify.sanitize(xml, { FORCE_XML: true })
+  const doc = parser.parseFromString(sanitizedXml, 'application/xml')
 
   const responseEl = doc.documentElement
   const result: ResponseVerifyResult = {
