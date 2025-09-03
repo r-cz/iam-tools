@@ -36,6 +36,7 @@ test.describe('SAML Request Builder', () => {
 
     // Go to Launch tab
     await page.click('button:has-text("Launch")')
+
     // Wait until the Redirect URL is generated (Open button enabled)
     const openBtn = page.getByRole('button', { name: 'Open Redirect URL' })
     await expect(openBtn).toBeEnabled()

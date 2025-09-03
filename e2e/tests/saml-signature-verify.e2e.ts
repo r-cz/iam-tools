@@ -23,6 +23,7 @@ test.describe('SAML Signature Verification UI', () => {
     await page.click('button:has-text("Signature")')
 
     // Paste any cert and click Verify — no signature is present, so expect "No signature"
+
     const certArea = page
       .locator('label:has-text("IdP Certificate")')
       .locator('..')
