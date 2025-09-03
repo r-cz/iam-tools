@@ -23,12 +23,13 @@ test.describe('SAML Signature Verification UI', () => {
     await page.click('button:has-text("Signature")')
 
     // Paste any cert and click Verify — no signature is present, so expect "No signature"
-    await page
-      .locator('textarea[placeholder*="BEGIN CERTIFICATE"]')
-      .fill('-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----')
+    const certArea = page
+      .locator('label:has-text("IdP Certificate")')
+      .locator('..')
+      .locator('textarea')
+    await certArea.fill('-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----')
     await page.click('button:has-text("Verify Signatures")')
 
     await expect(page.locator('text=Response: No signature')).toBeVisible()
   })
 })
-

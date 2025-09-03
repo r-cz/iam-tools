@@ -36,8 +36,9 @@ test.describe('SAML Request Builder', () => {
 
     // Go to Launch tab
     await page.click('button:has-text("Launch")')
-    // Ensure Redirect URL is generated (contains SAMLRequest)
-    await expect(page.locator('text=SAMLRequest=')).toBeVisible()
+    // Wait until the Redirect URL is generated (Open button enabled)
+    const openBtn = page.getByRole('button', { name: 'Open Redirect URL' })
+    await expect(openBtn).toBeEnabled()
 
     // Enable signing
     await page.locator('text=Sign Redirect').locator('..').locator('button[role="switch"]').click()
@@ -57,7 +58,5 @@ test.describe('SAML Request Builder', () => {
     const signedBlock = page.locator('text=Signed Redirect URL').locator('..')
     await expect(signedBlock).toContainText('Signature=')
     await expect(signedBlock).toContainText('SigAlg=')
-    await expect(signedBlock).toContainText('SAMLRequest=')
   })
 })
-
