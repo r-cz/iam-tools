@@ -15,6 +15,7 @@ Welcome to the IAM Tools documentation. This guide will help you get started wit
 
 - [Token Inspector](./feature-guides/token-inspector.md) - Inspecting and validating JWT tokens
 - [OIDC Explorer](./feature-guides/oidc-explorer.md) - Exploring OpenID Connect configurations
+- [SAML Suite](./feature-guides/saml-suite.md) - Building and verifying SAML requests, responses, and metadata
 
 ## API Documentation
 

@@ -11,7 +11,10 @@ import {
   Server,
   UserRoundCheck,
   Shield,
-  FileCode,
+  FileSearch,
+  Hammer,
+  BadgeCheck,
+  FileCog,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -86,9 +89,23 @@ const menuTree = [
       {
         title: 'Response Decoder',
         url: '/saml/response-decoder',
-        icon: FileCode,
+        icon: FileSearch,
       },
-      // More SAML tools will be added here later
+      {
+        title: 'Request Builder',
+        url: '/saml/request-builder',
+        icon: Hammer,
+      },
+      {
+        title: 'Metadata Validator',
+        url: '/saml/metadata-validator',
+        icon: BadgeCheck,
+      },
+      {
+        title: 'SP Metadata',
+        url: '/saml/sp-metadata',
+        icon: FileCog,
+      },
     ],
   },
 ]

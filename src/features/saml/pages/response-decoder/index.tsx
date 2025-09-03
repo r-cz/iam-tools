@@ -1,6 +1,6 @@
 import { PageContainer, PageHeader } from '@/components/page'
 import { SamlResponseDecoder } from '../../components/SamlResponseDecoder'
-import { Shield } from 'lucide-react'
+import { FileSearch } from 'lucide-react'
 
 export default function SamlResponseDecoderPage() {
   return (
@@ -8,7 +8,7 @@ export default function SamlResponseDecoderPage() {
       <PageHeader
         title="SAML Response Decoder"
         description="Decode and analyze SAML responses and assertions. Extract attributes, validate structure, and inspect authentication statements."
-        icon={Shield}
+        icon={FileSearch}
       />
       <SamlResponseDecoder />
     </PageContainer>

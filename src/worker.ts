@@ -141,7 +141,15 @@ function isAllowedEndpoint(urlStr: string): boolean {
     parsed.pathname.includes('/keys') ||
     parsed.pathname.includes('/oauth2/v1/certs') ||
     (parsed.pathname.endsWith('.json') && up.includes('JWK'))
-  return isWellKnown || isJwks
+
+  // Allow SAML metadata (commonly XML) with safe path patterns
+  const lower = parsed.pathname.toLowerCase()
+  const isSamlMeta =
+    lower.endsWith('/federationmetadata/2007-06/federationmetadata.xml') ||
+    lower.includes('/saml/metadata') ||
+    (lower.endsWith('.xml') && (lower.includes('saml') || lower.includes('metadata')))
+
+  return isWellKnown || isJwks || isSamlMeta
 }
 
 function filterHeaders(headers: Headers): Headers {

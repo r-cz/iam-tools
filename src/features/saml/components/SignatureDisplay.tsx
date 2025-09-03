@@ -1,13 +1,39 @@
 import { DecodedSamlResponse } from '../utils/saml-decoder'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Shield, AlertCircle, Info } from 'lucide-react'
+import { Shield, AlertCircle } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { useState } from 'react'
+import { verifySamlResponseSignatures } from '../utils/signature-verify'
 
 interface SignatureDisplayProps {
   response: DecodedSamlResponse
 }
 
 export function SignatureDisplay({ response }: SignatureDisplayProps) {
+  const [certPem, setCertPem] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [result, setResult] = useState<{
+    response?: { present: boolean; valid: boolean | null; error?: string }
+    assertions?: Array<{ id?: string; present: boolean; valid: boolean | null; error?: string }>
+  } | null>(null)
+
+  const onVerify = async () => {
+    try {
+      setVerifying(true)
+      const r = await verifySamlResponseSignatures(response.xml, certPem)
+      setResult({
+        response: r.response,
+        assertions: r.assertions.map((a) => ({ id: a.id, ...a.result })),
+      })
+    } catch (e: any) {
+      setResult({ response: { present: true, valid: false, error: e?.message } })
+    } finally {
+      setVerifying(false)
+    }
+  }
+
   const hasAnySignature = response.hasSignature || response.assertions.some((a) => a.hasSignature)
 
   if (!hasAnySignature) {
@@ -21,6 +47,21 @@ export function SignatureDisplay({ response }: SignatureDisplayProps) {
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-2">
+        <div className="text-sm font-medium">IdP Certificate (PEM or base64)</div>
+        <Textarea
+          rows={6}
+          placeholder={"-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"}
+          value={certPem}
+          onChange={(e) => setCertPem(e.target.value)}
+          className="font-mono"
+        />
+        <div>
+          <Button onClick={onVerify} disabled={!certPem.trim() || verifying}>
+            {verifying ? 'Verifying…' : 'Verify Signatures'}
+          </Button>
+        </div>
+      </div>
       {/* Response Signature */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -63,14 +104,26 @@ export function SignatureDisplay({ response }: SignatureDisplayProps) {
         </div>
       )}
 
-      {/* Info Alert */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          Signature validation requires the IdP's public key or certificate. This tool currently
-          shows signature presence only. Full signature validation will be added in a future update.
-        </AlertDescription>
-      </Alert>
+      {/* Results */}
+      {result && (
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Verification Results</div>
+          <div className="text-sm">Response: {formatResult(result.response)}</div>
+          {result.assertions?.map((a, i) => (
+            <div key={i} className="text-sm">
+              Assertion {a.id ? `(${a.id})` : `#${i + 1}`}: {formatResult(a)}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
+}
+
+function formatResult(r?: { present?: boolean; valid?: boolean | null; error?: string }) {
+  if (!r) return '—'
+  if (!r.present) return 'No signature'
+  if (r.valid === true) return 'Valid'
+  if (r.valid === false) return `Invalid${r.error ? ` — ${r.error}` : ''}`
+  return 'Unknown'
 }

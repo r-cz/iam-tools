@@ -242,6 +242,17 @@ Test and explore OAuth 2.0 flows interactively:
 
 See [OAuth Playground Documentation](docs/feature-guides/oauth-playground.md) for detailed usage instructions.
 
+### SAML Suite
+
+Tools for working with SAML messages and metadata:
+
+- Response Decoder with signature verification (paste IdP cert)
+- AuthnRequest Builder for HTTP-POST and HTTP-Redirect (optional Redirect signing)
+- Metadata Validator with signature verification
+- SP Metadata XML generator with optional signing cert
+
+See [SAML Suite Documentation](docs/feature-guides/saml-suite.md) for details.
+
 ## Deployment
 
 The application deploys as a Cloudflare Worker (serving both API routes and static assets). A typical deployment includes:

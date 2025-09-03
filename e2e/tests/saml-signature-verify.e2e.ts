@@ -1,0 +1,34 @@
+import { test, expect } from '@playwright/test'
+import { TestUtils } from '../helpers/test-utils'
+
+// Base64 SAML Response sample from app example (unsigned)
+const SAMPLE_BASE64_RESPONSE = 'PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6cHJvdG9jb2wiIHhtbG5zOnNhbWw9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDphc3NlcnRpb24iIElEPSJfOGU4ZGM1ZjY5YTk4Y2M0YzFmZjM0MjdlNWNlMzQ2MDZmZDY3MmY5MWU2IiBWZXJzaW9uPSIyLjAiIElzc3VlSW5zdGFudD0iMjAyNC0wMS0xNVQxMDozMDowMFoiIERlc3RpbmF0aW9uPSJodHRwczovL2V4YW1wbGUuY29tL3NhbWwvYWNzIiBJblJlc3BvbnNlVG89Il9hYmNkZWYxMjM0NTYiPjxzYW1sOklzc3Vlcj5odHRwczovL2lkcC5leGFtcGxlLmNvbTwvc2FtbDpJc3N1ZXI+PHNhbWxwOlN0YXR1cz48c2FtbHA6U3RhdHVzQ29kZSBWYWx1ZT0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOnN0YXR1czpTdWNjZXNzIi8+PC9zYW1scDpTdGF0dXM+PHNhbWw6QXNzZXJ0aW9uIHhtbG5zOnNhbWw9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDphc3NlcnRpb24iIElEPSJfZDcxYTNhOGU5ZmNjNDVjOWQ5MjQ4ZGY5NGZhNGI4NTFhNTcxMjA2OGY4IiBWZXJzaW9uPSIyLjAiIElzc3VlSW5zdGFudD0iMjAyNC0wMS0xNVQxMDozMDowMFoiPjxzYW1sOklzc3Vlcj5odHRwczovL2lkcC5leGFtcGxlLmNvbTwvc2FtbDpJc3N1ZXI+PHNhbWw6U3ViamVjdD48c2FtbDpOYW1lSUQgU1BOYW1lUXVhbGlmaWVyPSJodHRwczovL2V4YW1wbGUuY29tIiBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OnRyYW5zaWVudCI+X2NlM2QyOTQ4YjRjZjIwMTQ2ZGVlMGEwZTNlNjgwNmRmYmM5NGNmYWRkZjc8L3NhbWw6TmFtZUlEPjxzYW1sOlN1YmplY3RDb25maXJtYXRpb24gTWV0aG9kPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6Y206YmVhcmVyIj48c2FtbDpTdWJqZWN0Q29uZmlybWF0aW9uRGF0YSBOb3RPbk9yQWZ0ZXI9IjIwMjQtMDEtMTVUMTA6MzU6MDBaIiBSZWNpcGllbnQ9Imh0dHBzOi8vZXhhbXBsZS5jb20vc2FtbC9hY3MiIEluUmVzcG9uc2VUbz0iX2FiY2RlZjEyMzQ1NiIvPjwvc2FtbDpTdWJqZWN0Q29uZmlybWF0aW9uPjwvc2FtbDpTdWJqZWN0PjxzYW1sOkNvbmRpdGlvbnMgTm90QmVmb3JlPSIyMDI0LTAxLTE1VDEwOjI1OjAwWiIgTm90T25PckFmdGVyPSIyMDI0LTAxLTE1VDEwOjM1OjAwWiI+PHNhbWw6QXVkaWVuY2VSZXN0cmljdGlvbj48c2FtbDpBdWRpZW5jZT5odHRwczovL2V4YW1wbGUuY29tPC9zYW1sOkF1ZGllbmNlPjwvc2FtbDpBdWRpZW5jZVJlc3RyaWN0aW9uPjwvc2FtbDpDb25kaXRpb25zPjxzYW1sOkF1dGhuU3RhdGVtZW50IEF1dGhuSW5zdGFudD0iMjAyNC0wMS0xNVQxMDoyOTowMFoiIFNlc3Npb25JbmRleD0iXzQ5ZjUyYjJkNTI5YjRhODNiMGY4YjI5NmIxNzIwYjM2Ij48c2FtbDpBdXRobkNvbnRleHQ+PHNhbWw6QXV0aG5Db250ZXh0Q2xhc3NSZWY+dXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmFjOmNsYXNzZXM6UGFzc3dvcmQ8L3NhbWw6QXV0aG5Db250ZXh0Q2xhc3NSZWY+PC9zYW1sOkF1dGhuQ29udGV4dD48L3NhbWw6QXV0aG5TdGF0ZW1lbnQ+PHNhbWw6QXR0cmlidXRlU3RhdGVtZW50PjxzYW1sOkF0dHJpYnV0ZSBOYW1lPSJlbWFpbCIgTmFtZUZvcm1hdD0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmF0dHJuYW1lLWZvcm1hdDpiYXNpYyI+PHNhbWw6QXR0cmlidXRlVmFsdWU+am9obi5kb2VAZXhhbXBsZS5jb208L3NhbWw6QXR0cmlidXRlVmFsdWU+PC9zYW1sOkF0dHJpYnV0ZT48c2FtbDpBdHRyaWJ1dGUgTmFtZT0iZmlyc3ROYW1lIiBOYW1lRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6YXR0cm5hbWUtZm9ybWF0OmJhc2ljIj48c2FtbDpBdHRyaWJ1dGVWYWx1ZT5Kb2huPC9zYW1sOkF0dHJpYnV0ZVZhbHVlPjwvc2FtbDpBdHRyaWJ1dGU+PHNhbWw6QXR0cmlidXRlIE5hbWU9Imxhc3ROYW1lIiBOYW1lRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6YXR0cm5hbWUtZm9ybWF0OmJhc2ljIj48c2FtbDpBdHRyaWJ1dGVWYWx1ZT5Eb2U8L3NhbWw6QXR0cmlidXRlVmFsdWU+PC9zYW1sOkF0dHJpYnV0ZT48L3NhbWw6QXR0cmlidXRlU3RhdGVtZW50Pjwvc2FtbDpBc3NlcnRpb24+PC9zYW1scDpSZXNwb25zZT4='
+
+test.describe('SAML Signature Verification UI', () => {
+  let utils: TestUtils
+
+  test.beforeEach(async ({ page }) => {
+    utils = new TestUtils(page)
+  })
+
+  test('Response Decoder shows No signature and runs verification flow', async ({ page }) => {
+    await utils.navigateTo('/saml/response-decoder')
+    await expect(page.locator('text=SAML Response Decoder')).toBeVisible()
+
+    // Paste sample base64 response and decode
+    await page.locator('textarea#saml-input').fill(SAMPLE_BASE64_RESPONSE)
+    await page.click('button:has-text("Decode Response")')
+
+    // Open Signature tab
+    await page.click('button:has-text("Signature")')
+
+    // Paste any cert and click Verify — no signature is present, so expect "No signature"
+    await page
+      .locator('textarea[placeholder*="BEGIN CERTIFICATE"]')
+      .fill('-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----')
+    await page.click('button:has-text("Verify Signatures")')
+
+    await expect(page.locator('text=Response: No signature')).toBeVisible()
+  })
+})
+

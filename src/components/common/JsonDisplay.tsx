@@ -24,11 +24,11 @@ export function JsonDisplay({
   const jsonString = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
 
   return (
-    <div className={cn('relative', containerClassName)}>
+    <div className={cn('relative w-full min-w-0', containerClassName)}>
       <CodeBlock
         code={jsonString}
         language={language}
-        className={cn(maxHeight && 'overflow-auto', className)}
+        className={cn('w-full min-w-0', maxHeight && 'overflow-auto', className)}
         style={maxHeight ? { maxHeight } : undefined}
       />
       {showCopyButton && (

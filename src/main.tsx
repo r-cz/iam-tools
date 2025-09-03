@@ -22,6 +22,11 @@ const ClientCredentialsPage = lazy(
 const IntrospectionPage = lazy(() => import('./features/oauthPlayground/pages/introspection'))
 const UserInfoPage = lazy(() => import('./features/oauthPlayground/pages/userinfo'))
 const SamlResponseDecoderPage = lazy(() => import('./features/saml/pages/response-decoder'))
+const SamlRequestBuilderPage = lazy(() => import('./features/saml/pages/request-builder'))
+const SamlMetadataValidatorPage = lazy(
+  () => import('./features/saml/pages/metadata-validator')
+)
+const SpMetadataGeneratorPage = lazy(() => import('./features/saml/pages/sp-metadata'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -48,6 +53,12 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="oauth-playground/introspection" element={<IntrospectionPage />} />
                   <Route path="oauth-playground/userinfo" element={<UserInfoPage />} />
                   <Route path="saml/response-decoder" element={<SamlResponseDecoderPage />} />
+                  <Route path="saml/request-builder" element={<SamlRequestBuilderPage />} />
+                  <Route
+                    path="saml/metadata-validator"
+                    element={<SamlMetadataValidatorPage />}
+                  />
+                  <Route path="saml/sp-metadata" element={<SpMetadataGeneratorPage />} />
                 </Route>
                 <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
                 <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />
