@@ -19,6 +19,19 @@ type Binding = 'HTTP-Redirect' | 'HTTP-POST'
 export default function SamlRequestBuilderPage() {
   const [issuer, setIssuer] = useState('https://sp.example.com')
   const [destination, setDestination] = useState('https://idp.example.com/sso')
+  // Helper: returns true for valid http(s) URLs
+  function isValidHttpUrl(url: string) {
+    try {
+      const u = new URL(url);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+  // Compute "safe" destination for use in form action
+  const destinationForForm = useMemo(() => (
+    isValidHttpUrl(destination) ? destination : '#'
+  ), [destination]);
   const [acsUrl, setAcsUrl] = useState('https://sp.example.com/saml/acs')
   const [nameIdFormat, setNameIdFormat] = useState(
     'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'
@@ -136,7 +149,14 @@ export default function SamlRequestBuilderPage() {
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">Destination (IdP SSO URL)</label>
-              <Input value={destination} onChange={(e) => setDestination(e.target.value)} className="w-full" />
+              <Input
+                value={destination}
+                onChange={(e) => {
+                  // always allow user editing (so they can fix typos), but do no further processing here
+                  setDestination(e.target.value)
+                }}
+                className="w-full"
+              />
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">AssertionConsumerServiceURL</label>
@@ -321,7 +341,7 @@ export default function SamlRequestBuilderPage() {
                     </div>
                   </div>
                 ) : (
-                  <form method="post" action={destination} target="_blank" className="grid gap-2 min-w-0">
+                  <form method="post" action={destinationForForm} target="_blank" className="grid gap-2 min-w-0">
                     <input type="hidden" name="SAMLRequest" value={postEncoded} />
                     {relayState && <input type="hidden" name="RelayState" value={relayState} />}
                     <div className="text-xs text-muted-foreground">Submits via HTTP-POST to the IdP</div>
