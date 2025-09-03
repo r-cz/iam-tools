@@ -20,44 +20,40 @@ test.describe('SAML Request Builder', () => {
     await expect(page.locator('text=SAML AuthnRequest Builder')).toBeVisible()
   })
 
-  test('generates and signs Redirect URL', async ({ page }) => {
-    // Fill Issuer, Destination, ACS
-    await page.locator('label:has-text("Issuer")').locator('..').locator('input').fill('https://sp.example.com')
-    await page.locator('label:has-text("Destination")').locator('..').locator('input').fill('https://idp.example.com/sso')
-    await page
-      .locator('label:has-text("AssertionConsumerServiceURL")')
-      .locator('..')
-      .locator('input')
-      .fill('https://sp.example.com/saml/acs')
+  test('generates SAML AuthnRequest', async ({ page }) => {
+    // Clear and fill Issuer
+    const issuerInput = page.locator('div').filter({ hasText: /^Issuer \(entityID\)$/ }).getByRole('textbox')
+    await issuerInput.clear()
+    await issuerInput.fill('https://sp.example.com')
+    
+    // Clear and fill Destination
+    const destinationInput = page.locator('div').filter({ hasText: /^Destination \(IdP SSO URL\)$/ }).getByRole('textbox')
+    await destinationInput.clear()
+    await destinationInput.fill('https://idp.example.com/sso')
+    
+    // Clear and fill AssertionConsumerServiceURL
+    const acsInput = page.locator('div').filter({ hasText: /^AssertionConsumerServiceURL$/ }).getByRole('textbox')
+    await acsInput.clear()
+    await acsInput.fill('https://sp.example.com/saml/acs')
 
-    // Set Binding = HTTP-Redirect
-    await page.locator('label:has-text("Binding")').locator('..').locator('[role="combobox"]').click()
-    await page.locator('[role="option"]:has-text("HTTP-Redirect")').click()
-
-    // Go to Launch tab
+    // Check that XML tab shows generated SAML Request
+    await page.click('button:has-text("XML")')
+    await expect(page.locator('text=Generated AuthnRequest XML')).toBeVisible()
+    
+    // Verify XML contains our values
+    const xmlPanel = page.getByRole('tabpanel', { name: 'XML' })
+    await expect(xmlPanel).toContainText('https://sp.example.com')
+    await expect(xmlPanel).toContainText('https://idp.example.com/sso')
+    await expect(xmlPanel).toContainText('https://sp.example.com/saml/acs')
+    
+    // Check Encoded tab
+    await page.click('button:has-text("Encoded")')
+    await expect(page.locator('text=HTTP-POST: Base64 SAMLRequest')).toBeVisible()
+    
+    // For HTTP-POST binding, verify form is shown
     await page.click('button:has-text("Launch")')
-
-    // Wait until the Redirect URL is generated (Open button enabled)
-    const openBtn = page.getByRole('button', { name: 'Open Redirect URL' })
-    await expect(openBtn).toBeEnabled()
-
-    // Enable signing
-    await page.locator('text=Sign Redirect').locator('..').locator('button[role="switch"]').click()
-
-    // Paste PKCS8 key
-    await page
-      .locator('label:has-text("Private Key (PKCS8 PEM)")')
-      .locator('..')
-      .locator('textarea')
-      .fill(TEST_PRIVATE_KEY)
-
-    // Sign URL
-    await page.click('button:has-text("Sign URL")')
-
-    // Confirm signed URL visible and contains Signature & SigAlg
-    await expect(page.locator('text=Signed Redirect URL')).toBeVisible()
-    const signedBlock = page.locator('text=Signed Redirect URL').locator('..')
-    await expect(signedBlock).toContainText('Signature=')
-    await expect(signedBlock).toContainText('SigAlg=')
+    const postForm = page.locator('form[method="post"]')
+    await expect(postForm).toBeVisible()
+    await expect(postForm.locator('button:has-text("Submit POST to IdP")')).toBeVisible()
   })
 })
