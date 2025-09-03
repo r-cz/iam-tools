@@ -213,7 +213,10 @@ export default function SamlRequestBuilderPage() {
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">IsPassive</label>
-              <Select value={isPassive} onValueChange={setIsPassive}>
+              <Select
+                value={isPassive}
+                onValueChange={(v: 'unset' | 'true' | 'false') => setIsPassive(v)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Not included" />
                 </SelectTrigger>
