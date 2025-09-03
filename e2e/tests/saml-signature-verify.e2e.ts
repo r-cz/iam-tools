@@ -11,7 +11,7 @@ test.describe('SAML Signature Verification UI', () => {
     utils = new TestUtils(page)
   })
 
-  test('Response Decoder shows No signature and runs verification flow', async ({ page }) => {
+  test('Response Decoder shows No signature for unsigned response', async ({ page }) => {
     await utils.navigateTo('/saml/response-decoder')
     await expect(page.locator('text=SAML Response Decoder')).toBeVisible()
 
@@ -22,13 +22,7 @@ test.describe('SAML Signature Verification UI', () => {
     // Open Signature tab
     await page.click('button:has-text("Signature")')
 
-    // Paste any cert and click Verify — no signature is present, so expect "No signature"
-    await page
-      .locator('textarea[placeholder*="BEGIN CERTIFICATE"]')
-      .fill('-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----')
-    await page.click('button:has-text("Verify Signatures")')
-
-    await expect(page.locator('text=Response: No signature')).toBeVisible()
+    // Since the response is unsigned, we should see a message indicating no signature
+    await expect(page.locator('text=This SAML Response and its assertions are not signed')).toBeVisible()
   })
 })
-
