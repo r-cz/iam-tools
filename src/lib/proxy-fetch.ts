@@ -79,7 +79,14 @@ function needsProxy(url: string): boolean {
       urlObj.pathname.includes('/oauth2/v1/certs') ||
       (urlObj.pathname.endsWith('.json') && pathnameUpperCase.includes('JWK'))
 
-    return isWellKnown || isJwks
+    // SAML metadata and endpoints often live under /FederationMetadata/.../FederationMetadata.xml or /saml/metadata
+    const lower = urlObj.pathname.toLowerCase()
+    const isSamlMeta =
+      lower.endsWith('/federationmetadata/2007-06/federationmetadata.xml') ||
+      lower.includes('/saml/metadata') ||
+      (lower.endsWith('.xml') && (lower.includes('saml') || lower.includes('metadata')))
+
+    return isWellKnown || isJwks || isSamlMeta
   } catch (e) {
     // If the URL is invalid, don't proxy
     return false

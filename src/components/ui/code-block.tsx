@@ -27,7 +27,7 @@ export function CodeBlock({ code, language = 'json', className, ...props }: Code
     <Highlight theme={codeTheme} code={code} language={language as any}>
       {({ style, tokens, getLineProps, getTokenProps }) => (
         <pre
-          className={cn('rounded-md font-mono text-sm overflow-x-auto p-4 bg-muted', className)}
+          className={cn('rounded-md font-mono text-sm overflow-x-auto p-4 bg-muted w-full min-w-0 max-w-full', className)}
           style={{
             ...style,
             backgroundColor: 'var(--muted)',
