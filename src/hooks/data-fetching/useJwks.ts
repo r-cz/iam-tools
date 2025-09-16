@@ -30,7 +30,7 @@ export function useJwks(): UseJwksResult {
     // Validate URL format
     try {
       new URL(jwksUri)
-    } catch (e) {
+    } catch {
       setError(new Error('Invalid JWKS URI format.'))
       setData(null)
       setIsLoading(false)
@@ -78,7 +78,7 @@ export function useJwks(): UseJwksResult {
           try {
             const errorBody = await response.json()
             errorMsg += ` - ${JSON.stringify(errorBody)}`
-          } catch (e) {
+          } catch {
             /* Ignore if response body is not JSON */
           }
           throw new Error(errorMsg)

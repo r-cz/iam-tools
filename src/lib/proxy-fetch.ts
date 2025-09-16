@@ -87,7 +87,7 @@ function needsProxy(url: string): boolean {
       (lower.endsWith('.xml') && (lower.includes('saml') || lower.includes('metadata')))
 
     return isWellKnown || isJwks || isSamlMeta
-  } catch (e) {
+  } catch {
     // If the URL is invalid, don't proxy
     return false
   }

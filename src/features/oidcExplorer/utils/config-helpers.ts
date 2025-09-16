@@ -20,7 +20,7 @@ function isUrlFromDomain(urlString: string, domain: string): boolean {
     }
 
     return false
-  } catch (e) {
+  } catch {
     // If URL parsing fails, consider it not matching
     return false
   }
@@ -123,7 +123,7 @@ export function detectProvider(
 
   try {
     parsedUrl = new URL(url)
-  } catch (e) {
+  } catch {
     console.warn('Could not parse issuer URL:', url)
   }
 

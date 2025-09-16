@@ -33,45 +33,49 @@ export function TokenJwksResolver({
   const [lastFetchedUri, setLastFetchedUri] = useState<string | null>(null)
 
   // Only instantiate the JWKS hook since we're receiving OIDC config from parent
-  const jwksHook = useJwks()
+  const {
+    data: jwksData,
+    error: jwksError,
+    fetchJwks,
+    isLoading: isJwksLoading,
+  } = useJwks()
 
   // Effect to fetch JWKS when OIDC config is successfully loaded
   useEffect(() => {
     // Only fetch if we have a JWKS URI, aren't currently loading, and haven't already fetched this URI
-    if (oidcConfig?.jwks_uri && !jwksHook.isLoading && oidcConfig.jwks_uri !== lastFetchedUri) {
+    if (oidcConfig?.jwks_uri && !isJwksLoading && oidcConfig.jwks_uri !== lastFetchedUri) {
       console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfig.jwks_uri}`)
       setLastFetchedUri(oidcConfig.jwks_uri)
-      jwksHook.fetchJwks(oidcConfig.jwks_uri)
+      fetchJwks(oidcConfig.jwks_uri)
     }
-  }, [oidcConfig?.jwks_uri, jwksHook.isLoading, lastFetchedUri]) // Track lastFetchedUri to prevent duplicate fetches
+  }, [fetchJwks, isJwksLoading, lastFetchedUri, oidcConfig?.jwks_uri]) // Track lastFetchedUri to prevent duplicate fetches
 
   // Effect to handle successful JWKS fetch
   useEffect(() => {
-    if (jwksHook.data) {
-      console.log('JWKS data loaded via hook:', jwksHook.data)
+    if (jwksData) {
+      console.log('JWKS data loaded via hook:', jwksData)
       // Assuming hook's JwkSet is compatible or can be cast to JSONWebKeySet
-      onJwksResolved(jwksHook.data as JSONWebKeySet)
+      onJwksResolved(jwksData as JSONWebKeySet)
       toast.success(
         <div>
           <p>
             <strong>JWKS Fetched Successfully</strong>
           </p>
           <p>
-            Found {jwksHook.data.keys.length} keys from {oidcConfig?.jwks_uri || 'source'}
+            Found {jwksData.keys.length} keys from {oidcConfig?.jwks_uri || 'source'}
           </p>
         </div>,
         { id: 'jwks-fetch-success', duration: 3000 }
       )
       toast.dismiss('jwks-fetch-error') // Dismiss any previous error toast
     }
-  }, [jwksHook.data, onJwksResolved, oidcConfig?.jwks_uri]) // Trigger when JWKS data changes
+  }, [jwksData, onJwksResolved, oidcConfig?.jwks_uri]) // Trigger when JWKS data changes
 
   // Effect to handle errors from JWKS hook
   useEffect(() => {
-    const error = jwksHook.error
-    if (error) {
-      console.error('Error fetching JWKS:', error)
-      const errorMessage = error.message || 'Unknown error'
+    if (jwksError) {
+      console.error('Error fetching JWKS:', jwksError)
+      const errorMessage = jwksError.message || 'Unknown error'
       // Show more informative error toast
       toast.error(
         <div>
@@ -86,7 +90,7 @@ export function TokenJwksResolver({
         { id: 'jwks-fetch-error', duration: 8000 }
       )
     }
-  }, [jwksHook.error])
+  }, [jwksError])
 
   // Function to initiate the automatic fetching process
   const triggerAutomaticFetch = () => {
@@ -106,7 +110,7 @@ export function TokenJwksResolver({
     // If we already have OIDC config with JWKS URI, fetch JWKS directly
     if (oidcConfig?.jwks_uri) {
       console.log(`Fetching JWKS directly from: ${oidcConfig.jwks_uri}`)
-      jwksHook.fetchJwks(oidcConfig.jwks_uri, true) // Force refresh
+      fetchJwks(oidcConfig.jwks_uri, true) // Force refresh
     } else {
       toast.info('OIDC configuration not yet loaded. Please wait...')
     }
@@ -262,12 +266,10 @@ export function TokenJwksResolver({
             </div>
             <Button
               onClick={triggerAutomaticFetch} // Use the new trigger function
-              disabled={
-                isLoadingOidcConfig || jwksHook.isLoading || !issuerUrl || isCurrentTokenDemo
-              } // Use hook loading states
+              disabled={isLoadingOidcConfig || isJwksLoading || !issuerUrl || isCurrentTokenDemo} // Use hook loading states
               className="w-full sm:w-auto"
             >
-              {isLoadingOidcConfig || jwksHook.isLoading ? 'Fetching...' : 'Fetch JWKS'}
+              {isLoadingOidcConfig || isJwksLoading ? 'Fetching...' : 'Fetch JWKS'}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">

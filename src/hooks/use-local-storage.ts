@@ -37,19 +37,16 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T
       }
 
       try {
-        // Allow value to be a function so we have the same API as useState
-        const newValue = value instanceof Function ? value(storedValue) : value
-
-        // Save to localStorage
-        window.localStorage.setItem(key, JSON.stringify(newValue))
-
-        // Save state
-        setStoredValue(newValue)
+        setStoredValue((currentValue) => {
+          const newValue = value instanceof Function ? value(currentValue) : value
+          window.localStorage.setItem(key, JSON.stringify(newValue))
+          return newValue
+        })
       } catch (error) {
         console.warn(`Error setting localStorage key "${key}":`, error)
       }
     },
-    [key, storedValue]
+    [key]
   )
 
   // Watch for changes to localStorage in other tabs/windows

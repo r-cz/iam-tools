@@ -221,7 +221,7 @@ function parseMetadata(xml: string): {
     if (keys.length === 0) warnings.push('No signing/encryption keys present')
 
     return { entityId, hasIdp: !!idp, hasSp: !!sp, sso, slo, keys, warnings }
-  } catch (e) {
+  } catch {
     return {
       entityId: undefined,
       hasIdp: false,

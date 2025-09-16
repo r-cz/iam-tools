@@ -101,7 +101,9 @@ export function TokenExchange({
         toast.success('Successfully exchanged code for tokens')
       }
     } catch (error) {
-      console.error('Error exchanging code for tokens:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error exchanging code for tokens:', error)
+      }
       toast.error(
         `Failed to exchange code for tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
@@ -143,7 +145,9 @@ export function TokenExchange({
       // Generate a random refresh token
       const refreshToken = `refresh-token-${Math.random().toString(36).substring(2)}`
 
-      console.log('Generated properly signed demo tokens with kid:', DEMO_JWKS.keys[0].kid)
+      if (import.meta?.env?.DEV) {
+        console.log('Generated properly signed demo tokens with kid:', DEMO_JWKS.keys[0].kid)
+      }
 
       return {
         access_token: accessToken,
@@ -154,7 +158,9 @@ export function TokenExchange({
         scope: 'openid profile email',
       }
     } catch (error) {
-      console.error('Error generating demo tokens:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error generating demo tokens:', error)
+      }
       throw new Error('Failed to generate demo tokens')
     }
   }
