@@ -23,12 +23,11 @@ const STORAGE_KEY = 'oidc-config-cache'
 export class OidcConfigCache {
   private memoryCache: Map<string, CacheEntry> = new Map()
   private options: Required<CacheOptions>
+  private inMemoryStorage: Record<string, CacheEntry> = {}
 
   constructor(options: CacheOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
-    if (this.hasStorage()) {
-      this.loadFromStorage()
-    }
+    this.loadFromStorage()
   }
 
   // Get a configuration from cache
@@ -100,6 +99,8 @@ export class OidcConfigCache {
     this.memoryCache.clear()
     if (this.hasStorage()) {
       window.localStorage.removeItem(STORAGE_KEY)
+    } else {
+      this.inMemoryStorage = {}
     }
   }
 
@@ -146,38 +147,39 @@ export class OidcConfigCache {
   }
 
   private getStorageCache(): Record<string, CacheEntry> {
-    if (!this.hasStorage()) {
-      return {}
-    }
+    if (this.hasStorage()) {
+      try {
+        const stored = window.localStorage.getItem(STORAGE_KEY)
+        if (!stored) return {}
 
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY)
-      if (!stored) return {}
-
-      const parsed = JSON.parse(stored)
-      // Filter out invalid entries
-      const valid: Record<string, CacheEntry> = {}
-      for (const [key, entry] of Object.entries(parsed)) {
-        if (this.isValid(entry as CacheEntry)) {
-          valid[key] = entry as CacheEntry
+        const parsed = JSON.parse(stored)
+        // Filter out invalid entries
+        const valid: Record<string, CacheEntry> = {}
+        for (const [key, entry] of Object.entries(parsed)) {
+          if (this.isValid(entry as CacheEntry)) {
+            valid[key] = entry as CacheEntry
+          }
         }
+        return valid
+      } catch {
+        return {}
       }
-      return valid
-    } catch {
-      return {}
     }
+
+    return { ...this.inMemoryStorage }
   }
 
   private saveToStorage(cache: Record<string, CacheEntry>): void {
-    if (!this.hasStorage()) {
+    if (this.hasStorage()) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cache))
+      } catch (e) {
+        console.warn('Failed to save OIDC config cache to localStorage:', e)
+      }
       return
     }
 
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cache))
-    } catch (e) {
-      console.warn('Failed to save OIDC config cache to localStorage:', e)
-    }
+    this.inMemoryStorage = { ...cache }
   }
 
   private loadFromStorage(): void {
@@ -191,6 +193,10 @@ export class OidcConfigCache {
           timestamp: Date.now(),
         })
       }
+    }
+
+    if (!this.hasStorage()) {
+      this.inMemoryStorage = storageCache
     }
   }
 
