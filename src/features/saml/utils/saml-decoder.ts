@@ -52,7 +52,7 @@ export function decodeSamlResponse(base64Input: string): DecodedSamlResponse {
   try {
     // Decode from base64
     decodedXml = atob(cleanInput)
-  } catch (e) {
+  } catch {
     throw new Error('Invalid base64 encoding')
   }
 

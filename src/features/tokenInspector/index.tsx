@@ -39,16 +39,23 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   const { addToken } = useTokenHistory()
 
   // OIDC config hook for getting JWKS URI
-  const oidcConfigHook = useOidcConfig()
+  const {
+    data: oidcConfig,
+    currentIssuer: oidcConfigIssuer,
+    isLoading: isOidcConfigLoading,
+    fetchConfig: fetchOidcConfig,
+  } = useOidcConfig()
 
   // Effect to handle initial token from URL
   useEffect(() => {
     if (initialToken && token !== initialToken) {
       // Process only if initialToken exists and hasn't been processed
-      console.log(
-        'Processing initial token from URL parameter:',
-        initialToken.substring(0, 10) + '...'
-      )
+      if (import.meta?.env?.DEV) {
+        console.log(
+          'Processing initial token from URL parameter:',
+          initialToken.substring(0, 10) + '...'
+        )
+      }
       setToken(initialToken) // Set the token state
       // Decode will happen via the useEffect watching `token` state below
     }
@@ -58,22 +65,33 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
 
   // Effect to decode token whenever the 'token' state changes
   useEffect(() => {
-    console.log('Token state changed, attempting decode...')
+    if (import.meta?.env?.DEV) {
+      console.log('Token state changed, attempting decode...')
+    }
     decodeToken(token, jwks) // Attempt decode with current token and JWKS state
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]) // Rerun when the main token string changes
 
   // Effect to fetch OIDC config when issuer changes
   useEffect(() => {
-    if (issuerUrl && !isDemoToken && !oidcConfigHook.isLoading && !oidcConfigHook.data) {
-      console.log('Fetching OIDC config for issuer:', issuerUrl)
-      oidcConfigHook.fetchConfig(issuerUrl)
+    if (!issuerUrl || isDemoToken) {
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [issuerUrl, isDemoToken])
+
+    const hasConfigForIssuer = oidcConfig?.issuer === issuerUrl && oidcConfigIssuer === issuerUrl
+
+    if (!hasConfigForIssuer && !isOidcConfigLoading) {
+      if (import.meta?.env?.DEV) {
+        console.log('Fetching OIDC config for issuer:', issuerUrl)
+      }
+      fetchOidcConfig(issuerUrl)
+    }
+  }, [fetchOidcConfig, isDemoToken, isOidcConfigLoading, issuerUrl, oidcConfig?.issuer, oidcConfigIssuer])
 
   const resetState = () => {
-    console.log('Resetting Token Inspector state.')
+    if (import.meta?.env?.DEV) {
+      console.log('Resetting Token Inspector state.')
+    }
     setToken('') // Clear token input state
     setDecodedToken(null)
     setValidationResults([])
@@ -92,7 +110,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   // Callback for TokenInput when an example token is generated
   // It provides the corresponding DEMO_JWKS immediately
   const handleJwksFromExample = (demoJwks: jose.JSONWebKeySet) => {
-    console.log('Received demo JWKS automatically from TokenInput (example generated)')
+    if (import.meta?.env?.DEV) {
+      console.log('Received demo JWKS automatically from TokenInput (example generated)')
+    }
     setJwks(demoJwks) // Set the JWKS state
     // Re-decode is triggered by the 'token' state change anyway
   }
@@ -127,7 +147,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
         payload.is_demo_token === true ||
         (payload.iss && typeof payload.iss === 'string' && payload.iss === demoIssuerUrl)
       setIsDemoToken(Boolean(isLikelyDemo)) // Update state based on CURRENT token
-      console.log('Decoded token. Is Demo:', isLikelyDemo, 'Issuer:', payload.iss)
+      if (import.meta?.env?.DEV) {
+        console.log('Decoded token. Is Demo:', isLikelyDemo, 'Issuer:', payload.iss)
+      }
 
       // Determine token type and perform basic claim validation
       const detectedTokenType = determineTokenType(header, payload)
@@ -153,27 +175,35 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
           if (isLikelyDemo) {
             const matchingKey = currentJwks.keys.find((key) => key.kid === header.kid)
             if (matchingKey) {
-              console.log(`Demo token signature check: Found key ${header.kid}. Marking as valid.`)
+              if (import.meta?.env?.DEV) {
+                console.log(`Demo token signature check: Found key ${header.kid}. Marking as valid.`)
+              }
               signatureValid = true
             } else {
               throw new Error(`No key with ID "${header.kid}" found in the loaded JWKS`)
             }
           } else {
             // For non-demo tokens, perform actual crypto verification with automatic refresh
-            console.log('Attempting cryptographic verification for non-demo token...')
+            if (import.meta?.env?.DEV) {
+              console.log('Attempting cryptographic verification for non-demo token...')
+            }
 
             // Get the JWKS URI from the OIDC config (if available)
             let jwksUri = ''
 
             // Check if we have OIDC config for this issuer
-            if (oidcConfigHook.data && oidcConfigHook.data.issuer === payload.iss) {
-              jwksUri = oidcConfigHook.data.jwks_uri || ''
-              console.log('Using JWKS URI from OIDC config:', jwksUri)
+            if (oidcConfig && oidcConfig.issuer === payload.iss) {
+              jwksUri = oidcConfig.jwks_uri || ''
+              if (import.meta?.env?.DEV) {
+                console.log('Using JWKS URI from OIDC config:', jwksUri)
+              }
             } else if (payload.iss) {
               // Fallback: construct the JWKS URI (not all providers use standard .well-known/jwks)
               // Note: This is a guess and might not work for all providers
               jwksUri = `${payload.iss}/.well-known/jwks`
-              console.log('Using guessed JWKS URI:', jwksUri)
+              if (import.meta?.env?.DEV) {
+                console.log('Using guessed JWKS URI:', jwksUri)
+              }
             }
 
             const result = await verifySignatureWithRefresh(
@@ -181,7 +211,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
               jwksUri,
               currentJwks,
               (refreshedJwks) => {
-                console.log('JWKS refreshed during verification')
+                if (import.meta?.env?.DEV) {
+                  console.log('JWKS refreshed during verification')
+                }
                 setJwks(refreshedJwks)
               }
             )
@@ -190,7 +222,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
             signatureError = result.error
           }
         } catch (e: any) {
-          console.error('Signature verification error:', e)
+          if (import.meta?.env?.DEV) {
+            console.error('Signature verification error:', e)
+          }
           signatureError = e.message
           signatureValid = false
         }
@@ -207,7 +241,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       })
       setValidationResults(validationResults)
     } catch (err: any) {
-      console.error('Token decoding/validation failed:', err)
+      if (import.meta?.env?.DEV) {
+        console.error('Token decoding/validation failed:', err)
+      }
       setDecodedToken(null) // Clear decoded state on error
       setIsDemoToken(false)
       setTokenType('unknown')
@@ -226,15 +262,19 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   // Callback function passed to TokenJwksResolver
   // This is triggered when JWKS are fetched automatically OR loaded manually (incl. demo)
   const handleJwksResolved = async (resolvedJwks: jose.JSONWebKeySet) => {
-    console.log('JWKS resolved/loaded in parent:', {
-      keyCount: resolvedJwks.keys.length,
-      keyIds: resolvedJwks.keys.map((k: { kid?: string }) => k.kid),
-    })
+    if (import.meta?.env?.DEV) {
+      console.log('JWKS resolved/loaded in parent:', {
+        keyCount: resolvedJwks.keys.length,
+        keyIds: resolvedJwks.keys.map((k: { kid?: string }) => k.kid),
+      })
+    }
     setJwks(resolvedJwks) // Store the resolved JWKS state
 
     // Re-run validation with the new JWKS if a token is already decoded
     if (decodedToken) {
-      console.log('Re-running decode/validation with newly resolved JWKS...')
+      if (import.meta?.env?.DEV) {
+        console.log('Re-running decode/validation with newly resolved JWKS...')
+      }
       await decodeToken(decodedToken.raw, resolvedJwks) // Pass current token and new JWKS
     }
   }
@@ -279,7 +319,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
             OIDC ID Token
           </Badge>
         )
-      case 'access_token':
+      case 'access_token': {
         const typ = decodedToken.header?.typ
         if (typ === 'at+jwt' || typ === 'application/at+jwt') {
           return (
@@ -290,16 +330,17 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
               OAuth JWT Access Token (RFC9068)
             </Badge>
           )
-        } else {
-          return (
-            <Badge
-              variant="outline"
-              className="bg-green-500/20 text-green-700 hover:bg-green-500/20"
-            >
-              OAuth Access Token
-            </Badge>
-          )
         }
+
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-500/20 text-green-700 hover:bg-green-500/20"
+          >
+            OAuth Access Token
+          </Badge>
+        )
+      }
       default:
         return (
           <Badge variant="outline" className="bg-amber-500/20 text-amber-700 hover:bg-amber-500/20">
@@ -418,8 +459,8 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
                   setIssuerUrl={setIssuerUrl} // Allow resolver to update issuer
                   onJwksResolved={handleJwksResolved} // Function to call when JWKS are resolved/loaded
                   isCurrentTokenDemo={isDemoToken} // Pass the flag indicating if CURRENT token is demo
-                  oidcConfig={oidcConfigHook.data} // Pass OIDC config data
-                  isLoadingOidcConfig={oidcConfigHook.isLoading} // Pass loading state
+                  oidcConfig={oidcConfig} // Pass OIDC config data
+                  isLoadingOidcConfig={isOidcConfigLoading} // Pass loading state
                 />
               </TabsContent>
 

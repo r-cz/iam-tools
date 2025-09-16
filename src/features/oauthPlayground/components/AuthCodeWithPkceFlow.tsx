@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { OAuthConfig, PkceParams, TokenResponse } from '../utils/types'
 import ConfigurationForm from './ConfigurationForm'
@@ -27,6 +27,7 @@ export function AuthCodeWithPkceFlow() {
 
   // Flag to track if initial load is complete
   const initialLoadComplete = useRef(false)
+  const lastPersistedState = useRef<string>('')
 
   // Initialize from location state (returning from callback) or stored state
   useEffect(() => {
@@ -58,55 +59,48 @@ export function AuthCodeWithPkceFlow() {
     // Mark initial load as complete
     initialLoadComplete.current = true
     // Only depend on location.state, not on storedState
-  }, [location.state])
+  }, [location.state, storedState])
 
-  // Save state changes to storage
-  // Using useEffect to batch updates and avoid saving on every render
-  const saveToStorage = () => {
-    // Only save if initial load is complete
-    if (!initialLoadComplete.current) return
-
-    setStoredState({
+  // Sync the persisted state whenever flow state changes after initial load
+  const persistedState = useMemo(
+    () => ({
       config: config || undefined,
       pkce: pkce || undefined,
       authCode: authCode || undefined,
       tokenResponse: tokenResponse || undefined,
       activeTab,
-    })
-  }
+    }),
+    [activeTab, authCode, config, pkce, tokenResponse]
+  )
 
-  // Save state changes when component unmounts
   useEffect(() => {
-    return () => {
-      saveToStorage()
+    if (!initialLoadComplete.current) return
+
+    const serializedState = JSON.stringify(persistedState)
+    if (serializedState === lastPersistedState.current) {
+      return
     }
-  }, [])
+
+    lastPersistedState.current = serializedState
+    setStoredState(persistedState)
+  }, [persistedState, setStoredState])
 
   // Handle configuration completion
   const handleConfigComplete = (newConfig: OAuthConfig, newPkce: PkceParams) => {
     setConfig(newConfig)
     setPkce(newPkce)
     setActiveTab('auth')
-
-    // Save to storage when advancing to next step
-    setTimeout(saveToStorage, 0)
   }
 
   // Handle authorization completion
   const handleAuthorizationComplete = (code: string) => {
     setAuthCode(code)
     setActiveTab('token')
-
-    // Save to storage when advancing to next step
-    setTimeout(saveToStorage, 0)
   }
 
   // Handle token exchange completion
   const handleTokenExchangeComplete = (response: TokenResponse) => {
     setTokenResponse(response)
-
-    // Save to storage when advancing to next step
-    setTimeout(saveToStorage, 0)
   }
 
   // Determine which tabs should be enabled
@@ -116,9 +110,6 @@ export function AuthCodeWithPkceFlow() {
   // Save state when tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value)
-
-    // Save to storage when changing tabs
-    setTimeout(saveToStorage, 0)
   }
 
   return (

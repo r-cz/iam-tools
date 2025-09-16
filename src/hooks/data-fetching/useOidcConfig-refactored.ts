@@ -45,7 +45,7 @@ export function useOidcConfig(): UseOidcConfigResult {
       // Ensure trailing slash for correct joining
       const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`
       wellKnownUrl = new URL(`${basePath}.well-known/openid-configuration`, url.origin).toString()
-    } catch (e) {
+    } catch {
       throw new Error('Invalid Issuer URL format.')
     }
 
@@ -56,7 +56,7 @@ export function useOidcConfig(): UseOidcConfigResult {
       try {
         const errorBody = await response.json()
         errorMsg += ` - ${JSON.stringify(errorBody)}`
-      } catch (e) {
+      } catch {
         /* Ignore if response body is not JSON */
       }
       throw new Error(errorMsg)

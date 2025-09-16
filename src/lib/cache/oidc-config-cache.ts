@@ -26,7 +26,9 @@ export class OidcConfigCache {
 
   constructor(options: CacheOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
-    this.loadFromStorage()
+    if (this.hasStorage()) {
+      this.loadFromStorage()
+    }
   }
 
   // Get a configuration from cache
@@ -96,7 +98,9 @@ export class OidcConfigCache {
   // Clear all cache entries
   clear(): void {
     this.memoryCache.clear()
-    localStorage.removeItem(STORAGE_KEY)
+    if (this.hasStorage()) {
+      window.localStorage.removeItem(STORAGE_KEY)
+    }
   }
 
   // Get cache statistics
@@ -142,8 +146,12 @@ export class OidcConfigCache {
   }
 
   private getStorageCache(): Record<string, CacheEntry> {
+    if (!this.hasStorage()) {
+      return {}
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
+      const stored = window.localStorage.getItem(STORAGE_KEY)
       if (!stored) return {}
 
       const parsed = JSON.parse(stored)
@@ -161,8 +169,12 @@ export class OidcConfigCache {
   }
 
   private saveToStorage(cache: Record<string, CacheEntry>): void {
+    if (!this.hasStorage()) {
+      return
+    }
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cache))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cache))
     } catch (e) {
       console.warn('Failed to save OIDC config cache to localStorage:', e)
     }
@@ -180,6 +192,10 @@ export class OidcConfigCache {
         })
       }
     }
+  }
+
+  private hasStorage(): boolean {
+    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
   }
 
   private enforceMaxEntries(cache: Record<string, CacheEntry>): void {

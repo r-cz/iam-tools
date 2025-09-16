@@ -76,7 +76,7 @@ export function TokenIntrospection() {
     }
 
     loadDemoToken()
-  }, [isDemoMode])
+  }, [clientId, isDemoMode, token])
 
   // Generate a sample introspection response for demo mode
   const generateDemoIntrospectionResponse = async (): Promise<IntrospectionResponse> => {

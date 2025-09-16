@@ -14,7 +14,12 @@ import { useIssuerHistory } from '../../lib/state'
 export function OidcExplorer() {
   // Instantiate hooks
   const oidcConfigHook = useOidcConfig()
-  const jwksHook = useJwks()
+  const {
+    data: jwksData,
+    error: jwksError,
+    fetchJwks,
+    isLoading: isJwksLoading,
+  } = useJwks()
   const { addIssuer } = useIssuerHistory()
 
   // Local state for derived/UI data
@@ -54,29 +59,29 @@ export function OidcExplorer() {
       if (config.jwks_uri && config.jwks_uri !== lastFetchedJwksUri) {
         console.log(`OIDC config has jwks_uri, fetching JWKS from: ${config.jwks_uri}`)
         setLastFetchedJwksUri(config.jwks_uri)
-        jwksHook.fetchJwks(config.jwks_uri)
+        fetchJwks(config.jwks_uri)
       } else if (!config.jwks_uri) {
         console.log('OIDC config does not have jwks_uri.')
       } else {
         console.log(`JWKS already fetched for URI: ${config.jwks_uri}`)
       }
     }
-  }, [oidcConfigHook.data, addIssuer]) // Removed inputIssuerUrl dependency
+  }, [addIssuer, fetchJwks, inputIssuerUrl, lastFetchedJwksUri, oidcConfigHook.data])
 
   // Effect for successful JWKS fetch
   useEffect(() => {
-    if (jwksHook.data) {
-      console.log('JWKS loaded via hook:', jwksHook.data)
+    if (jwksData) {
+      console.log('JWKS loaded via hook:', jwksData)
       toast.success('Successfully fetched JWKS', {
-        description: `Found ${jwksHook.data.keys.length} keys`,
+        description: `Found ${jwksData.keys.length} keys`,
         duration: 5000,
       })
     }
-  }, [jwksHook.data])
+  }, [jwksData])
 
   // Effect for handling errors from either hook
   useEffect(() => {
-    const error = oidcConfigHook.error || jwksHook.error
+    const error = oidcConfigHook.error || jwksError
     if (error) {
       console.error('Error fetching OIDC config or JWKS:', error)
       toast.error('Failed to fetch data', {
@@ -86,7 +91,7 @@ export function OidcExplorer() {
       // Reset provider name on error
       setProviderName(null)
     }
-  }, [oidcConfigHook.error, jwksHook.error])
+  }, [jwksError, oidcConfigHook.error])
 
   // Handle fetch request from ConfigInput or IssuerHistory
   const handleFetchConfig = (issuerUrl: string) => {
@@ -95,9 +100,9 @@ export function OidcExplorer() {
   }
 
   // Combine loading states
-  const isLoading = oidcConfigHook.isLoading || jwksHook.isLoading
+  const isLoading = oidcConfigHook.isLoading || isJwksLoading
   // Combine error states
-  const error = oidcConfigHook.error || jwksHook.error
+  const error = oidcConfigHook.error || jwksError
 
   return (
     <div className="space-y-6">
@@ -115,7 +120,11 @@ export function OidcExplorer() {
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">
-              {oidcConfigHook.isLoading ? 'Fetching configuration...' : 'Fetching JWKS...'}
+              {oidcConfigHook.isLoading
+                ? 'Fetching configuration...'
+                : isJwksLoading
+                  ? 'Fetching JWKS...'
+                  : 'Idle'}
             </p>
           </div>
         </div>
@@ -136,7 +145,7 @@ export function OidcExplorer() {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="config">Configuration</TabsTrigger>
             {oidcConfigHook.data.jwks_uri && (
-              <TabsTrigger value="jwks" disabled={!jwksHook.data}>
+              <TabsTrigger value="jwks" disabled={!jwksData}>
                 JWKS
               </TabsTrigger>
             )}
@@ -157,11 +166,11 @@ export function OidcExplorer() {
           {/* JWKS Tab Content */}
           {oidcConfigHook.data.jwks_uri && (
             <TabsContent value="jwks" className="mt-4">
-              {jwksHook.data ? (
-                <JwksDisplay jwks={jwksHook.data as any} jwksUri={oidcConfigHook.data.jwks_uri!} />
+              {jwksData ? (
+                <JwksDisplay jwks={jwksData as any} jwksUri={oidcConfigHook.data.jwks_uri!} />
               ) : (
                 <div className="text-center text-muted-foreground py-8">
-                  {jwksHook.isLoading ? 'Loading JWKS...' : 'JWKS data not yet available.'}
+                  {isJwksLoading ? 'Loading JWKS...' : 'JWKS data not yet available.'}
                 </div>
               )}
             </TabsContent>

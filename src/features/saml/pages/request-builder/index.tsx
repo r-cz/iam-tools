@@ -75,7 +75,7 @@ export default function SamlRequestBuilderPage() {
       try {
         const deflated = await deflateRawToBase64(xml)
         setRedirectEncoded(encodeURIComponent(deflated))
-      } catch (e: any) {
+      } catch {
         setRedirectEncoded('')
       }
     })()

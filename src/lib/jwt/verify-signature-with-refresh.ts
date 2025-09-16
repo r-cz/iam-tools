@@ -22,8 +22,9 @@ export async function verifySignatureWithRefresh(
   onJwksRefresh?: (newJwks: JSONWebKeySet) => void
 ): Promise<VerifyResult> {
   try {
-    if (import.meta?.env?.DEV)
+    if (import.meta?.env?.DEV) {
       console.log('Starting signature verification with token:', token.substring(0, 20) + '...')
+    }
 
     if (!initialJwks?.keys?.length) {
       return {
@@ -75,15 +76,17 @@ export async function verifySignatureWithRefresh(
 
     // If verification failed due to key not found or invalid signature, try refreshing JWKS
     if (!firstAttempt.valid && jwksUri) {
-      if (import.meta?.env?.DEV)
+      if (import.meta?.env?.DEV) {
         console.log('First verification attempt failed, checking for updated JWKS...')
+      }
 
       try {
         // First check if we have cached JWKS that might have been updated
         const cachedJwks = jwksCache.get(jwksUri)
         if (cachedJwks && cachedJwks !== initialJwks) {
-          if (import.meta?.env?.DEV)
+          if (import.meta?.env?.DEV) {
             console.log('Found different JWKS in cache, trying with cached version first')
+          }
           const cacheAttempt = await attemptVerification(cachedJwks)
           if (cacheAttempt.valid) {
             if (import.meta?.env?.DEV) console.log('Verification successful with cached JWKS')
