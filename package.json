@@ -91,7 +91,7 @@
     "happy-dom": "^18.0.1",
     "node-jose-tools": "^2.0.4",
     "typescript": "~5.9.2",
-    "typescript-eslint": "^8.43.0",
+    "typescript-eslint": "^8.44.0",
     "vite": "^7.1.5",
     "vite-plugin-pwa": "^1.0.3",
     "vitest": "^3.2.4",
