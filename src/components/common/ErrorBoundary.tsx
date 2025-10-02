@@ -26,9 +26,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <h1 className="text-xl font-semibold">Something went wrong.</h1>
           <p className="text-sm text-muted-foreground mt-2">Try reloading the page.</p>
           {this.state.error?.message && (
-            <p className="text-xs text-muted-foreground mt-4">
-              {this.state.error.message}
-            </p>
+            <p className="text-xs text-muted-foreground mt-4">{this.state.error.message}</p>
           )}
           {this.state.error?.stack && (
             <pre className="mt-2 text-[10px] text-muted-foreground/80 whitespace-pre-wrap">

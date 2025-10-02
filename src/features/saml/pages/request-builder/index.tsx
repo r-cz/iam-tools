@@ -3,11 +3,21 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { buildAuthnRequestXml, deflateRawToBase64, encodeBase64 } from '@/features/saml/utils/saml-request'
+import {
+  buildAuthnRequestXml,
+  deflateRawToBase64,
+  encodeBase64,
+} from '@/features/saml/utils/saml-request'
 import { signRedirectRequest, type RedirectSigAlg } from '@/features/saml/utils/redirect-signing'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Hammer } from 'lucide-react'
@@ -22,16 +32,17 @@ export default function SamlRequestBuilderPage() {
   // Helper: returns true for valid http(s) URLs
   function isValidHttpUrl(url: string) {
     try {
-      const u = new URL(url);
-      return u.protocol === "http:" || u.protocol === "https:";
+      const u = new URL(url)
+      return u.protocol === 'http:' || u.protocol === 'https:'
     } catch {
-      return false;
+      return false
     }
   }
   // Compute "safe" destination for use in form action
-  const destinationForForm = useMemo(() => (
-    isValidHttpUrl(destination) ? destination : '#'
-  ), [destination]);
+  const destinationForForm = useMemo(
+    () => (isValidHttpUrl(destination) ? destination : '#'),
+    [destination]
+  )
   const [acsUrl, setAcsUrl] = useState('https://sp.example.com/saml/acs')
   const [nameIdFormat, setNameIdFormat] = useState(
     'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'
@@ -140,11 +151,14 @@ export default function SamlRequestBuilderPage() {
       />
       <Card className="min-w-0">
         <CardContent className="p-5 grid gap-4 min-w-0">
-
           <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 min-w-0">
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">Issuer (entityID)</label>
-              <Input value={issuer} onChange={(e) => setIssuer(e.target.value)} className="w-full" />
+              <Input
+                value={issuer}
+                onChange={(e) => setIssuer(e.target.value)}
+                className="w-full"
+              />
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">Destination (IdP SSO URL)</label>
@@ -159,7 +173,11 @@ export default function SamlRequestBuilderPage() {
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">AssertionConsumerServiceURL</label>
-              <Input value={acsUrl} onChange={(e) => setAcsUrl(e.target.value)} className="w-full" />
+              <Input
+                value={acsUrl}
+                onChange={(e) => setAcsUrl(e.target.value)}
+                className="w-full"
+              />
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">NameIDFormat</label>
@@ -185,7 +203,11 @@ export default function SamlRequestBuilderPage() {
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">RelayState (optional)</label>
-              <Input value={relayState} onChange={(e) => setRelayState(e.target.value)} className="w-full" />
+              <Input
+                value={relayState}
+                onChange={(e) => setRelayState(e.target.value)}
+                className="w-full"
+              />
             </div>
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">Binding</label>
@@ -202,33 +224,39 @@ export default function SamlRequestBuilderPage() {
             <div className="grid gap-2 min-w-0">
               <label className="text-sm">Request ID</label>
               <div className="flex gap-2">
-                <Input value={requestId} onChange={(e) => setRequestId(e.target.value)} className="w-full" />
-                <Button variant="outline" onClick={regenerateId}>New</Button>
+                <Input
+                  value={requestId}
+                  onChange={(e) => setRequestId(e.target.value)}
+                  className="w-full"
+                />
+                <Button variant="outline" onClick={regenerateId}>
+                  New
+                </Button>
               </div>
             </div>
-          <div className="grid md:grid-cols-2 gap-4 items-center">
-            <div className="flex items-center gap-2">
-              <Switch checked={forceAuthn} onCheckedChange={setForceAuthn} />
-              <span className="text-sm">ForceAuthn</span>
-            </div>
-            <div className="grid gap-2 min-w-0">
-              <label className="text-sm">IsPassive</label>
-              <Select
-                value={isPassive}
-                onValueChange={(v: 'unset' | 'true' | 'false') => setIsPassive(v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Not included" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unset">Not included</SelectItem>
-                  <SelectItem value="true">true</SelectItem>
-                  <SelectItem value="false">false</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid md:grid-cols-2 gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <Switch checked={forceAuthn} onCheckedChange={setForceAuthn} />
+                <span className="text-sm">ForceAuthn</span>
+              </div>
+              <div className="grid gap-2 min-w-0">
+                <label className="text-sm">IsPassive</label>
+                <Select
+                  value={isPassive}
+                  onValueChange={(v: 'unset' | 'true' | 'false') => setIsPassive(v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Not included" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unset">Not included</SelectItem>
+                    <SelectItem value="true">true</SelectItem>
+                    <SelectItem value="false">false</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-        </div>
 
           <Tabs defaultValue="xml" className="min-w-0">
             <TabsList>
@@ -249,7 +277,11 @@ export default function SamlRequestBuilderPage() {
                 <div>
                   <div className="flex justify-between mb-2">
                     <div className="text-sm">HTTP-POST: Base64 SAMLRequest</div>
-                    <Button variant="outline" size="sm" onClick={() => copy(postEncoded, 'Base64 copied')}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copy(postEncoded, 'Base64 copied')}
+                    >
                       Copy
                     </Button>
                   </div>
@@ -259,7 +291,9 @@ export default function SamlRequestBuilderPage() {
                 </div>
                 <div>
                   <div className="flex justify-between mb-2">
-                    <div className="text-sm">HTTP-Redirect: URL-encoded(deflate+base64) SAMLRequest</div>
+                    <div className="text-sm">
+                      HTTP-Redirect: URL-encoded(deflate+base64) SAMLRequest
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
@@ -271,7 +305,8 @@ export default function SamlRequestBuilderPage() {
                   </div>
                   {!redirectEncoded && (
                     <div className="text-xs text-amber-600 dark:text-amber-400 mb-2">
-                      Redirect encoding unavailable in this browser (missing CompressionStream). Use POST binding or try a Chromium-based browser.
+                      Redirect encoding unavailable in this browser (missing CompressionStream). Use
+                      POST binding or try a Chromium-based browser.
                     </div>
                   )}
                   <div className="min-w-0">
@@ -289,10 +324,17 @@ export default function SamlRequestBuilderPage() {
                       <JsonDisplay data={redirectUrl} language="text" maxHeight="120px" />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={() => window.open(redirectUrl, '_blank')} disabled={!redirectUrl}>
+                      <Button
+                        onClick={() => window.open(redirectUrl, '_blank')}
+                        disabled={!redirectUrl}
+                      >
                         Open Redirect URL
                       </Button>
-                      <Button variant="outline" onClick={() => copy(redirectUrl, 'URL copied')} disabled={!redirectUrl}>
+                      <Button
+                        variant="outline"
+                        onClick={() => copy(redirectUrl, 'URL copied')}
+                        disabled={!redirectUrl}
+                      >
                         Copy URL
                       </Button>
                     </div>
@@ -323,24 +365,43 @@ export default function SamlRequestBuilderPage() {
                               value={privateKeyPem}
                               onChange={(e) => setPrivateKeyPem(e.target.value)}
                               rows={8}
-                              placeholder={"-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----"}
+                              placeholder={
+                                '-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----'
+                              }
                               className="font-mono w-full"
                             />
                           </div>
                           <div className="flex gap-2">
-                            <Button onClick={handleSignRedirect} disabled={!redirectUrl}>Sign URL</Button>
-                            <Button variant="outline" onClick={() => copy(privateKeyPem, 'Key copied')} disabled={!privateKeyPem.trim()}>
+                            <Button onClick={handleSignRedirect} disabled={!redirectUrl}>
+                              Sign URL
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => copy(privateKeyPem, 'Key copied')}
+                              disabled={!privateKeyPem.trim()}
+                            >
                               Copy Key
                             </Button>
                           </div>
                           <div className="grid gap-2 min-w-0">
                             <label className="text-sm">Signed Redirect URL</label>
-                            <JsonDisplay data={signedRedirectUrl} language="text" maxHeight="120px" />
+                            <JsonDisplay
+                              data={signedRedirectUrl}
+                              language="text"
+                              maxHeight="120px"
+                            />
                             <div className="flex gap-2">
-                              <Button onClick={() => window.open(signedRedirectUrl, '_blank')} disabled={!signedRedirectUrl}>
+                              <Button
+                                onClick={() => window.open(signedRedirectUrl, '_blank')}
+                                disabled={!signedRedirectUrl}
+                              >
                                 Open Signed URL
                               </Button>
-                              <Button variant="outline" onClick={() => copy(signedRedirectUrl, 'Signed URL copied')} disabled={!signedRedirectUrl}>
+                              <Button
+                                variant="outline"
+                                onClick={() => copy(signedRedirectUrl, 'Signed URL copied')}
+                                disabled={!signedRedirectUrl}
+                              >
                                 Copy Signed URL
                               </Button>
                             </div>
@@ -350,13 +411,24 @@ export default function SamlRequestBuilderPage() {
                     </div>
                   </div>
                 ) : (
-                  <form method="post" action={destinationForForm} target="_blank" className="grid gap-2 min-w-0">
+                  <form
+                    method="post"
+                    action={destinationForForm}
+                    target="_blank"
+                    className="grid gap-2 min-w-0"
+                  >
                     <input type="hidden" name="SAMLRequest" value={postEncoded} />
                     {relayState && <input type="hidden" name="RelayState" value={relayState} />}
-                    <div className="text-xs text-muted-foreground">Submits via HTTP-POST to the IdP</div>
+                    <div className="text-xs text-muted-foreground">
+                      Submits via HTTP-POST to the IdP
+                    </div>
                     <div className="flex gap-2">
                       <Button type="submit">Submit POST to IdP</Button>
-                      <Button variant="outline" type="button" onClick={() => copy(postEncoded, 'SAMLRequest copied')}>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => copy(postEncoded, 'SAMLRequest copied')}
+                      >
                         Copy POST SAMLRequest
                       </Button>
                     </div>
