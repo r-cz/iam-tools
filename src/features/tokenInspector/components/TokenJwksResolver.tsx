@@ -33,12 +33,7 @@ export function TokenJwksResolver({
   const [lastFetchedUri, setLastFetchedUri] = useState<string | null>(null)
 
   // Only instantiate the JWKS hook since we're receiving OIDC config from parent
-  const {
-    data: jwksData,
-    error: jwksError,
-    fetchJwks,
-    isLoading: isJwksLoading,
-  } = useJwks()
+  const { data: jwksData, error: jwksError, fetchJwks, isLoading: isJwksLoading } = useJwks()
 
   // Effect to fetch JWKS when OIDC config is successfully loaded
   useEffect(() => {

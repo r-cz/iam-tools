@@ -28,20 +28,18 @@ export function ThemeProvider({
   storageKey = 'iam-tools-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => {
-      if (typeof window === 'undefined') {
-        return defaultTheme
-      }
-
-      try {
-        const stored = window.localStorage.getItem(storageKey) as Theme | null
-        return stored || defaultTheme
-      } catch {
-        return defaultTheme
-      }
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') {
+      return defaultTheme
     }
-  )
+
+    try {
+      const stored = window.localStorage.getItem(storageKey) as Theme | null
+      return stored || defaultTheme
+    } catch {
+      return defaultTheme
+    }
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined') {

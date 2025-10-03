@@ -29,7 +29,10 @@ export default function SpMetadataGeneratorPage() {
   const [includeCert, setIncludeCert] = useState(false)
   const [x509, setX509] = useState('')
 
-  const xml = useMemo(() => buildMetadata({ entityId, acsUrl, sloUrl, nameIdFormat, x509: includeCert ? x509 : '' }), [entityId, acsUrl, sloUrl, nameIdFormat, includeCert, x509])
+  const xml = useMemo(
+    () => buildMetadata({ entityId, acsUrl, sloUrl, nameIdFormat, x509: includeCert ? x509 : '' }),
+    [entityId, acsUrl, sloUrl, nameIdFormat, includeCert, x509]
+  )
 
   const copy = async () => {
     try {
@@ -85,7 +88,9 @@ export default function SpMetadataGeneratorPage() {
           )}
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">Generated XML</div>
-            <Button variant="outline" size="sm" onClick={copy}>Copy</Button>
+            <Button variant="outline" size="sm" onClick={copy}>
+              Copy
+            </Button>
           </div>
           <JsonDisplay data={formatXml(xml)} language="xml" maxHeight="420px" />
         </CardContent>
@@ -106,12 +111,14 @@ function buildMetadata(opts: {
     '<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata"',
     ` entityID="${xmlEscape(opts.entityId)}">`
   )
-  parts.push('<SPSSODescriptor AuthnRequestsSigned="false" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">')
+  parts.push(
+    '<SPSSODescriptor AuthnRequestsSigned="false" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">'
+  )
   if (opts.x509 && opts.x509.trim()) {
     parts.push('<KeyDescriptor use="signing">')
     parts.push('<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">')
     parts.push('<ds:X509Data>')
-    parts.push(`<ds:X509Certificate>${opts.x509.trim()}</ds:X509Certificate>`) 
+    parts.push(`<ds:X509Certificate>${opts.x509.trim()}</ds:X509Certificate>`)
     parts.push('</ds:X509Data>')
     parts.push('</ds:KeyInfo>')
     parts.push('</KeyDescriptor>')

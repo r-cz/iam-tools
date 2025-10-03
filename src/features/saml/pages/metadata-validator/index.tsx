@@ -26,7 +26,11 @@ export default function SamlMetadataValidatorPage() {
   const [xml, setXml] = useState('')
   const [parsingError, setParsingError] = useState<string | null>(null)
   const [certPem, setCertPem] = useState('')
-  const [verifyResult, setVerifyResult] = useState<null | { present: boolean; valid: boolean | null; error?: string }>(null)
+  const [verifyResult, setVerifyResult] = useState<null | {
+    present: boolean
+    valid: boolean | null
+    error?: string
+  }>(null)
 
   const fetchMetadata = async () => {
     if (!url) return
@@ -79,7 +83,12 @@ export default function SamlMetadataValidatorPage() {
           </div>
           <div className="grid gap-2">
             <label className="text-sm">Metadata XML</label>
-            <Textarea value={xml} onChange={(e) => setXml(e.target.value)} rows={10} className="font-mono" />
+            <Textarea
+              value={xml}
+              onChange={(e) => setXml(e.target.value)}
+              rows={10}
+              className="font-mono"
+            />
             {xml.trim() && (
               <div className="mt-2">
                 <div className="text-xs text-muted-foreground mb-1">Preview</div>
@@ -88,15 +97,15 @@ export default function SamlMetadataValidatorPage() {
             )}
           </div>
 
-          {parsingError && (
-            <div className="text-sm text-red-600">{parsingError}</div>
-          )}
+          {parsingError && <div className="text-sm text-red-600">{parsingError}</div>}
 
           {parsed && (
             <div className="grid gap-4">
               <div>
                 <div className="text-sm text-muted-foreground">Entity</div>
-                <div className="text-sm">entityID: <span className="font-mono">{parsed.entityId || '—'}</span></div>
+                <div className="text-sm">
+                  entityID: <span className="font-mono">{parsed.entityId || '—'}</span>
+                </div>
                 <div className="text-sm">IDP Present: {parsed.hasIdp ? 'Yes' : 'No'}</div>
                 <div className="text-sm">SP Present: {parsed.hasSp ? 'Yes' : 'No'}</div>
               </div>
@@ -105,7 +114,8 @@ export default function SamlMetadataValidatorPage() {
                 <ul className="text-sm list-disc pl-5">
                   {parsed.sso.map((s, i) => (
                     <li key={i}>
-                      <span className="font-mono">{s.binding}</span> → <span className="font-mono">{s.location}</span>
+                      <span className="font-mono">{s.binding}</span> →{' '}
+                      <span className="font-mono">{s.location}</span>
                     </li>
                   ))}
                   {parsed.sso.length === 0 && <li>None</li>}
@@ -116,7 +126,8 @@ export default function SamlMetadataValidatorPage() {
                 <ul className="text-sm list-disc pl-5">
                   {parsed.slo.map((s, i) => (
                     <li key={i}>
-                      <span className="font-mono">{s.binding}</span> → <span className="font-mono">{s.location}</span>
+                      <span className="font-mono">{s.binding}</span> →{' '}
+                      <span className="font-mono">{s.location}</span>
                     </li>
                   ))}
                   {parsed.slo.length === 0 && <li>None</li>}
@@ -130,7 +141,8 @@ export default function SamlMetadataValidatorPage() {
                       use: <span className="font-mono">{k.use || '—'}</span>
                       {k.x509 && (
                         <>
-                          {' '}| x509 len: <span className="font-mono">{k.x509.length}</span>
+                          {' '}
+                          | x509 len: <span className="font-mono">{k.x509.length}</span>
                         </>
                       )}
                     </li>
@@ -144,7 +156,9 @@ export default function SamlMetadataValidatorPage() {
                 <ul className="text-sm list-disc pl-5">
                   {parsed.warnings.length === 0 && <li>No obvious issues found</li>}
                   {parsed.warnings.map((w, i) => (
-                    <li key={i} className="text-amber-700 dark:text-amber-400">{w}</li>
+                    <li key={i} className="text-amber-700 dark:text-amber-400">
+                      {w}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -153,16 +167,23 @@ export default function SamlMetadataValidatorPage() {
                 <div className="text-sm font-medium">Verify Metadata Signature</div>
                 <Textarea
                   rows={6}
-                  placeholder={"-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"}
+                  placeholder={'-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----'}
                   value={certPem}
                   onChange={(e) => setCertPem(e.target.value)}
                   className="font-mono"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={onVerify} disabled={!xml.trim() || !certPem.trim()}>Verify</Button>
+                  <Button onClick={onVerify} disabled={!xml.trim() || !certPem.trim()}>
+                    Verify
+                  </Button>
                   {verifyResult && (
                     <span className="text-sm">
-                      Result: {verifyResult.present ? (verifyResult.valid ? 'Valid' : 'Invalid') : 'No signature'}
+                      Result:{' '}
+                      {verifyResult.present
+                        ? verifyResult.valid
+                          ? 'Valid'
+                          : 'Invalid'
+                        : 'No signature'}
                       {verifyResult.error ? ` — ${verifyResult.error}` : ''}
                     </span>
                   )}
@@ -200,10 +221,12 @@ function parseMetadata(xml: string): {
     const sp = $('SPSSODescriptor')[0]
 
     const toServices = (nodes: Element[], tag: string): ParsedSso[] =>
-      nodes.flatMap((n) => Array.from(n.getElementsByTagName(tag))).map((n) => ({
-        binding: n.getAttribute('Binding') || '',
-        location: n.getAttribute('Location') || '',
-      }))
+      nodes
+        .flatMap((n) => Array.from(n.getElementsByTagName(tag)))
+        .map((n) => ({
+          binding: n.getAttribute('Binding') || '',
+          location: n.getAttribute('Location') || '',
+        }))
 
     const sso = toServices([idp].filter(Boolean) as Element[], 'SingleSignOnService')
     const slo = toServices([idp, sp].filter(Boolean) as Element[], 'SingleLogoutService')

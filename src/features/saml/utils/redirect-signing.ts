@@ -54,4 +54,3 @@ export async function signRedirectRequest(opts: {
 
   return { url: url.toString() }
 }
-

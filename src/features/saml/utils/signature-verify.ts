@@ -116,7 +116,8 @@ export async function verifySamlMetadataSignature(
 ): Promise<MetadataVerifyResult> {
   const parser = new DOMParser()
   const doc = parser.parseFromString(xml, 'application/xml')
-  const entity = findDescendantsByLocalName(doc.documentElement, 'EntityDescriptor')[0] ||
+  const entity =
+    findDescendantsByLocalName(doc.documentElement, 'EntityDescriptor')[0] ||
     (doc.documentElement.localName === 'EntityDescriptor' ? doc.documentElement : null)
 
   if (!entity) return { present: false, valid: null }
@@ -141,5 +142,7 @@ function findChildSignature(el: Element): Element | null {
 
 function findDescendantsByLocalName(parent: Element, localName: string): Element[] {
   const all = parent.getElementsByTagName('*')
-  return Array.from(all).filter((e) => e.localName === localName || e.nodeName.endsWith(':' + localName))
+  return Array.from(all).filter(
+    (e) => e.localName === localName || e.nodeName.endsWith(':' + localName)
+  )
 }

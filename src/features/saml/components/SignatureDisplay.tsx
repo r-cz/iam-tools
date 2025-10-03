@@ -51,7 +51,7 @@ export function SignatureDisplay({ response }: SignatureDisplayProps) {
         <div className="text-sm font-medium">IdP Certificate (PEM or base64)</div>
         <Textarea
           rows={6}
-          placeholder={"-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"}
+          placeholder={'-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----'}
           value={certPem}
           onChange={(e) => setCertPem(e.target.value)}
           className="font-mono"
