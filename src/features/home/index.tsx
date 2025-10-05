@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PageContainer, PageHeader } from '@/components/page'
 import { HomeIcon, Search, FileJson, KeyRound } from 'lucide-react'
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia } from '@/components/ui/item'
 
 export default function HomePage() {
   return (
