@@ -1,8 +1,5 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +16,15 @@ import {
   TestTubeDiagonal,
   RotateCcw,
 } from 'lucide-react'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+  InputGroupTextarea,
+} from '@/components/ui/input-group'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
 export function SamlResponseDecoder() {
   const [input, setInput] = useState('')
@@ -57,39 +63,40 @@ export function SamlResponseDecoder() {
       <Card className="lg:col-span-1">
         <CardContent className="space-y-4 pt-6">
           <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-              <Label htmlFor="saml-input" className="block text-sm font-medium">
-                SAML Response (Base64)
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExample}
-                  className="flex items-center gap-1.5"
-                >
-                  <TestTubeDiagonal size={16} />
-                  <span>Example</span>
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleClear}
-                  className="flex items-center gap-1.5"
-                >
-                  <RotateCcw size={16} />
-                  <span>Clear</span>
-                </Button>
-              </div>
-            </div>
-
-            <Textarea
-              id="saml-input"
-              placeholder="Paste your base64-encoded SAML Response here..."
-              value={input}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
-              className="min-h-[200px] font-mono text-sm"
-            />
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">SAML Response (Base64)</span>
+                <ButtonGroup>
+                  <InputGroupButton
+                    onClick={handleExample}
+                    className="flex items-center gap-1.5"
+                    aria-label="Load example response"
+                  >
+                    <TestTubeDiagonal size={16} />
+                    <span className="hidden sm:inline">Example</span>
+                  </InputGroupButton>
+                  <InputGroupButton
+                    variant="ghost"
+                    className="flex items-center gap-1.5 text-destructive hover:text-destructive"
+                    onClick={handleClear}
+                    aria-label="Clear response"
+                  >
+                    <RotateCcw size={16} />
+                    <span className="hidden sm:inline">Clear</span>
+                  </InputGroupButton>
+                </ButtonGroup>
+              </InputGroupAddon>
+              <InputGroupTextarea
+                id="saml-input"
+                placeholder="Paste your base64-encoded SAML Response here..."
+                value={input}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+                className="min-h-[200px] resize-y font-mono text-sm"
+              />
+            </InputGroup>
 
             {error && (
               <Alert variant="destructive">
@@ -98,16 +105,27 @@ export function SamlResponseDecoder() {
               </Alert>
             )}
 
-            <div className="flex justify-end">
-              <Button
+            <InputGroupAddon
+              align="block-end"
+              className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+            >
+              {input && (
+                <InputGroupText className="font-mono text-xs text-muted-foreground">
+                  <span className="hidden sm:inline">Characters:</span> {input.length}
+                </InputGroupText>
+              )}
+              <InputGroupButton
+                variant="outline"
+                grouped={false}
+                className="flex items-center gap-1.5"
                 onClick={handleDecode}
                 disabled={!input.trim()}
-                className="w-full sm:w-auto flex items-center gap-1.5"
+                aria-label="Decode response"
               >
                 <Search size={16} />
-                <span>Decode Response</span>
-              </Button>
-            </div>
+                <span className="hidden sm:inline">Decode Response</span>
+              </InputGroupButton>
+            </InputGroupAddon>
           </div>
         </CardContent>
       </Card>
@@ -165,12 +183,15 @@ export function SamlResponseDecoder() {
 
       {/* Placeholder when no response is decoded */}
       {!decodedResponse && !error && (
-        <Card className="lg:col-span-1">
-          <CardContent className="p-6 text-center text-muted-foreground">
-            <FileKey className="mx-auto h-12 w-12 mb-4 opacity-50" />
-            <p>Paste a SAML Response and click "Decode Response" to analyze it.</p>
-          </CardContent>
-        </Card>
+        <Empty className="lg:col-span-1 py-12">
+          <EmptyMedia variant="icon" className="bg-primary/10 text-primary">
+            <FileKey className="h-6 w-6" />
+          </EmptyMedia>
+          <EmptyTitle>No response loaded</EmptyTitle>
+          <EmptyDescription>
+            Paste a SAML response above and select <span className="font-medium">Decode Response</span> to analyze it.
+          </EmptyDescription>
+        </Empty>
       )}
     </div>
   )

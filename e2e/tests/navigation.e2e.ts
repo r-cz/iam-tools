@@ -23,7 +23,7 @@ test.describe('Navigation and Homepage', () => {
 
     // OIDC Explorer card
     await expect(page.locator('h3:has-text("OIDC Explorer")')).toBeVisible()
-    await expect(page.locator('text=Explore OpenID Connect provider')).toBeVisible()
+    await expect(page.locator('text=Explore OpenID Connect discovery documents')).toBeVisible()
 
     // OAuth Playground card - use more specific selector to avoid duplicate
     await expect(

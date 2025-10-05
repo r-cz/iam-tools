@@ -13,9 +13,13 @@ import {
 } from '../../../components/ui/dropdown-menu'
 import { TokenHistoryItem } from '../../../lib/state/types'
 import { decodeJwtPayload } from '@/lib/jwt/decode-token'
+import { InputGroupButton } from '@/components/ui/input-group'
 
 interface TokenHistoryProps {
   onSelectToken: (token: string) => void
+  compact?: boolean
+  buttonVariant?: 'default' | 'input-group'
+  label?: string
 }
 
 /**
@@ -37,7 +41,12 @@ function truncateToken(token: string): string {
 /**
  * Displays a history of recently used JWT tokens
  */
-export function TokenHistory({ onSelectToken }: TokenHistoryProps) {
+export function TokenHistory({
+  onSelectToken,
+  compact = false,
+  buttonVariant = 'default',
+  label = 'Recents',
+}: TokenHistoryProps) {
   const { tokenHistory, removeToken, updateToken, clearTokens } = useTokenHistory()
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [editName, setEditName] = React.useState('')
@@ -70,13 +79,40 @@ export function TokenHistory({ onSelectToken }: TokenHistoryProps) {
   }
 
   return (
-    <div className="w-full">
+    <div className={compact ? 'w-auto' : 'w-full'}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="flex items-center gap-1 w-full sm:w-auto">
-            <History size={16} />
-            <span>Recent Tokens</span>
-          </Button>
+          {buttonVariant === 'input-group' ? (
+            <InputGroupButton
+              type="button"
+              variant="outline"
+              grouped={false}
+              className="flex items-center gap-1.5"
+              aria-label={label}
+            >
+              <History size={16} />
+              <span className="hidden sm:inline">{label}</span>
+            </InputGroupButton>
+          ) : compact ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-none border-0"
+              aria-label={label}
+            >
+              <History size={16} />
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 w-full sm:w-auto"
+              aria-label={label}
+            >
+              <History size={16} />
+              <span className="hidden sm:inline">{label}</span>
+            </Button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[300px]">
           <DropdownMenuLabel>Token History</DropdownMenuLabel>

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PageContainer, PageHeader } from '@/components/page'
 import { HomeIcon, Search, FileJson, KeyRound } from 'lucide-react'
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia } from '@/components/ui/item'
 
 export default function HomePage() {
   return (
@@ -17,40 +18,61 @@ export default function HomePage() {
             <KeyRound className="h-6 w-6" />
             OAuth/OIDC Tools
           </h2>
-          <div className="grid grid-cols-1 gap-4">
-            <Link
-              to="/token-inspector"
-              className="aspect-video rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/20 flex flex-col items-center justify-center hover:from-blue-500/20 hover:to-blue-600/30 transition-colors p-6"
+          <ItemGroup className="grid grid-cols-1 gap-4">
+            <Item
+              asChild
+              interactive
+              className="h-full border-none bg-gradient-to-br from-blue-600/20 via-blue-500/10 to-blue-600/30 text-white shadow-lg hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2"
             >
-              <Search className="h-12 w-12 mb-4 text-blue-600" />
-              <h3 className="text-xl font-medium">Token Inspector</h3>
-              <p className="text-muted-foreground text-center mt-2">
-                Analyze JWT tokens, validate signatures, and inspect claims
-              </p>
-            </Link>
+              <Link to="/token-inspector" className="flex h-full w-full items-center gap-4 p-6">
+                <ItemMedia variant="icon" className="bg-white/20 text-white">
+                  <Search className="h-6 w-6" />
+                </ItemMedia>
+                <ItemContent>
+                  <h3 className="text-xl text-white font-semibold leading-tight">Token Inspector</h3>
+                  <ItemDescription className="text-white/80">
+                    Analyze JWT tokens, validate signatures, and inspect claims.
+                  </ItemDescription>
+                </ItemContent>
+              </Link>
+            </Item>
 
-            <Link
-              to="/oidc-explorer"
-              className="aspect-video rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-600/20 flex flex-col items-center justify-center hover:from-purple-500/20 hover:to-indigo-600/30 transition-colors p-6"
+            <Item
+              asChild
+              interactive
+              className="h-full border-none bg-gradient-to-br from-indigo-600/20 via-purple-500/10 to-indigo-600/30 text-white shadow-lg hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2"
             >
-              <FileJson className="h-12 w-12 mb-4 text-indigo-600" />
-              <h3 className="text-xl font-medium">OIDC Explorer</h3>
-              <p className="text-muted-foreground text-center mt-2">
-                Explore OpenID Connect provider configurations and JWKS endpoints
-              </p>
-            </Link>
+              <Link to="/oidc-explorer" className="flex h-full w-full items-center gap-4 p-6">
+                <ItemMedia variant="icon" className="bg-white/20 text-white">
+                  <FileJson className="h-6 w-6" />
+                </ItemMedia>
+                <ItemContent>
+                  <h3 className="text-xl text-white font-semibold leading-tight">OIDC Explorer</h3>
+                  <ItemDescription className="text-white/80">
+                    Explore OpenID Connect discovery documents and JWKS endpoints quickly.
+                  </ItemDescription>
+                </ItemContent>
+              </Link>
+            </Item>
 
-            <Link
-              to="/oauth-playground"
-              className="aspect-video rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-600/20 flex flex-col items-center justify-center hover:from-green-500/20 hover:to-emerald-600/30 transition-colors p-6"
+            <Item
+              asChild
+              interactive
+              className="h-full border-none bg-gradient-to-br from-emerald-600/20 via-emerald-500/10 to-emerald-600/30 text-white shadow-lg hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2"
             >
-              <KeyRound className="h-12 w-12 mb-4 text-emerald-600" />
-              <h3 className="text-xl font-medium">OAuth Playground</h3>
-              <p className="text-muted-foreground text-center mt-2">
-                Test and explore OAuth 2.0 flows interactively
-              </p>
-            </Link>
-          </div>
+              <Link to="/oauth-playground" className="flex h-full w-full items-center gap-4 p-6">
+                <ItemMedia variant="icon" className="bg-white/20 text-white">
+                  <KeyRound className="h-6 w-6" />
+                </ItemMedia>
+                <ItemContent>
+                  <h3 className="text-xl text-white font-semibold leading-tight">OAuth Playground</h3>
+                  <ItemDescription className="text-white/80">
+                    Test and explore OAuth 2.0 flows with step-by-step guidance.
+                  </ItemDescription>
+                </ItemContent>
+              </Link>
+            </Item>
+          </ItemGroup>
         </div>
 
         <div className="space-y-6">

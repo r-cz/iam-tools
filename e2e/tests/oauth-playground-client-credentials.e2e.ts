@@ -96,8 +96,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Wait for result to appear
     await page.waitForSelector('text=Result', { timeout: 5000 })
 
-    // Verify scopes are included in response
-    await expect(page.locator('text=read:users write:users admin')).toBeVisible()
+    // Verify scopes are included in response - use more specific selector to avoid strict mode violation
+    await expect(page.locator('code:has-text("read:users write:users admin")')).toBeVisible()
   })
 
   test('should copy access token', async ({ page }) => {
@@ -186,11 +186,11 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // This test seems to expect authentication method options that may not exist
     // in the current implementation. Let's verify the basic form structure instead.
 
-    // Verify main form elements are present
-    await expect(page.locator('text=Token Endpoint')).toBeVisible()
-    await expect(page.locator('text=Client ID')).toBeVisible()
-    await expect(page.locator('text=Client Secret')).toBeVisible()
-    await expect(page.locator('text=Scope (optional)')).toBeVisible()
+    // Verify main form elements are present - use more specific selectors to avoid strict mode violations
+    await expect(page.locator('span:has-text("Token Endpoint")')).toBeVisible()
+    await expect(page.locator('label:has-text("Client ID")')).toBeVisible()
+    await expect(page.locator('label:has-text("Client Secret")')).toBeVisible()
+    await expect(page.locator('label:has-text("Scope (optional)")')).toBeVisible()
   })
 
   test('should handle additional parameters', async ({ page }) => {

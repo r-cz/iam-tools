@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 // Removed Tabs imports
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge' // Import Badge
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
+import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
@@ -174,42 +175,54 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           {/* Configuration based on mode */}
           {
             !isDemoMode ? (
-              <div className="space-y-4 rounded-lg border p-4">
-                <h3 className="text-lg font-medium">Identity Provider Details</h3>
+              <FieldSet className="space-y-4 rounded-lg border border-border p-4">
+                <FieldLegend>Identity Provider Details</FieldLegend>
                 {/* Issuer URL for Auto-Discovery */}
                 <div className="space-y-2">
-                  <Label>Issuer URL (for Auto-Discovery)</Label>
-                  <div className="flex space-x-2">
-                    <div className="relative flex-1">
-                      <Input
-                        placeholder="https://example.com"
-                        value={issuerUrl}
-                        onChange={(e) => {
-                          setIssuerUrl(e.target.value)
-                          // Clear endpoints if issuer changes, allowing manual input or re-discovery
-                          setAuthEndpoint('')
-                          setTokenEndpoint('')
-                          setJwksEndpoint('')
-                          setEndpointsLocked(false)
-                        }}
-                        className="pr-10"
-                      />
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                        <IssuerHistory onSelectIssuer={handleSelectIssuer} compact={true} />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={fetchOidcConfig}
-                      disabled={isLoadingDiscovery || !issuerUrl}
+                  <InputGroup className="flex-wrap">
+                    <InputGroupAddon
+                      align="block-start"
+                      className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
                     >
-                      {isLoadingDiscovery ? 'Loading...' : 'Discover'}
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Enter the base URL of your IdP to attempt auto-discovery of endpoints via OIDC
-                    .well-known configuration.
-                  </p>
+                      <span className="text-sm font-medium text-foreground">
+                        Issuer URL (for Auto-Discovery)
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <IssuerHistory onSelectIssuer={handleSelectIssuer} compact />
+                        <InputGroupButton
+                          type="button"
+                          variant="outline"
+                          onClick={fetchOidcConfig}
+                          disabled={isLoadingDiscovery || !issuerUrl}
+                          className="flex items-center gap-1.5"
+                        >
+                          {isLoadingDiscovery ? (
+                            <>
+                              <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                              <span>Discovering…</span>
+                            </>
+                          ) : (
+                            'Discover'
+                          )}
+                        </InputGroupButton>
+                      </div>
+                    </InputGroupAddon>
+                    <InputGroupInput
+                      placeholder="https://example.com"
+                      value={issuerUrl}
+                      onChange={(e) => {
+                        setIssuerUrl(e.target.value)
+                        setAuthEndpoint('')
+                        setTokenEndpoint('')
+                        setJwksEndpoint('')
+                        setEndpointsLocked(false)
+                      }}
+                    />
+                  </InputGroup>
+                  <FieldDescription className="text-xs text-muted-foreground">
+                    Enter the base URL of your IdP to attempt auto-discovery of endpoints via the
+                    OIDC discovery document.
+                  </FieldDescription>
                 </div>
 
                 {/* Manual/Discovered Endpoints */}
@@ -268,7 +281,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                     </span>
                   }
                 />
-              </div>
+              </FieldSet>
             ) : // Removed the empty div that previously held the static message
             null // Or simply remove the entire else block if nothing else goes here
           }
@@ -306,9 +319,9 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           />
 
           {/* PKCE Parameters */}
-          <div className="space-y-4 rounded-lg border p-4">
+          <FieldSet className="space-y-4 rounded-lg border border-border p-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">PKCE Parameters</h3>
+              <FieldLegend>PKCE Parameters</FieldLegend>
               <Button type="button" variant="outline" onClick={regeneratePkce}>
                 Regenerate
               </Button>
@@ -334,7 +347,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               readOnly
               description="Random value for CSRF protection"
             />
-          </div>
+          </FieldSet>
 
           <Button type="button" onClick={handleSubmit}>
             Continue to Authorization

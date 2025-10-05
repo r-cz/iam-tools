@@ -12,12 +12,15 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { IssuerHistoryItem } from '@/lib/state/types'
 import { useIssuerHistory } from '@/lib/state'
+import { InputGroupButton } from '@/components/ui/input-group'
 
 interface IssuerHistoryProps {
   onSelectIssuer: (issuerUrl: string) => void
   configLoading?: boolean
   disabled?: boolean
   compact?: boolean
+  label?: string
+  buttonVariant?: 'default' | 'input-group'
 }
 
 // Helper function to truncate long URLs
@@ -56,6 +59,8 @@ export function IssuerHistory({
   configLoading = false,
   disabled = false,
   compact = false,
+  label = 'Recent Issuers',
+  buttonVariant = 'default',
 }: IssuerHistoryProps) {
   const { issuerHistory, removeIssuer, updateIssuer, clearIssuers } = useIssuerHistory()
   const [editingId, setEditingId] = React.useState<string | null>(null)
@@ -88,33 +93,71 @@ export function IssuerHistory({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           {compact ? (
-            <Button
-              variant="ghost"
-              size="icon"
+            buttonVariant === 'input-group' ? (
+              <InputGroupButton
+                type="button"
+                size="sm"
+                variant="outline"
+                grouped={false}
+                className="flex items-center gap-1.5"
+                disabled={disabled || configLoading}
+                aria-label={label}
+              >
+                {configLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <History size={16} />
+                )}
+                <span className="hidden sm:inline">{label}</span>
+              </InputGroupButton>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                className="h-8 w-8"
+                disabled={disabled || configLoading}
+                title={label}
+                aria-label={label}
+              >
+                {configLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <History size={16} />
+                )}
+              </Button>
+            )
+          ) : buttonVariant === 'input-group' ? (
+            <InputGroupButton
               type="button"
-              className="h-8 w-8"
+              size="sm"
+              variant="outline"
+              grouped={false}
+              className="flex items-center gap-1.5"
               disabled={disabled || configLoading}
-              title="Recent Issuers"
+              aria-label={label}
             >
               {configLoading ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <History size={16} />
               )}
-            </Button>
+              <span className="hidden sm:inline">{label}</span>
+            </InputGroupButton>
           ) : (
             <Button
               variant="outline"
               size="sm"
               className="flex items-center gap-1"
               disabled={disabled || configLoading}
+              aria-label={label}
             >
               {configLoading ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <History size={16} />
               )}
-              <span>Recent Issuers</span>
+              <span className="hidden sm:inline">{label}</span>
             </Button>
           )}
         </DropdownMenuTrigger>

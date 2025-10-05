@@ -1,13 +1,17 @@
-import React, { useState } from 'react' // Removed useEffect
-// Removed hook import: import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig';
-import { Button } from '@/components/ui/button'
+import React, { useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { ShuffleIcon } from 'lucide-react'
+import { ShuffleIcon, Globe } from 'lucide-react'
 import { IssuerHistory } from '@/components/common'
-// No OIDC types needed here anymore
-// import { OidcConfiguration } from '../utils/types';
+import { Field } from '@/components/ui/field'
+import { Button } from '@/components/ui/button'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
 
 interface ConfigInputProps {
   onFetchRequested: (issuerUrl: string) => void // Renamed prop
@@ -22,8 +26,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
 
   const handleFetchConfig = () => {
     if (!issuerUrl) return
-    console.log(`Requesting fetch for: ${issuerUrl}`)
-    onFetchRequested(issuerUrl) // Call the prop function
+    onFetchRequested(issuerUrl)
   }
 
   // Define handleKeyDown correctly
@@ -76,79 +79,91 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <label htmlFor="issuer-url" className="block text-sm font-medium">
-            OpenID Provider URL
-          </label>
-          <Popover>
-            <PopoverTrigger>
-              <span
-                className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help"
-                aria-label="Issuer URL info"
-              >
-                ?
-              </span>
-            </PopoverTrigger>
-            <PopoverContent>
-              <div className="max-w-xs">
+    <Field orientation="vertical" className="gap-3">
+      <InputGroup className="flex-wrap">
+        <InputGroupAddon
+          align="block-start"
+          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+        >
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <span>OpenID Provider URL</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <span
+                  className="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+                  aria-label="Issuer URL info"
+                >
+                  ?
+                </span>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-72 text-sm">
                 <p className="font-medium">What is an OpenID Provider URL?</p>
-                <p className="mt-1">
-                  This is the base URL of the identity provider that implements OpenID Connect. The
-                  app will append
-                  <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch
-                  configuration info.
+                <p className="mt-1 text-muted-foreground">
+                  Enter the base URL of your OpenID Connect provider. The discovery document will be
+                  fetched automatically when requested.
                 </p>
-                <p className="mt-2 text-xs">
-                  Click the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button next
-                  to the input field to load a real-world example.
-                </p>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Input
-              id="issuer-url"
-              type="text"
-              value={issuerUrl}
-              onChange={(e) => setIssuerUrl(e.target.value)}
-              onKeyDown={handleKeyDown} // Ensure this prop uses the correctly defined function
-              placeholder="https://example.com/identity"
-              className="pr-20"
-            />
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
-              <IssuerHistory
-                onSelectIssuer={(url) => {
-                  setIssuerUrl(url)
-                  onFetchRequested(url)
-                }}
-                compact={true}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={handleRandomExample}
-                className="h-8 w-8"
-                title="Load random example"
-              >
-                <ShuffleIcon className="h-4 w-4" />
-              </Button>
-            </div>
+              </PopoverContent>
+            </Popover>
           </div>
+          <div className="flex items-center gap-2">
+            <IssuerHistory
+              onSelectIssuer={(url) => {
+                setIssuerUrl(url)
+                onFetchRequested(url)
+              }}
+              compact
+              configLoading={isLoading}
+              label="Recents"
+              buttonVariant="input-group"
+            />
+            <InputGroupButton
+              type="button"
+              size="sm"
+              variant="outline"
+              grouped={false}
+              className="flex items-center gap-1.5"
+              onClick={handleRandomExample}
+              title="Load random example"
+              aria-label="Load random example"
+            >
+              <ShuffleIcon className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Random</span>
+            </InputGroupButton>
+          </div>
+        </InputGroupAddon>
+        <InputGroupInput
+          id="issuer-url"
+          type="text"
+          value={issuerUrl}
+          onChange={(e) => setIssuerUrl(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="https://example.com/.well-known"
+        />
+
+        <InputGroupAddon
+          align="block-end"
+          className="flex w-full justify-end bg-transparent text-foreground"
+        >
           <Button
             onClick={handleFetchConfig}
-            disabled={isLoading || !issuerUrl} // Use prop isLoading state
-            className="sm:w-auto w-full"
+            disabled={isLoading || !issuerUrl}
+            variant="outline"
+            className="flex items-center gap-2"
           >
-            {isLoading ? 'Fetching...' : 'Fetch Config'}
+            {isLoading ? (
+              <>
+                <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                <span>Fetching configuration...</span>
+              </>
+            ) : (
+              <>
+                <Globe className="h-4 w-4" />
+                <span>Fetch Config</span>
+              </>
+            )}
           </Button>
-        </div>
-      </div>
-    </div>
+        </InputGroupAddon>
+      </InputGroup>
+    </Field>
   )
 }

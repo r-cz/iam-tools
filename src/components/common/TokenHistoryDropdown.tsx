@@ -86,9 +86,10 @@ export function TokenHistoryDropdown({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-9 w-9 rounded-none border-0"
             disabled={disabled}
             title="Recent Tokens"
+            aria-label="Recent tokens"
           >
             <History size={16} />
           </Button>
@@ -99,9 +100,10 @@ export function TokenHistoryDropdown({
             size="sm"
             className="flex items-center gap-1"
             disabled={disabled}
+            aria-label="Recent tokens"
           >
             <History size={16} />
-            <span>Recent Tokens</span>
+            <span className="hidden sm:inline">Recent Tokens</span>
           </Button>
         )}
       </DropdownMenuTrigger>

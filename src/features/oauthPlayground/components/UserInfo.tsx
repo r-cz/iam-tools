@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { IssuerHistory, TokenHistoryDropdown, JsonDisplay } from '@/components/common'
 import { useIssuerHistory, useAppState } from '@/lib/state'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
-import { User } from 'lucide-react'
+import { Clock, Globe, Mail, MapPin, User, UserRound } from 'lucide-react'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
+import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
 
 interface UserInfoResponse {
   sub?: string
@@ -49,7 +59,7 @@ interface UserInfoResponse {
 export function UserInfo() {
   const navigate = useNavigate()
   const { addIssuer } = useIssuerHistory()
-  const { addToken, tokenHistory } = useAppState()
+  const { addToken } = useAppState()
 
   // Form state
   const [userInfoEndpoint, setUserInfoEndpoint] = useState('')
@@ -237,6 +247,82 @@ export function UserInfo() {
     }
   }
 
+  const profileItems: Array<{
+    key: string
+    title: string
+    description: React.ReactNode
+    icon?: React.ReactNode
+    value?: React.ReactNode
+  }> = []
+
+  if (result && !result.error) {
+    if (result.sub) {
+      profileItems.push({
+        key: 'sub',
+        title: 'sub',
+        description: 'Subject identifier for the authenticated user.',
+        icon: <UserRound className="h-4 w-4" />,
+        value: <code className="font-mono text-xs break-words">{result.sub}</code>,
+      })
+    }
+
+    if (result.email) {
+      profileItems.push({
+        key: 'email',
+        title: 'email',
+        description: result.email_verified ? 'Verified email address.' : 'Email address (not verified).',
+        icon: <Mail className="h-4 w-4" />,
+        value: <span className="text-xs text-foreground/80">{result.email}</span>,
+      })
+    }
+
+    if (result.locale || result.zoneinfo) {
+      profileItems.push({
+        key: 'locale',
+        title: 'locale',
+        description: 'Locale and timezone preferences reported by the provider.',
+        icon: <Globe className="h-4 w-4" />,
+        value: (
+          <div className="flex flex-col gap-1 text-xs">
+            {result.locale && <span>Locale: {result.locale}</span>}
+            {result.zoneinfo && <span>Zone: {result.zoneinfo}</span>}
+          </div>
+        ),
+      })
+    }
+
+    if (result.address?.formatted) {
+      profileItems.push({
+        key: 'address',
+        title: 'address',
+        description: 'Formatted postal address.',
+        icon: <MapPin className="h-4 w-4" />,
+        value: (
+          <pre className="whitespace-pre-wrap text-xs text-foreground/80">
+            {result.address.formatted}
+          </pre>
+        ),
+      })
+    }
+
+    if (result.updated_at) {
+      profileItems.push({
+        key: 'updated_at',
+        title: 'updated_at',
+        description: 'When the user profile was last updated.',
+        icon: <Clock className="h-4 w-4" />,
+        value: (
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">
+              {new Date(result.updated_at * 1000).toLocaleString()}
+            </span>
+            <code className="font-mono">{result.updated_at}</code>
+          </div>
+        ),
+      })
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Card>
@@ -264,79 +350,100 @@ export function UserInfo() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* UserInfo Endpoint Input with History */}
-            <div className="space-y-2">
-              <Label htmlFor="userinfo-endpoint">UserInfo Endpoint</Label>
-              <div className="relative">
-                <Input
-                  id="userinfo-endpoint"
-                  type="url"
-                  value={userInfoEndpoint}
-                  onChange={(e) => setUserInfoEndpoint(e.target.value)}
-                  required={!isDemoMode}
-                  disabled={isDemoMode}
-                  placeholder={
-                    isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/userinfo'
-                  }
-                  className={isDemoMode ? '' : 'pr-10'}
-                />
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">UserInfo Endpoint</span>
                 {!isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                  <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
                       configLoading={configLoading}
                       disabled={isDemoMode}
-                      compact={true}
+                      compact
                     />
+                    {configLoading && (
+                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="userinfo-endpoint"
+                type="url"
+                value={userInfoEndpoint}
+                onChange={(e) => setUserInfoEndpoint(e.target.value)}
+                required={!isDemoMode}
+                disabled={isDemoMode}
+                placeholder={
+                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/userinfo'
+                }
+              />
+              {userInfoEndpoint && !isDemoMode && (
+                <InputGroupAddon
+                  align="block-end"
+                  className="w-full justify-end bg-transparent"
+                >
+                  <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
+                    len: {userInfoEndpoint.length}
+                  </InputGroupText>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
 
             {/* Access Token Input with History */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="access-token">Access Token</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleInspectToken}
-                  disabled={!accessToken}
-                >
-                  View in Token Inspector
-                </Button>
-              </div>
-              <div className="relative">
-                <Input
-                  id="access-token"
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  required={!isDemoMode}
-                  placeholder={isDemoMode ? 'Optional in demo mode' : 'Enter your access token'}
-                  className={`font-mono text-xs ${tokenHistory.length > 0 && !isDemoMode ? 'pr-10' : ''}`}
-                />
-                {tokenHistory.length > 0 && !isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                    <TokenHistoryDropdown
-                      onSelectToken={handleSelectToken}
-                      disabled={isDemoMode}
-                      compact={true}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">Access Token</span>
+                <div className="flex items-center gap-1.5">
+                  <TokenHistoryDropdown
+                    onSelectToken={handleSelectToken}
+                    disabled={isDemoMode}
+                    compact
+                  />
+                  {accessToken && (
+                    <InputGroupText className="tracking-normal font-mono normal-case">
+                      len: {accessToken.length}
+                    </InputGroupText>
+                  )}
+                  <InputGroupButton
+                    type="button"
+                    variant="outline"
+                    onClick={handleInspectToken}
+                    disabled={!accessToken}
+                    className="flex items-center gap-1.5"
+                  >
+                    View in Token Inspector
+                  </InputGroupButton>
+                </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="access-token"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                required={!isDemoMode}
+                placeholder={isDemoMode ? 'Optional in demo mode' : 'Enter your access token'}
+                className="font-mono text-xs"
+              />
+            </InputGroup>
 
             <Button type="submit" disabled={loading}>
               {loading ? 'Fetching...' : isDemoMode ? 'Generate Demo UserInfo' : 'Get UserInfo'}
             </Button>
           </form>
 
-          {/* Results Section */}
           {result && (
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="mb-1.5 block">UserInfo Result</Label>
+            <FieldSet className="mt-6 space-y-4 rounded-md border border-border p-4">
+              <FieldLegend>UserInfo Result</FieldLegend>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <FieldDescription className="text-xs text-muted-foreground">
+                  Claims returned from the UserInfo endpoint.
+                </FieldDescription>
                 {isDemoMode && (
                   <Badge
                     variant="outline"
@@ -347,105 +454,83 @@ export function UserInfo() {
                 )}
               </div>
 
-              {/* Error Display */}
-              {result.error && (
-                <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-sm text-destructive">
-                  <p className="font-medium">Error: {result.error}</p>
-                  {result.error_description && <p className="mt-1">{result.error_description}</p>}
-                </div>
-              )}
-
-              {/* User Profile Summary */}
-              {!result.error && (
-                <div className="bg-muted rounded-md p-4">
-                  <div className="flex items-center gap-3 mb-3">
+              {result.error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    {result.error_description || result.error}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-4 rounded-md border border-dashed border-border/60 bg-muted/20 p-4">
                     {result.picture ? (
                       <img
                         src={result.picture}
-                        alt={result.name || 'User'}
-                        className="w-12 h-12 rounded-full"
-                        onError={(e) => {
-                          // Replace with user icon if image fails to load
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                          ;(e.target as HTMLImageElement).parentElement
-                            ?.querySelector('.fallback-icon')
-                            ?.classList.remove('hidden')
-                        }}
+                        alt={result.name || result.preferred_username || result.sub || 'User'}
+                        className="h-14 w-14 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                        <User className="text-primary" />
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                        <User className="h-6 w-6 text-primary" />
                       </div>
                     )}
-                    <div className="fallback-icon hidden w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <User className="text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-lg">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
                         {result.name || result.preferred_username || result.sub || 'User'}
-                      </h3>
+                      </p>
                       {result.email && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
                           {result.email}
                           {result.email_verified === true && (
                             <Badge
                               variant="outline"
-                              className="bg-green-500/10 text-green-700 hover:bg-green-500/10 text-xs"
+                              className="bg-green-500/10 text-green-700"
                             >
                               Verified
                             </Badge>
                           )}
                         </p>
                       )}
+                      {result.profile && (
+                        <a
+                          href={result.profile}
+                          className="text-xs text-primary underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          View profile
+                        </a>
+                      )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    {result.sub && (
-                      <div>
-                        <span className="text-muted-foreground">Subject ID:</span>{' '}
-                        <span className="font-mono">{result.sub}</span>
-                      </div>
-                    )}
-                    {result.locale && (
-                      <div>
-                        <span className="text-muted-foreground">Locale:</span> {result.locale}
-                      </div>
-                    )}
-                    {result.zoneinfo && (
-                      <div>
-                        <span className="text-muted-foreground">Timezone:</span> {result.zoneinfo}
-                      </div>
-                    )}
-                    {result.updated_at && (
-                      <div>
-                        <span className="text-muted-foreground">Updated:</span>{' '}
-                        {new Date(result.updated_at * 1000).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  {profileItems.length > 0 && (
+                    <ItemGroup>
+                      {profileItems.map((item) => (
+                        <Item key={item.key} className="border bg-card/90">
+                          {item.icon && (
+                            <ItemMedia variant="icon" className="bg-muted text-muted-foreground">
+                              {item.icon}
+                            </ItemMedia>
+                          )}
+                          <ItemContent className="space-y-2">
+                            <ItemTitle className="font-mono text-sm">{item.title}</ItemTitle>
+                            <ItemDescription className="text-xs text-muted-foreground">
+                              {item.description}
+                            </ItemDescription>
+                            {item.value && (
+                              <div className="text-xs text-foreground/80">{item.value}</div>
+                            )}
+                          </ItemContent>
+                        </Item>
+                      ))}
+                    </ItemGroup>
+                  )}
+                </>
               )}
 
-              {/* Full Response */}
               <JsonDisplay data={result} className="text-xs max-h-96 overflow-auto" />
-
-              {/* Standard Claims Info */}
-              {!result.error && (
-                <div className="text-xs text-muted-foreground border-t pt-3">
-                  <p className="mb-1">
-                    <a
-                      href="https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-foreground"
-                    >
-                      OpenID Connect Standard Claims
-                    </a>
-                  </p>
-                </div>
-              )}
-            </div>
+            </FieldSet>
           )}
         </CardContent>
       </Card>

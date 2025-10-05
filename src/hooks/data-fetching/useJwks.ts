@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { jwksCache } from '@/lib/cache/jwks-cache'
 import { JSONWebKeySet } from 'jose'
@@ -19,7 +19,7 @@ export function useJwks(): UseJwksResult {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const fetchJwks = async (jwksUri: string, forceRefresh = false) => {
+  const fetchJwks = useCallback(async (jwksUri: string, forceRefresh = false) => {
     if (!jwksUri) {
       setData(null)
       setError(null)
@@ -45,7 +45,9 @@ export function useJwks(): UseJwksResult {
       if (!forceRefresh) {
         const cachedJwks = jwksCache.get(jwksUri)
         if (cachedJwks) {
-          console.log(`[useJwks] JWKS found in cache for: ${jwksUri}`)
+          if (import.meta.env.DEV) {
+            console.log(`[useJwks] JWKS found in cache for: ${jwksUri}`)
+          }
           setData(cachedJwks)
           setIsLoading(false)
           return
@@ -54,23 +56,33 @@ export function useJwks(): UseJwksResult {
         // Check if there's already a pending request
         const pendingRequest = jwksCache.getPendingRequest(jwksUri)
         if (pendingRequest) {
-          console.log(`[useJwks] Found pending request for: ${jwksUri}, waiting for it to complete`)
+          if (import.meta.env.DEV) {
+            console.log(
+              `[useJwks] Found pending request for: ${jwksUri}, waiting for it to complete`
+            )
+          }
           const jwksData = await pendingRequest
           setData(jwksData)
           setIsLoading(false)
           return
         }
 
-        console.log(`[useJwks] No cached JWKS found for: ${jwksUri}, fetching from network`)
+        if (import.meta.env.DEV) {
+          console.log(`[useJwks] No cached JWKS found for: ${jwksUri}, fetching from network`)
+        }
       } else {
-        console.log(`[useJwks] Force refreshing JWKS for: ${jwksUri}`)
+        if (import.meta.env.DEV) {
+          console.log(`[useJwks] Force refreshing JWKS for: ${jwksUri}`)
+        }
         // Remove from cache to ensure fresh fetch
         jwksCache.remove(jwksUri)
       }
 
       // Create the network request promise
       const fetchPromise = (async () => {
-        console.log(`[useJwks] Making network request for JWKS: ${jwksUri}`)
+        if (import.meta.env.DEV) {
+          console.log(`[useJwks] Making network request for JWKS: ${jwksUri}`)
+        }
         const response = await proxyFetch(jwksUri)
 
         if (!response.ok) {
@@ -93,7 +105,9 @@ export function useJwks(): UseJwksResult {
 
         // Cache the successful response
         jwksCache.set(jwksUri, jwksData)
-        console.log(`[useJwks] JWKS cached for: ${jwksUri}`)
+        if (import.meta.env.DEV) {
+          console.log(`[useJwks] JWKS cached for: ${jwksUri}`)
+        }
 
         return jwksData
       })()
@@ -117,7 +131,7 @@ export function useJwks(): UseJwksResult {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   // Provide a function to trigger fetching manually
   return { data, isLoading, error, fetchJwks }

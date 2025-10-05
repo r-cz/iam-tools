@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { useAppState } from '@/lib/state'
 import { CheckCircle, XCircle } from 'lucide-react'
@@ -14,7 +12,18 @@ import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
 import { toast } from 'sonner'
-import { IssuerHistory, TokenHistoryDropdown, JsonDisplay } from '@/components/common'
+import { IssuerHistory, TokenHistoryDropdown, JsonDisplay, FormFieldInput } from '@/components/common'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
+import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { cn } from '@/lib/utils'
 
 interface IntrospectionResponse {
   active: boolean
@@ -36,7 +45,7 @@ interface IntrospectionResponse {
 
 export function TokenIntrospection() {
   const navigate = useNavigate()
-  const { addToken, tokenHistory } = useAppState()
+  const { addToken } = useAppState()
 
   // Endpoint state
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState('')
@@ -268,6 +277,103 @@ export function TokenIntrospection() {
     }
   }
 
+  const keyClaims: Array<{
+    key: string
+    title: string
+    description: React.ReactNode
+    icon?: React.ReactNode
+    value?: React.ReactNode
+    badge?: React.ReactNode
+    footer?: React.ReactNode
+    tone?: 'success' | 'destructive'
+  }> = []
+
+  if (result) {
+    if (result.active !== undefined) {
+      keyClaims.push({
+        key: 'active',
+        title: 'active',
+        description: 'Boolean indicator of whether the token is currently active.',
+        icon: result.active ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />,
+        value: <code className="font-mono text-xs">{String(result.active)}</code>,
+        badge: (
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+            Required
+          </Badge>
+        ),
+        footer:
+          result.active === false && result.error
+            ? (
+                <p className="text-xs text-destructive">
+                  {result.error_description || result.error}
+                </p>
+              )
+            : undefined,
+        tone: result.active ? 'success' : 'destructive',
+      })
+    }
+
+    if (result.exp) {
+      const expired = result.exp * 1000 < Date.now()
+      keyClaims.push({
+        key: 'exp',
+        title: 'exp',
+        description: 'Integer timestamp indicating when the token expires.',
+        icon: expired ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />,
+        value: (
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">
+              {new Date(result.exp * 1000).toLocaleString()}
+            </span>
+            <code className="font-mono">{result.exp}</code>
+          </div>
+        ),
+        badge: expired ? (
+          <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">
+            Expired
+          </Badge>
+        ) : undefined,
+        tone: expired ? 'destructive' : undefined,
+      })
+    }
+
+    if (result.scope) {
+      keyClaims.push({
+        key: 'scope',
+        title: 'scope',
+        description: 'Space-delimited scopes granted to the access token.',
+        value: <code className="font-mono text-xs break-words">{result.scope}</code>,
+      })
+    }
+
+    if (result.client_id) {
+      keyClaims.push({
+        key: 'client_id',
+        title: 'client_id',
+        description: 'Client identifier that was issued the access token.',
+        value: <code className="font-mono text-xs break-words">{result.client_id}</code>,
+      })
+    }
+
+    if (result.sub) {
+      keyClaims.push({
+        key: 'sub',
+        title: 'sub',
+        description: 'Subject identifier for the authenticated principal.',
+        value: <code className="font-mono text-xs break-words">{result.sub}</code>,
+      })
+    }
+
+    if (result.iss) {
+      keyClaims.push({
+        key: 'iss',
+        title: 'iss',
+        description: 'Issuer that generated this token.',
+        value: <code className="font-mono text-xs break-words">{result.iss}</code>,
+      })
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Card>
@@ -295,101 +401,103 @@ export function TokenIntrospection() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Introspection Endpoint Input with History */}
-            <div className="space-y-2">
-              <Label htmlFor="introspection-endpoint">Introspection Endpoint</Label>
-              <div className="relative">
-                <Input
-                  id="introspection-endpoint"
-                  type="url"
-                  value={introspectionEndpoint}
-                  onChange={(e) => setIntrospectionEndpoint(e.target.value)}
-                  required={!isDemoMode}
-                  disabled={isDemoMode}
-                  placeholder={
-                    isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/introspect'
-                  }
-                  className={isDemoMode ? '' : 'pr-10'}
-                />
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">Introspection Endpoint</span>
                 {!isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                  <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
                       configLoading={configLoading}
                       disabled={isDemoMode}
-                      compact={true}
+                      compact
                     />
+                    {configLoading && (
+                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="introspection-endpoint"
+                type="url"
+                value={introspectionEndpoint}
+                onChange={(e) => setIntrospectionEndpoint(e.target.value)}
+                required={!isDemoMode}
+                disabled={isDemoMode}
+                placeholder={
+                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/introspect'
+                }
+              />
+            </InputGroup>
 
             {/* Token Input with History */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="token">Token to Introspect</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleInspectToken}
-                  disabled={!token}
-                >
-                  View in Token Inspector
-                </Button>
-              </div>
-              <div className="relative">
-                <Input
-                  id="token"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  required
-                  placeholder="Enter token to introspect"
-                  className={`font-mono text-xs ${tokenHistory.length > 0 && !isDemoMode ? 'pr-10' : ''}`}
-                />
-                {tokenHistory.length > 0 && !isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                    <TokenHistoryDropdown
-                      onSelectToken={handleSelectToken}
-                      disabled={isDemoMode}
-                      compact={true}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">Token to Introspect</span>
+                <div className="flex items-center gap-1.5">
+                  {token && (
+                    <InputGroupText className="tracking-normal font-mono normal-case">
+                      len: {token.length}
+                    </InputGroupText>
+                  )}
+                  <TokenHistoryDropdown
+                    onSelectToken={handleSelectToken}
+                    disabled={isDemoMode}
+                    compact
+                  />
+                  <InputGroupButton
+                    type="button"
+                    variant="outline"
+                    onClick={handleInspectToken}
+                    disabled={!token}
+                    className="flex items-center gap-1.5"
+                  >
+                    View in Token Inspector
+                  </InputGroupButton>
+                </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                required
+                placeholder="Enter token to introspect"
+                className="font-mono text-xs"
+              />
+            </InputGroup>
 
             {/* Client Credentials Section */}
-            <div className="space-y-4 border rounded-md p-3">
-              <h3 className="text-sm font-medium">Client Authentication (Optional)</h3>
+            <FieldSet className="space-y-4 rounded-md border border-border p-4">
+              <FieldLegend>Client Authentication (Optional)</FieldLegend>
+              <FieldDescription className="text-xs text-muted-foreground">
+                Provide client credentials if your introspection endpoint requires HTTP authentication.
+              </FieldDescription>
 
-              {/* Client ID Input */}
-              <div>
-                <Label htmlFor="client-id" className="mb-1.5 block">
-                  Client ID
-                </Label>
-                <Input
-                  id="client-id"
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  placeholder="Enter Client ID"
-                />
-              </div>
+              <FormFieldInput
+                id="client-id"
+                label="Client ID"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="Enter Client ID"
+              />
 
-              {/* Client Secret Input */}
-              <div>
-                <Label htmlFor="client-secret" className="mb-1.5 block">
-                  Client Secret
-                </Label>
-                <Input
-                  id="client-secret"
-                  type="password"
-                  value={clientSecret}
-                  onChange={(e) => setClientSecret(e.target.value)}
-                  disabled={isDemoMode}
-                  placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
-                />
-              </div>
-            </div>
+              <FormFieldInput
+                id="client-secret"
+                label="Client Secret"
+                type="password"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                disabled={isDemoMode}
+                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
+              />
+            </FieldSet>
 
             <Button type="submit" disabled={loading}>
               {loading
@@ -402,9 +510,12 @@ export function TokenIntrospection() {
 
           {/* Results Section */}
           {result && (
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="mb-1.5 block">Introspection Result</Label>
+            <FieldSet className="mt-6 space-y-4 rounded-md border border-border p-4">
+              <FieldLegend>Introspection Result</FieldLegend>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <FieldDescription className="text-xs text-muted-foreground">
+                  Complete response from the introspection endpoint.
+                </FieldDescription>
                 {isDemoMode && (
                   <Badge
                     variant="outline"
@@ -415,165 +526,55 @@ export function TokenIntrospection() {
                 )}
               </div>
 
-              {/* Active/Inactive Status */}
-              {result.active !== undefined && (
-                <Alert
-                  variant={result.active ? 'default' : 'destructive'}
-                  className={
-                    result.active ? 'bg-green-500/10 border-green-500/20 text-green-700' : ''
-                  }
-                >
-                  {result.active ? (
-                    <CheckCircle className="h-4 w-4" />
-                  ) : (
-                    <XCircle className="h-4 w-4" />
-                  )}
-                  <AlertDescription>
-                    Token is {result.active ? 'active' : 'inactive'}
-                    {result.error && `: ${result.error_description || result.error}`}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Full Response */}
               <JsonDisplay data={result} className="text-xs max-h-96 overflow-auto" />
 
-              {/* Key Claims Explained (RFC 7662) */}
-              <div className="mt-6 space-y-4">
-                <h3 className="text-sm font-semibold">Key Claims Explained</h3>
-
-                {/* Active Claim - Always show */}
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center">
-                        <span className="font-mono text-sm font-medium">active</span>
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          REQUIRED
-                        </Badge>
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-mono">{String(result.active)}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p>Boolean indicator of whether the token is currently active.</p>
-                      <p className="opacity-80">
-                        <a
-                          href="https://datatracker.ietf.org/doc/html/rfc7662#section-2.2"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline"
-                        >
-                          RFC 7662 §2.2
-                        </a>{' '}
-                        - Required for all introspection responses
-                      </p>
-                    </div>
-
-                    {result.active === false && result.error && (
-                      <Alert variant="destructive" className="mt-2">
-                        <AlertTitle>Inactive Reason</AlertTitle>
-                        <AlertDescription>
-                          {result.error_description || result.error}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expiration Claim */}
-                {result.exp && (
-                  <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center">
-                          <span className="font-mono text-sm font-medium">exp</span>
-                          {result.exp * 1000 < Date.now() && (
-                            <Badge variant="destructive" className="ml-2">
-                              Expired
-                            </Badge>
+              {keyClaims.length > 0 && (
+                <FieldSet className="space-y-4 rounded-md border border-border/60 bg-muted/30 p-4">
+                  <FieldLegend>Key Claims Explained</FieldLegend>
+                  <FieldDescription className="text-xs text-muted-foreground">
+                    Notable attributes from the token inspection with quick explanations.
+                  </FieldDescription>
+                  <ItemGroup>
+                    {keyClaims.map((claim) => (
+                      <Item
+                        key={claim.key}
+                        className={cn(
+                          'border bg-card/90',
+                          claim.tone === 'success' && 'border-green-500/40 bg-green-500/10',
+                          claim.tone === 'destructive' && 'border-destructive/40 bg-destructive/10'
+                        )}
+                      >
+                        {claim.icon && (
+                          <ItemMedia
+                            variant="icon"
+                            className={cn(
+                              'bg-muted text-muted-foreground',
+                              claim.tone === 'success' && 'bg-green-500/20 text-green-700',
+                              claim.tone === 'destructive' && 'bg-destructive/20 text-destructive'
+                            )}
+                          >
+                            {claim.icon}
+                          </ItemMedia>
+                        )}
+                        <ItemContent className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <ItemTitle className="font-mono text-sm">{claim.title}</ItemTitle>
+                            {claim.badge}
+                          </div>
+                          <ItemDescription className="text-xs text-muted-foreground">
+                            {claim.description}
+                          </ItemDescription>
+                          {claim.value && (
+                            <div className="text-xs text-foreground/80">{claim.value}</div>
                           )}
-                        </div>
-                        <div className="text-sm">
-                          <div>
-                            <div className="text-muted-foreground text-xs">
-                              {new Date(result.exp * 1000).toLocaleString()}
-                            </div>
-                            <div className="font-mono mt-1">{result.exp}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p>
-                          Integer timestamp (seconds since Unix epoch) indicating when this token
-                          expires.
-                        </p>
-                        <p className="opacity-80">
-                          <a
-                            href="https://datatracker.ietf.org/doc/html/rfc7662#section-2.2"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                          >
-                            RFC 7662 §2.2
-                          </a>
-                        </p>
-                      </div>
-
-                      {result.exp * 1000 < Date.now() && (
-                        <Alert variant="destructive" className="mt-2">
-                          <AlertTitle>Token Expired</AlertTitle>
-                          <AlertDescription>
-                            This token expired on {new Date(result.exp * 1000).toLocaleString()}
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Issued At Claim */}
-                {result.iat && (
-                  <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center">
-                          <span className="font-mono text-sm font-medium">iat</span>
-                        </div>
-                        <div className="text-sm">
-                          <div>
-                            <div className="text-muted-foreground text-xs">
-                              {new Date(result.iat * 1000).toLocaleString()}
-                            </div>
-                            <div className="font-mono mt-1">{result.iat}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p>
-                          Integer timestamp (seconds since Unix epoch) indicating when this token
-                          was issued.
-                        </p>
-                        <p className="opacity-80">
-                          <a
-                            href="https://datatracker.ietf.org/doc/html/rfc7662#section-2.2"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                          >
-                            RFC 7662 §2.2
-                          </a>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+                          {claim.footer}
+                        </ItemContent>
+                      </Item>
+                    ))}
+                  </ItemGroup>
+                </FieldSet>
+              )}
+            </FieldSet>
           )}
         </CardContent>
       </Card>
