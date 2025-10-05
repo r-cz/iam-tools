@@ -14,12 +14,7 @@ import { useIssuerHistory } from '../../lib/state'
 export function OidcExplorer() {
   // Instantiate hooks
   const oidcConfigHook = useOidcConfig()
-  const {
-    data: jwksData,
-    error: jwksError,
-    fetchJwks,
-    isLoading: isJwksLoading,
-  } = useJwks()
+  const { data: jwksData, error: jwksError, fetchJwks, isLoading: isJwksLoading } = useJwks()
   const { addIssuer } = useIssuerHistory()
 
   // Local state for derived/UI data

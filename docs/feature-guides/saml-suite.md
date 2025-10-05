@@ -22,6 +22,7 @@ Path: /saml/response-decoder
   - Click “Verify Signatures” to validate Response-level and Assertion-level signatures.
 
 Notes:
+
 - Verification uses xmldsigjs + WebCrypto in the browser. Provide the correct signing certificate used by the IdP.
 - This validates XML-DSig cryptographically. Functional validation (audiences, time window, recipients, InResponseTo, etc.) is not enforced yet.
 
@@ -40,12 +41,14 @@ Path: /saml/request-builder
   - HTTP-Redirect: Open a built Redirect URL.
 
 Redirect Signing:
+
 - Toggle “Sign Redirect” to sign the query per SAML Redirect binding spec.
 - SigAlg: RSA-SHA256.
 - Private key: paste PKCS#8 PEM (-----BEGIN PRIVATE KEY----- ...).
 - Generates a “Signed Redirect URL” with SigAlg and Signature appended.
 
 Tips:
+
 - HTTP-Redirect encoding uses the browser `CompressionStream('deflate-raw')` API; prefer Chromium-based browsers.
 
 ## Metadata Validator
@@ -61,6 +64,7 @@ Path: /saml/metadata-validator
   - Paste the metadata signing certificate (PEM or base64) and click Verify to validate the XML-DSig on EntityDescriptor.
 
 Proxy
+
 - The built-in proxy allows typical metadata endpoints (e.g., FederationMetadata.xml, /saml/metadata) to avoid CORS issues.
 
 ## SP Metadata Generator

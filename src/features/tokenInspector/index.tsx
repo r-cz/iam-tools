@@ -86,7 +86,14 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       }
       fetchOidcConfig(issuerUrl)
     }
-  }, [fetchOidcConfig, isDemoToken, isOidcConfigLoading, issuerUrl, oidcConfig?.issuer, oidcConfigIssuer])
+  }, [
+    fetchOidcConfig,
+    isDemoToken,
+    isOidcConfigLoading,
+    issuerUrl,
+    oidcConfig?.issuer,
+    oidcConfigIssuer,
+  ])
 
   const resetState = () => {
     if (import.meta?.env?.DEV) {
@@ -176,7 +183,9 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
             const matchingKey = currentJwks.keys.find((key) => key.kid === header.kid)
             if (matchingKey) {
               if (import.meta?.env?.DEV) {
-                console.log(`Demo token signature check: Found key ${header.kid}. Marking as valid.`)
+                console.log(
+                  `Demo token signature check: Found key ${header.kid}. Marking as valid.`
+                )
               }
               signatureValid = true
             } else {
@@ -333,10 +342,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
         }
 
         return (
-          <Badge
-            variant="outline"
-            className="bg-green-500/20 text-green-700 hover:bg-green-500/20"
-          >
+          <Badge variant="outline" className="bg-green-500/20 text-green-700 hover:bg-green-500/20">
             OAuth Access Token
           </Badge>
         )
