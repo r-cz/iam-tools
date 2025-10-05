@@ -10,8 +10,19 @@ import { IssuerHistory, JsonDisplay, FormFieldInput } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { toast } from 'sonner'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
+import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { cn } from '@/lib/utils'
+import { Clock, Hash, Layers, ShieldCheck } from 'lucide-react'
+import { ButtonGroup } from '@/components/ui/button-group'
 
 interface TokenResponse {
   access_token?: string
@@ -171,6 +182,75 @@ export function ClientCredentialsFlow() {
     }
   }
 
+  const summaryItems: Array<{
+    key: string
+    title: string
+    description: React.ReactNode
+    icon?: React.ReactNode
+    value?: React.ReactNode
+    tone?: 'info' | 'success'
+  }> = []
+
+  if (result) {
+    if (result.token_type) {
+      summaryItems.push({
+        key: 'token_type',
+        title: 'token_type',
+        description: 'Type of token returned by the provider.',
+        icon: <ShieldCheck className="h-4 w-4" />,
+        value: <code className="font-mono text-xs">{result.token_type}</code>,
+        tone: 'info',
+      })
+    }
+
+    if (typeof result.expires_in === 'number') {
+      summaryItems.push({
+        key: 'expires_in',
+        title: 'expires_in',
+        description: 'Lifetime of the token in seconds.',
+        icon: <Clock className="h-4 w-4" />,
+        value: (
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">
+              Expires in approximately {(result.expires_in / 60).toFixed(0)} minute(s)
+            </span>
+            <code className="font-mono">{result.expires_in}</code>
+          </div>
+        ),
+        tone: 'info',
+      })
+    }
+
+    if (result.scope) {
+      summaryItems.push({
+        key: 'scope',
+        title: 'scope',
+        description: 'Granted scopes included with the access token.',
+        icon: <Layers className="h-4 w-4" />,
+        value: <code className="font-mono text-xs break-words">{result.scope}</code>,
+        tone: 'info',
+      })
+    }
+
+    if (result.access_token) {
+      summaryItems.push({
+        key: 'access_token',
+        title: 'access_token',
+        description: 'Signed access token issued via the client credentials flow.',
+        icon: <Hash className="h-4 w-4" />,
+        value: (
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">length: {result.access_token.length}</span>
+            <code className="font-mono break-words">
+              {`${result.access_token.substring(0, 24)}…`}
+            </code>
+          </div>
+        ),
+        tone: 'info',
+      })
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Card>
@@ -221,35 +301,52 @@ export function ClientCredentialsFlow() {
                   isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/token'
                 }
               />
+              {tokenEndpoint && !isDemoMode && (
+                <InputGroupAddon
+                  align="block-end"
+                  className="w-full justify-end bg-transparent"
+                >
+                  <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
+                    len: {tokenEndpoint.length}
+                  </InputGroupText>
+                </InputGroupAddon>
+              )}
             </InputGroup>
 
-            <FormFieldInput
-              id="client-id"
-              label="Client ID"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              required={!isDemoMode}
-              placeholder={isDemoMode ? '(Optional for Demo)' : 'Enter Client ID'}
-            />
+            <FieldSet className="space-y-4 rounded-md border border-border p-4">
+              <FieldLegend>Client Authentication</FieldLegend>
+              <FieldDescription className="text-xs text-muted-foreground">
+                Provide client credentials if the token endpoint requires authenticated requests.
+              </FieldDescription>
 
-            <FormFieldInput
-              id="client-secret"
-              label="Client Secret"
-              type="password"
-              value={clientSecret}
-              onChange={(e) => setClientSecret(e.target.value)}
-              required={!isDemoMode}
-              disabled={isDemoMode}
-              placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
-            />
+              <FormFieldInput
+                id="client-id"
+                label="Client ID"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                required={!isDemoMode}
+                placeholder={isDemoMode ? '(Optional for Demo)' : 'Enter Client ID'}
+              />
 
-            <FormFieldInput
-              id="scope"
-              label="Scope (optional)"
-              value={scope}
-              onChange={(e) => setScope(e.target.value)}
-              placeholder="space-separated scopes (e.g., api:read)"
-            />
+              <FormFieldInput
+                id="client-secret"
+                label="Client Secret"
+                type="password"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                required={!isDemoMode}
+                disabled={isDemoMode}
+                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
+              />
+
+              <FormFieldInput
+                id="scope"
+                label="Scope (optional)"
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+                placeholder="space-separated scopes (e.g., api:read)"
+              />
+            </FieldSet>
             <Button
               type="submit"
               disabled={loading || (!isDemoMode && (!tokenEndpoint || !clientId || !clientSecret))}
@@ -258,18 +355,59 @@ export function ClientCredentialsFlow() {
             </Button>
           </form>
           {result && (
-            <div className="mt-6 space-y-4">
-              {' '}
-              {/* Add space-y-4 for button spacing */}
-              <Label className="mb-1.5 block">Result</Label>
+            <FieldSet className="mt-6 space-y-4 rounded-md border border-border p-4">
+              <FieldLegend>Token Response</FieldLegend>
+              <FieldDescription className="text-xs text-muted-foreground">
+                Details returned from the client credentials grant.
+              </FieldDescription>
+
               <JsonDisplay data={result} className="text-xs max-h-96 overflow-auto" />
-              {/* Add Inspect Token button */}
-              {result.access_token && (
-                <Button variant="secondary" size="sm" onClick={handleInspectToken}>
-                  Inspect Access Token
-                </Button>
+
+              {summaryItems.length > 0 && (
+                <FieldSet className="space-y-4 rounded-md border border-border/60 bg-muted/30 p-4">
+                  <FieldLegend>Highlights</FieldLegend>
+                  <ItemGroup>
+                    {summaryItems.map((item) => (
+                      <Item
+                        key={item.key}
+                        className={cn(
+                          'border bg-card/90',
+                          item.tone === 'info' && 'border-primary/40 bg-primary/5'
+                        )}
+                      >
+                        {item.icon && (
+                          <ItemMedia variant="icon" className="bg-muted text-muted-foreground">
+                            {item.icon}
+                          </ItemMedia>
+                        )}
+                        <ItemContent className="space-y-2">
+                          <ItemTitle className="font-mono text-sm">{item.title}</ItemTitle>
+                          <ItemDescription className="text-xs text-muted-foreground">
+                            {item.description}
+                          </ItemDescription>
+                          {item.value && (
+                            <div className="text-xs text-foreground/80">{item.value}</div>
+                          )}
+                        </ItemContent>
+                      </Item>
+                    ))}
+                  </ItemGroup>
+                </FieldSet>
               )}
-            </div>
+
+              {result.access_token && (
+                <ButtonGroup>
+                  <InputGroupButton
+                    type="button"
+                    variant="outline"
+                    onClick={handleInspectToken}
+                    className="flex items-center gap-1.5"
+                  >
+                    Inspect Access Token
+                  </InputGroupButton>
+                </ButtonGroup>
+              )}
+            </FieldSet>
           )}
         </CardContent>
       </Card>

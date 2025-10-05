@@ -2,6 +2,8 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
+import { Button, type ButtonProps } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 
 type InputGroupSize = 'sm' | 'md' | 'lg'
 
@@ -89,3 +91,67 @@ export const InputGroupAddon = React.forwardRef<HTMLDivElement, InputGroupAddonP
   }
 )
 InputGroupAddon.displayName = 'InputGroupAddon'
+
+export interface InputGroupButtonProps extends ButtonProps {
+  grouped?: boolean
+}
+
+export const InputGroupButton = React.forwardRef<HTMLButtonElement, InputGroupButtonProps>(
+  ({ className, size = 'sm', variant = 'ghost', grouped = true, ...props }, ref) => {
+    const isIcon = typeof size === 'string' && size.toString().startsWith('icon')
+
+    return (
+      <Button
+        ref={ref}
+        size={size}
+        variant={variant}
+        className={cn(
+          'h-9 px-3 text-xs font-medium transition-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none',
+          grouped
+            ? 'border-0 rounded-none first:rounded-l-md last:rounded-r-md'
+            : 'rounded-md',
+          isIcon ? 'h-9 w-9 px-0' : 'h-9',
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+)
+InputGroupButton.displayName = 'InputGroupButton'
+
+export interface InputGroupTextProps extends React.HTMLAttributes<HTMLSpanElement> {}
+
+export const InputGroupText = React.forwardRef<HTMLSpanElement, InputGroupTextProps>(
+  ({ className, ...props }, ref) => {
+    return (
+      <span
+        ref={ref}
+        className={cn('text-xs font-medium text-muted-foreground', className)}
+        {...props}
+      />
+    )
+  }
+)
+InputGroupText.displayName = 'InputGroupText'
+
+export interface InputGroupTextareaProps
+  extends React.ComponentProps<typeof Textarea> {}
+
+export const InputGroupTextarea = React.forwardRef<HTMLTextAreaElement, InputGroupTextareaProps>(
+  ({ className, ...props }, ref) => {
+    return (
+      <Textarea
+        ref={ref}
+        data-slot="input-group-control"
+        className={cn(
+          'min-h-[120px] rounded-none border-0 bg-transparent px-3 py-2 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+          'disabled:bg-muted/40 disabled:text-muted-foreground',
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+)
+InputGroupTextarea.displayName = 'InputGroupTextarea'

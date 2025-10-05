@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Key } from 'lucide-react'
 
 import {
   TokenInput,
@@ -480,11 +482,15 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
 
       {/* Placeholder when no token is decoded AND no format error exists */}
       {!decodedToken && !validationResults.some((r) => r.claim === 'format' && !r.valid) && (
-        <Card className="lg:col-span-1">
-          <CardContent className="p-5 text-center text-muted-foreground">
-            Paste or generate a token and click "Inspect Token" to see details.
-          </CardContent>
-        </Card>
+        <Empty className="lg:col-span-1 py-12">
+          <EmptyMedia variant="icon" className="bg-primary/10 text-primary">
+            <Key size={20} />
+          </EmptyMedia>
+          <EmptyTitle>No token inspected</EmptyTitle>
+          <EmptyDescription>
+            Paste or generate a token above, then choose <span className="font-medium">Inspect Token</span> to view claims and signature details.
+          </EmptyDescription>
+        </Empty>
       )}
 
       {/* Error display specifically for format errors */}

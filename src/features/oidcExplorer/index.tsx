@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig'
 import { useJwks } from '@/hooks/data-fetching/useJwks'
-import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, KeyRound } from 'lucide-react'
@@ -94,12 +93,8 @@ export function OidcExplorer() {
   return (
     <div className="space-y-6">
       {/* Configuration Input */}
-      <Card>
-        <CardContent className="p-5">
-          {/* Config Input Component */}
-          <ConfigInput onFetchRequested={handleFetchConfig} isLoading={isLoading} />
-        </CardContent>
-      </Card>
+      {/* Config Input Component */}
+      <ConfigInput onFetchRequested={handleFetchConfig} isLoading={isLoading} />
 
       {/* Loading state */}
       {isLoading && (

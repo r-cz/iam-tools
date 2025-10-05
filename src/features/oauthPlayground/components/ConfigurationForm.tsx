@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 // Removed Tabs imports
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge' // Import Badge
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
+import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
@@ -174,8 +175,8 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           {/* Configuration based on mode */}
           {
             !isDemoMode ? (
-              <div className="space-y-4 rounded-lg border p-4">
-                <h3 className="text-lg font-medium">Identity Provider Details</h3>
+              <FieldSet className="space-y-4 rounded-lg border border-border p-4">
+                <FieldLegend>Identity Provider Details</FieldLegend>
                 {/* Issuer URL for Auto-Discovery */}
                 <div className="space-y-2">
                   <InputGroup className="flex-wrap">
@@ -188,10 +189,9 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                       </span>
                       <div className="flex items-center gap-1.5">
                         <IssuerHistory onSelectIssuer={handleSelectIssuer} compact />
-                        <Button
+                        <InputGroupButton
                           type="button"
                           variant="outline"
-                          size="sm"
                           onClick={fetchOidcConfig}
                           disabled={isLoadingDiscovery || !issuerUrl}
                           className="flex items-center gap-1.5"
@@ -204,7 +204,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                           ) : (
                             'Discover'
                           )}
-                        </Button>
+                        </InputGroupButton>
                       </div>
                     </InputGroupAddon>
                     <InputGroupInput
@@ -219,10 +219,10 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                       }}
                     />
                   </InputGroup>
-                  <p className="text-sm text-muted-foreground">
-                    Enter the base URL of your IdP to attempt auto-discovery of endpoints via OIDC
-                    .well-known configuration.
-                  </p>
+                  <FieldDescription className="text-xs text-muted-foreground">
+                    Enter the base URL of your IdP to attempt auto-discovery of endpoints via the
+                    OIDC discovery document.
+                  </FieldDescription>
                 </div>
 
                 {/* Manual/Discovered Endpoints */}
@@ -281,7 +281,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                     </span>
                   }
                 />
-              </div>
+              </FieldSet>
             ) : // Removed the empty div that previously held the static message
             null // Or simply remove the entire else block if nothing else goes here
           }
@@ -319,9 +319,9 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           />
 
           {/* PKCE Parameters */}
-          <div className="space-y-4 rounded-lg border p-4">
+          <FieldSet className="space-y-4 rounded-lg border border-border p-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">PKCE Parameters</h3>
+              <FieldLegend>PKCE Parameters</FieldLegend>
               <Button type="button" variant="outline" onClick={regeneratePkce}>
                 Regenerate
               </Button>
@@ -347,7 +347,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
               readOnly
               description="Random value for CSRF protection"
             />
-          </div>
+          </FieldSet>
 
           <Button type="button" onClick={handleSubmit}>
             Continue to Authorization

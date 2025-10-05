@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import Editor from 'react-simple-code-editor'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { InfoIcon, TestTubeDiagonal, RotateCcw, Search } from 'lucide-react'
 import { generateFreshToken } from '../utils/generate-token'
@@ -9,7 +7,12 @@ import { toast } from 'sonner'
 import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import { TokenHistory } from './TokenHistory'
 import { Spinner } from '@/components/ui/spinner'
-import { InputGroup, InputGroupAddon } from '@/components/ui/input-group'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+} from '@/components/ui/input-group'
 
 interface TokenInputProps {
   token: string
@@ -139,35 +142,42 @@ export function TokenInput({
         >
           <span className="text-sm font-medium text-foreground">OAuth/OIDC Token</span>
           <div className="flex items-center gap-1.5">
-            <TokenHistory onSelectToken={handleSelectTokenFromHistory} compact />
-            <Button
-              variant="ghost"
-              size="sm"
+            <TokenHistory
+              onSelectToken={handleSelectTokenFromHistory}
+              compact
+              buttonVariant="input-group"
+              label="Recents"
+            />
+            <InputGroupButton
               onClick={loadExampleToken}
               disabled={isLoadingExample}
+              grouped={false}
+              variant="outline"
               className="flex items-center gap-1.5"
+              aria-label="Load example token"
             >
               {isLoadingExample ? (
                 <>
                   <Spinner size="sm" thickness="thin" aria-hidden="true" />
-                  <span>Loading…</span>
+                  <span className="hidden sm:inline">Loading…</span>
                 </>
               ) : (
                 <>
                   <TestTubeDiagonal size={16} />
-                  <span>Example</span>
+                  <span className="hidden sm:inline">Example</span>
                 </>
               )}
-            </Button>
-            <Button
+            </InputGroupButton>
+            <InputGroupButton
+              grouped={false}
               variant="ghost"
-              size="sm"
+              className="flex items-center gap-1.5 text-destructive hover:text-destructive border border-transparent"
               onClick={handleReset}
-              className="flex items-center gap-1.5 text-destructive hover:text-destructive"
+              aria-label="Clear token"
             >
               <RotateCcw size={16} />
-              <span>Clear</span>
-            </Button>
+              <span className="hidden sm:inline">Clear</span>
+            </InputGroupButton>
           </div>
         </InputGroupAddon>
 
@@ -196,6 +206,28 @@ export function TokenInput({
             className="caret-foreground"
           />
         </div>
+
+        <InputGroupAddon
+          align="block-end"
+          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+        >
+          {token && (
+            <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
+              <span className="hidden sm:inline">Characters:</span> {token.length}
+            </InputGroupText>
+          )}
+          <InputGroupButton
+            onClick={onDecode}
+            disabled={!token}
+            className="flex items-center gap-1.5 rounded-md"
+            variant="outline"
+            grouped={false}
+            aria-label="Inspect token"
+          >
+            <Search size={16} />
+            <span className="hidden sm:inline">Inspect Token</span>
+          </InputGroupButton>
+        </InputGroupAddon>
       </InputGroup>
 
       {isExampleToken && (
@@ -217,19 +249,6 @@ export function TokenInput({
           </AlertDescription>
         </Alert>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {token ? (
-          <Badge variant="secondary" className="font-mono">
-            Characters: {token.length}
-          </Badge>
-        ) : (
-          <div />
-        )}
-        <Button onClick={onDecode} disabled={!token} className="flex items-center gap-1.5">
-          <Search size={16} />
-          <span>Inspect Token</span>
-        </Button>
-      </div>
     </div>
   )
 }
