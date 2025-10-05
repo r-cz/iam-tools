@@ -16,6 +16,7 @@ import { decodeJwtPayload } from '@/lib/jwt/decode-token'
 
 interface TokenHistoryProps {
   onSelectToken: (token: string) => void
+  compact?: boolean
 }
 
 /**
@@ -37,7 +38,7 @@ function truncateToken(token: string): string {
 /**
  * Displays a history of recently used JWT tokens
  */
-export function TokenHistory({ onSelectToken }: TokenHistoryProps) {
+export function TokenHistory({ onSelectToken, compact = false }: TokenHistoryProps) {
   const { tokenHistory, removeToken, updateToken, clearTokens } = useTokenHistory()
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [editName, setEditName] = React.useState('')
@@ -70,13 +71,29 @@ export function TokenHistory({ onSelectToken }: TokenHistoryProps) {
   }
 
   return (
-    <div className="w-full">
+    <div className={compact ? 'w-auto' : 'w-full'}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="flex items-center gap-1 w-full sm:w-auto">
-            <History size={16} />
-            <span>Recent Tokens</span>
-          </Button>
+          {compact ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="Recent tokens"
+            >
+              <History size={16} />
+              <span className="sr-only">Recent Tokens</span>
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 w-full sm:w-auto"
+            >
+              <History size={16} />
+              <span>Recent Tokens</span>
+            </Button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[300px]">
           <DropdownMenuLabel>Token History</DropdownMenuLabel>

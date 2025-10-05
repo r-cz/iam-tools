@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +18,7 @@ import {
   TestTubeDiagonal,
   RotateCcw,
 } from 'lucide-react'
+import { InputGroup, InputGroupAddon } from '@/components/ui/input-group'
 
 export function SamlResponseDecoder() {
   const [input, setInput] = useState('')
@@ -57,39 +57,42 @@ export function SamlResponseDecoder() {
       <Card className="lg:col-span-1">
         <CardContent className="space-y-4 pt-6">
           <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-              <Label htmlFor="saml-input" className="block text-sm font-medium">
-                SAML Response (Base64)
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExample}
-                  className="flex items-center gap-1.5"
-                >
-                  <TestTubeDiagonal size={16} />
-                  <span>Example</span>
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleClear}
-                  className="flex items-center gap-1.5"
-                >
-                  <RotateCcw size={16} />
-                  <span>Clear</span>
-                </Button>
-              </div>
-            </div>
-
-            <Textarea
-              id="saml-input"
-              placeholder="Paste your base64-encoded SAML Response here..."
-              value={input}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
-              className="min-h-[200px] font-mono text-sm"
-            />
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">SAML Response (Base64)</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleExample}
+                    className="flex items-center gap-1.5"
+                  >
+                    <TestTubeDiagonal size={16} />
+                    <span>Example</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClear}
+                    className="flex items-center gap-1.5 text-destructive hover:text-destructive"
+                  >
+                    <RotateCcw size={16} />
+                    <span>Clear</span>
+                  </Button>
+                </div>
+              </InputGroupAddon>
+              <Textarea
+                id="saml-input"
+                data-slot="input-group-control"
+                placeholder="Paste your base64-encoded SAML Response here..."
+                value={input}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+                className="min-h-[200px] resize-y rounded-none border-0 font-mono text-sm focus-visible:ring-0"
+              />
+            </InputGroup>
 
             {error && (
               <Alert variant="destructive">

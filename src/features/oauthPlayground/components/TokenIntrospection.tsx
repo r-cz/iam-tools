@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -14,7 +13,9 @@ import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
 import { toast } from 'sonner'
-import { IssuerHistory, TokenHistoryDropdown, JsonDisplay } from '@/components/common'
+import { IssuerHistory, TokenHistoryDropdown, JsonDisplay, FormFieldInput } from '@/components/common'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
 
 interface IntrospectionResponse {
   active: boolean
@@ -36,7 +37,7 @@ interface IntrospectionResponse {
 
 export function TokenIntrospection() {
   const navigate = useNavigate()
-  const { addToken, tokenHistory } = useAppState()
+  const { addToken } = useAppState()
 
   // Endpoint state
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState('')
@@ -295,100 +296,94 @@ export function TokenIntrospection() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Introspection Endpoint Input with History */}
-            <div className="space-y-2">
-              <Label htmlFor="introspection-endpoint">Introspection Endpoint</Label>
-              <div className="relative">
-                <Input
-                  id="introspection-endpoint"
-                  type="url"
-                  value={introspectionEndpoint}
-                  onChange={(e) => setIntrospectionEndpoint(e.target.value)}
-                  required={!isDemoMode}
-                  disabled={isDemoMode}
-                  placeholder={
-                    isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/introspect'
-                  }
-                  className={isDemoMode ? '' : 'pr-10'}
-                />
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">Introspection Endpoint</span>
                 {!isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                  <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
                       configLoading={configLoading}
                       disabled={isDemoMode}
-                      compact={true}
+                      compact
                     />
+                    {configLoading && (
+                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="introspection-endpoint"
+                type="url"
+                value={introspectionEndpoint}
+                onChange={(e) => setIntrospectionEndpoint(e.target.value)}
+                required={!isDemoMode}
+                disabled={isDemoMode}
+                placeholder={
+                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/introspect'
+                }
+              />
+            </InputGroup>
 
             {/* Token Input with History */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="token">Token to Introspect</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleInspectToken}
-                  disabled={!token}
-                >
-                  View in Token Inspector
-                </Button>
-              </div>
-              <div className="relative">
-                <Input
-                  id="token"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  required
-                  placeholder="Enter token to introspect"
-                  className={`font-mono text-xs ${tokenHistory.length > 0 && !isDemoMode ? 'pr-10' : ''}`}
-                />
-                {tokenHistory.length > 0 && !isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                    <TokenHistoryDropdown
-                      onSelectToken={handleSelectToken}
-                      disabled={isDemoMode}
-                      compact={true}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">Token to Introspect</span>
+                <div className="flex items-center gap-1.5">
+                  <TokenHistoryDropdown
+                    onSelectToken={handleSelectToken}
+                    disabled={isDemoMode}
+                    compact
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleInspectToken}
+                    disabled={!token}
+                  >
+                    View in Token Inspector
+                  </Button>
+                </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                required
+                placeholder="Enter token to introspect"
+                className="font-mono text-xs"
+              />
+            </InputGroup>
 
             {/* Client Credentials Section */}
             <div className="space-y-4 border rounded-md p-3">
               <h3 className="text-sm font-medium">Client Authentication (Optional)</h3>
 
-              {/* Client ID Input */}
-              <div>
-                <Label htmlFor="client-id" className="mb-1.5 block">
-                  Client ID
-                </Label>
-                <Input
-                  id="client-id"
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  placeholder="Enter Client ID"
-                />
-              </div>
+              <FormFieldInput
+                id="client-id"
+                label="Client ID"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="Enter Client ID"
+              />
 
-              {/* Client Secret Input */}
-              <div>
-                <Label htmlFor="client-secret" className="mb-1.5 block">
-                  Client Secret
-                </Label>
-                <Input
-                  id="client-secret"
-                  type="password"
-                  value={clientSecret}
-                  onChange={(e) => setClientSecret(e.target.value)}
-                  disabled={isDemoMode}
-                  placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
-                />
-              </div>
+              <FormFieldInput
+                id="client-secret"
+                label="Client Secret"
+                type="password"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                disabled={isDemoMode}
+                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
+              />
             </div>
 
             <Button type="submit" disabled={loading}>

@@ -7,8 +7,9 @@ import { InfoIcon, TestTubeDiagonal, RotateCcw, Search } from 'lucide-react'
 import { generateFreshToken } from '../utils/generate-token'
 import { toast } from 'sonner'
 import { DEMO_JWKS } from '@/lib/jwt/demo-key'
-import { cn } from '@/lib/utils' // Import cn utility
 import { TokenHistory } from './TokenHistory'
+import { Spinner } from '@/components/ui/spinner'
+import { InputGroup, InputGroupAddon } from '@/components/ui/input-group'
 
 interface TokenInputProps {
   token: string
@@ -120,37 +121,82 @@ export function TokenInput({
     }
   }
 
+  const handleEditorKeyDown = (event: React.KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault()
+      if (token) {
+        onDecode()
+      }
+    }
+  }
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-        <label htmlFor="token-input" className="block text-sm font-medium">
-          OAuth/OIDC Token
-        </label>
-        <div className="flex flex-wrap gap-2">
-          <div className="w-auto">
-            <TokenHistory onSelectToken={handleSelectTokenFromHistory} />
+      <InputGroup className="flex-wrap">
+        <InputGroupAddon
+          align="block-start"
+          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+        >
+          <span className="text-sm font-medium text-foreground">OAuth/OIDC Token</span>
+          <div className="flex items-center gap-1.5">
+            <TokenHistory onSelectToken={handleSelectTokenFromHistory} compact />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadExampleToken}
+              disabled={isLoadingExample}
+              className="flex items-center gap-1.5"
+            >
+              {isLoadingExample ? (
+                <>
+                  <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                  <span>Loading…</span>
+                </>
+              ) : (
+                <>
+                  <TestTubeDiagonal size={16} />
+                  <span>Example</span>
+                </>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="flex items-center gap-1.5 text-destructive hover:text-destructive"
+            >
+              <RotateCcw size={16} />
+              <span>Clear</span>
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadExampleToken}
-            disabled={isLoadingExample}
-            className="flex items-center gap-1.5"
-          >
-            <TestTubeDiagonal size={16} />
-            <span>{isLoadingExample ? 'Loading...' : 'Example'}</span>
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleReset}
-            className="flex items-center gap-1.5"
-          >
-            <RotateCcw size={16} />
-            <span>Clear</span>
-          </Button>
+        </InputGroupAddon>
+
+        <div
+          data-slot="input-group-control"
+          className="relative w-full bg-background text-sm font-mono"
+        >
+          <Editor
+            value={token}
+            onValueChange={(code) => {
+              setToken(code)
+              setIsExampleToken(false)
+            }}
+            highlight={highlightJwt}
+            padding={10}
+            textareaId="token-input"
+            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            onKeyDown={handleEditorKeyDown}
+            style={{
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              lineHeight: '1.25rem',
+              outline: 'none',
+              minHeight: '120px',
+            }}
+            className="caret-foreground"
+          />
         </div>
-      </div>
+      </InputGroup>
 
       {isExampleToken && (
         <Alert className="my-2 py-2 bg-blue-500/10 border-blue-500/20 text-blue-700">
@@ -171,46 +217,15 @@ export function TokenInput({
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Replace textarea with react-simple-code-editor */}
-      <div
-        className={cn(
-          'relative min-h-[100px] w-full rounded-md border border-input bg-background text-sm font-mono',
-          'focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2' // Add focus ring styling
-        )}
-      >
-        <Editor
-          value={token}
-          onValueChange={(code) => {
-            setToken(code)
-            setIsExampleToken(false) // Reset example status when manually edited
-          }}
-          highlight={highlightJwt}
-          padding={10} // Corresponds roughly to px-3 py-2
-          textareaId="token-input"
-          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          style={{
-            fontFamily: 'monospace',
-            fontSize: '0.875rem', // text-sm
-            lineHeight: '1.25rem',
-            outline: 'none', // Remove default editor outline
-            minHeight: '100px',
-          }}
-          // Apply necessary classes for styling consistency
-          className="caret-foreground" // Use foreground color for caret
-        />
-      </div>
-
-      <div className="flex justify-between items-center mt-1">
-        {' '}
-        {/* Added small top margin */}
-        {token && (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {token ? (
           <Badge variant="secondary" className="font-mono">
             Characters: {token.length}
           </Badge>
+        ) : (
+          <div />
         )}
-        {!token && <div />}
-        <Button onClick={onDecode} disabled={!token} className="w-auto flex items-center gap-1.5">
+        <Button onClick={onDecode} disabled={!token} className="flex items-center gap-1.5">
           <Search size={16} />
           <span>Inspect Token</span>
         </Button>

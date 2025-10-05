@@ -1,7 +1,12 @@
 import { ReactNode, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field'
 
 export interface FormFieldProps {
   label: string
@@ -10,20 +15,21 @@ export interface FormFieldProps {
   required?: boolean
   className?: string
   children?: ReactNode
+  htmlFor?: string
 }
 
 export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(
-  ({ label, description, error, required, className, children }, ref) => {
+  ({ label, description, error, required, className, children, htmlFor }, ref) => {
     return (
-      <div ref={ref} className={cn('space-y-2', className)}>
-        <Label className="text-sm font-medium">
+      <Field ref={ref} className={cn('gap-2', className)}>
+        <FieldLabel htmlFor={htmlFor} className="flex items-center gap-1 text-sm font-medium">
           {label}
-          {required && <span className="text-destructive ml-1">*</span>}
-        </Label>
+          {required && <span className="text-destructive">*</span>}
+        </FieldLabel>
         {children}
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
+        {description && <FieldDescription>{description}</FieldDescription>}
+        {error && <FieldError>{error}</FieldError>}
+      </Field>
     )
   }
 )
@@ -47,6 +53,7 @@ export const FormFieldInput = forwardRef<HTMLInputElement, FormFieldInputProps>(
         error={error}
         required={required}
         className={containerClassName}
+        htmlFor={props.id}
       >
         <Input
           ref={ref}

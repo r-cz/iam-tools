@@ -1,16 +1,17 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom' // Import useNavigate
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch' // Import Switch
 import { signToken } from '@/lib/jwt/sign-token' // Import signing function
 import { DEMO_JWKS } from '@/lib/jwt/demo-key' // Import demo JWKS for kid
-import { IssuerHistory, JsonDisplay } from '@/components/common'
+import { IssuerHistory, JsonDisplay, FormFieldInput } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { toast } from 'sonner'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
 
 interface TokenResponse {
   access_token?: string
@@ -189,71 +190,66 @@ export function ClientCredentialsFlow() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Token Endpoint Input with History (Disabled in Demo Mode) */}
-            <div className="space-y-2">
-              <Label htmlFor="token-endpoint">Token Endpoint</Label>
-              <div className="relative">
-                <Input
-                  id="token-endpoint"
-                  type="url"
-                  value={tokenEndpoint}
-                  onChange={(e) => setTokenEndpoint(e.target.value)}
-                  required={!isDemoMode}
-                  disabled={isDemoMode}
-                  placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/token'}
-                  className={isDemoMode ? '' : 'pr-10'}
-                />
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">Token Endpoint</span>
                 {!isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                  <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
                       configLoading={configLoading}
                       disabled={isDemoMode}
-                      compact={true}
+                      compact
                     />
+                    {configLoading && (
+                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
-            {/* Client ID Input */}
-            <div>
-              <Label htmlFor="client-id" className="mb-1.5 block">
-                Client ID
-              </Label>
-              <Input
-                id="client-id"
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                required={!isDemoMode} // Not required in demo mode, but useful for payload
-                placeholder={isDemoMode ? '(Optional for Demo)' : 'Enter Client ID'}
+              </InputGroupAddon>
+              <InputGroupInput
+                id="token-endpoint"
+                type="url"
+                value={tokenEndpoint}
+                onChange={(e) => setTokenEndpoint(e.target.value)}
+                required={!isDemoMode}
+                disabled={isDemoMode}
+                placeholder={
+                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/token'
+                }
               />
-            </div>
-            {/* Client Secret Input (Disabled in Demo Mode) */}
-            <div>
-              <Label htmlFor="client-secret" className="mb-1.5 block">
-                Client Secret
-              </Label>
-              <Input
-                id="client-secret"
-                type="password"
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                required={!isDemoMode} // Not required in demo mode
-                disabled={isDemoMode} // Disable in demo mode
-                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
-              />
-            </div>
-            {/* Scope Input */}
-            <div>
-              <Label htmlFor="scope" className="mb-1.5 block">
-                Scope (optional)
-              </Label>
-              <Input
-                id="scope"
-                value={scope}
-                onChange={(e) => setScope(e.target.value)}
-                placeholder="space-separated scopes (e.g., api:read)"
-              />
-            </div>
+            </InputGroup>
+
+            <FormFieldInput
+              id="client-id"
+              label="Client ID"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              required={!isDemoMode}
+              placeholder={isDemoMode ? '(Optional for Demo)' : 'Enter Client ID'}
+            />
+
+            <FormFieldInput
+              id="client-secret"
+              label="Client Secret"
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              required={!isDemoMode}
+              disabled={isDemoMode}
+              placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
+            />
+
+            <FormFieldInput
+              id="scope"
+              label="Scope (optional)"
+              value={scope}
+              onChange={(e) => setScope(e.target.value)}
+              placeholder="space-separated scopes (e.g., api:read)"
+            />
             <Button
               type="submit"
               disabled={loading || (!isDemoMode && (!tokenEndpoint || !clientId || !clientSecret))}

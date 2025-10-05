@@ -1,9 +1,15 @@
 // ProviderInfo component imports
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 // Removed unused Badge import
-import { InfoIcon, ExternalLink } from 'lucide-react' // Removed unused StarIcon import
+import { InfoIcon, ExternalLink } from 'lucide-react'
 import { providerInfoData } from '../data/provider-info'
-// import { OidcConfiguration } from '../utils/types'; // Removed unused import
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia } from '@/components/ui/item'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 
 interface ProviderInfoProps {
   providerName: string | null
@@ -27,13 +33,17 @@ export function ProviderInfo({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-4">
-            <p className="text-muted-foreground">
+          <Empty className="border border-dashed border-border/60 bg-muted/20 p-8">
+            <EmptyMedia variant="icon" className="bg-primary/10 text-primary">
+              <InfoIcon className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>No provider detected</EmptyTitle>
+            <EmptyDescription>
               {issuerUrl
-                ? 'Could not identify the provider from the issuer URL.'
-                : 'Enter an issuer URL to see provider information.'}
-            </p>
-          </div>
+                ? 'We could not match this issuer to a known provider. Review the configuration details or try another URL.'
+                : 'Enter an issuer URL to detect provider-specific insights and documentation links.'}
+            </EmptyDescription>
+          </Empty>
         </CardContent>
       </Card>
     )
@@ -68,13 +78,22 @@ export function ProviderInfo({
 
           {/* Display identification reasons */}
           {reasons && reasons.length > 0 && (
-            <div className="mt-3">
-              <h4 className="text-sm font-medium mb-1">Identification Logic:</h4>
-              <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+            <div className="mt-4 space-y-2">
+              <h4 className="text-sm font-medium">Identification Logic</h4>
+              <ItemGroup>
                 {reasons.map((reason, index) => (
-                  <li key={index}>{reason}</li>
+                  <Item key={index} className="border-none bg-muted/30">
+                    <ItemMedia variant="icon" className="bg-primary/10 text-primary">
+                      <InfoIcon className="h-4 w-4" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemDescription className="text-sm leading-snug text-muted-foreground">
+                        {reason}
+                      </ItemDescription>
+                    </ItemContent>
+                  </Item>
                 ))}
-              </ul>
+              </ItemGroup>
             </div>
           )}
 

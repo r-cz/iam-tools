@@ -4,8 +4,10 @@ import { useJwks } from '@/hooks/data-fetching/useJwks'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
+import { Spinner } from '@/components/ui/spinner'
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
 import { ConfigInput, ConfigDisplay, JwksDisplay, ProviderInfo } from './components'
 import { detectProvider } from './utils/config-helpers'
@@ -22,51 +24,41 @@ export function OidcExplorer() {
   const [detectionReasons, setDetectionReasons] = useState<string[]>([])
   const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>('')
   const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('')
-  const [lastFetchedJwksUri, setLastFetchedJwksUri] = useState<string | null>(null)
 
   // Use a ref to track if we've already added this URL to history
   const processedUrls = useRef<Set<string>>(new Set())
+  const lastConfigSignatureRef = useRef<string | null>(null)
 
   // Effect for successful OIDC config fetch
   useEffect(() => {
-    if (oidcConfigHook.data) {
-      const config = oidcConfigHook.data
-      console.log('OIDC Config loaded via hook:', config)
-      setCurrentIssuerUrl(config.issuer) // Store the issuer from the fetched config
+    const config = oidcConfigHook.data
+    if (!config) return
 
-      // Only add to history if we haven't processed this URL yet
-      if (
-        inputIssuerUrl &&
-        inputIssuerUrl.trim().length > 0 &&
-        !processedUrls.current.has(inputIssuerUrl)
-      ) {
-        // Mark as processed to prevent re-adding
-        processedUrls.current.add(inputIssuerUrl)
-        addIssuer(inputIssuerUrl)
-      }
-
-      // Detect provider and reasons
-      const { name: detectedProvider, reasons } = detectProvider(config.issuer, config)
-      setProviderName(detectedProvider)
-      setDetectionReasons(reasons)
-
-      // Automatically trigger JWKS fetch if URI exists and hasn't been fetched already
-      if (config.jwks_uri && config.jwks_uri !== lastFetchedJwksUri) {
-        console.log(`OIDC config has jwks_uri, fetching JWKS from: ${config.jwks_uri}`)
-        setLastFetchedJwksUri(config.jwks_uri)
-        fetchJwks(config.jwks_uri)
-      } else if (!config.jwks_uri) {
-        console.log('OIDC config does not have jwks_uri.')
-      } else {
-        console.log(`JWKS already fetched for URI: ${config.jwks_uri}`)
-      }
+    const configSignature = `${config.issuer ?? ''}|${config.jwks_uri ?? ''}`
+    if (lastConfigSignatureRef.current === configSignature) {
+      return
     }
-  }, [addIssuer, fetchJwks, inputIssuerUrl, lastFetchedJwksUri, oidcConfigHook.data])
+
+    lastConfigSignatureRef.current = configSignature
+    setCurrentIssuerUrl(config.issuer)
+
+    if (inputIssuerUrl && inputIssuerUrl.trim().length > 0 && !processedUrls.current.has(inputIssuerUrl)) {
+      processedUrls.current.add(inputIssuerUrl)
+      addIssuer(inputIssuerUrl)
+    }
+
+    const { name: detectedProvider, reasons } = detectProvider(config.issuer, config)
+    setProviderName(detectedProvider)
+    setDetectionReasons(reasons)
+
+    if (config.jwks_uri) {
+      fetchJwks(config.jwks_uri)
+    }
+  }, [addIssuer, fetchJwks, inputIssuerUrl, oidcConfigHook.data])
 
   // Effect for successful JWKS fetch
   useEffect(() => {
     if (jwksData) {
-      console.log('JWKS loaded via hook:', jwksData)
       toast.success('Successfully fetched JWKS', {
         description: `Found ${jwksData.keys.length} keys`,
         duration: 5000,
@@ -111,9 +103,9 @@ export function OidcExplorer() {
 
       {/* Loading state */}
       {isLoading && (
-        <div className="flex items-center justify-center p-8 rounded-lg border border-border bg-card">
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex items-center justify-center rounded-lg border border-border bg-card p-8">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Spinner size="lg" thickness="thin" label="Loading data" className="text-primary" />
             <p className="text-sm text-muted-foreground">
               {oidcConfigHook.isLoading
                 ? 'Fetching configuration...'
@@ -164,9 +156,21 @@ export function OidcExplorer() {
               {jwksData ? (
                 <JwksDisplay jwks={jwksData as any} jwksUri={oidcConfigHook.data.jwks_uri!} />
               ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  {isJwksLoading ? 'Loading JWKS...' : 'JWKS data not yet available.'}
-                </div>
+                <Empty className="py-12">
+                  <EmptyMedia variant="icon" className="bg-primary/5 text-primary">
+                    {isJwksLoading ? (
+                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                    ) : (
+                      <KeyRound className="h-5 w-5" />
+                    )}
+                  </EmptyMedia>
+                  <EmptyTitle>{isJwksLoading ? 'Fetching JWKS' : 'JWKS not yet available'}</EmptyTitle>
+                  <EmptyDescription>
+                    {isJwksLoading
+                      ? 'Hold tight while we retrieve the JSON Web Keys for this issuer.'
+                      : 'Fetch configuration or wait for the JWKS endpoint to respond to inspect keys here.'}
+                  </EmptyDescription>
+                </Empty>
               )}
             </TabsContent>
           )}

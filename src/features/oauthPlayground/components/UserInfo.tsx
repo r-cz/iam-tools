@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -12,6 +11,8 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { User } from 'lucide-react'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
 
 interface UserInfoResponse {
   sub?: string
@@ -49,7 +50,7 @@ interface UserInfoResponse {
 export function UserInfo() {
   const navigate = useNavigate()
   const { addIssuer } = useIssuerHistory()
-  const { addToken, tokenHistory } = useAppState()
+  const { addToken } = useAppState()
 
   // Form state
   const [userInfoEndpoint, setUserInfoEndpoint] = useState('')
@@ -264,68 +265,72 @@ export function UserInfo() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* UserInfo Endpoint Input with History */}
-            <div className="space-y-2">
-              <Label htmlFor="userinfo-endpoint">UserInfo Endpoint</Label>
-              <div className="relative">
-                <Input
-                  id="userinfo-endpoint"
-                  type="url"
-                  value={userInfoEndpoint}
-                  onChange={(e) => setUserInfoEndpoint(e.target.value)}
-                  required={!isDemoMode}
-                  disabled={isDemoMode}
-                  placeholder={
-                    isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/userinfo'
-                  }
-                  className={isDemoMode ? '' : 'pr-10'}
-                />
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">UserInfo Endpoint</span>
                 {!isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                  <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
                       configLoading={configLoading}
                       disabled={isDemoMode}
-                      compact={true}
+                      compact
                     />
+                    {configLoading && (
+                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="userinfo-endpoint"
+                type="url"
+                value={userInfoEndpoint}
+                onChange={(e) => setUserInfoEndpoint(e.target.value)}
+                required={!isDemoMode}
+                disabled={isDemoMode}
+                placeholder={
+                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/userinfo'
+                }
+              />
+            </InputGroup>
 
             {/* Access Token Input with History */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="access-token">Access Token</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleInspectToken}
-                  disabled={!accessToken}
-                >
-                  View in Token Inspector
-                </Button>
-              </div>
-              <div className="relative">
-                <Input
-                  id="access-token"
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  required={!isDemoMode}
-                  placeholder={isDemoMode ? 'Optional in demo mode' : 'Enter your access token'}
-                  className={`font-mono text-xs ${tokenHistory.length > 0 && !isDemoMode ? 'pr-10' : ''}`}
-                />
-                {tokenHistory.length > 0 && !isDemoMode && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                    <TokenHistoryDropdown
-                      onSelectToken={handleSelectToken}
-                      disabled={isDemoMode}
-                      compact={true}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <InputGroup className="flex-wrap">
+              <InputGroupAddon
+                align="block-start"
+                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              >
+                <span className="text-sm font-medium text-foreground">Access Token</span>
+                <div className="flex items-center gap-1.5">
+                  <TokenHistoryDropdown
+                    onSelectToken={handleSelectToken}
+                    disabled={isDemoMode}
+                    compact
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleInspectToken}
+                    disabled={!accessToken}
+                  >
+                    View in Token Inspector
+                  </Button>
+                </div>
+              </InputGroupAddon>
+              <InputGroupInput
+                id="access-token"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                required={!isDemoMode}
+                placeholder={isDemoMode ? 'Optional in demo mode' : 'Enter your access token'}
+                className="font-mono text-xs"
+              />
+            </InputGroup>
 
             <Button type="submit" disabled={loading}>
               {loading ? 'Fetching...' : isDemoMode ? 'Generate Demo UserInfo' : 'Get UserInfo'}

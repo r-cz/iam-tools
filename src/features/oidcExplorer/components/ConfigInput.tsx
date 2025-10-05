@@ -1,13 +1,12 @@
-import React, { useState } from 'react' // Removed useEffect
-// Removed hook import: import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig';
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { ShuffleIcon } from 'lucide-react'
 import { IssuerHistory } from '@/components/common'
-// No OIDC types needed here anymore
-// import { OidcConfiguration } from '../utils/types';
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
 
 interface ConfigInputProps {
   onFetchRequested: (issuerUrl: string) => void // Renamed prop
@@ -22,8 +21,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
 
   const handleFetchConfig = () => {
     if (!issuerUrl) return
-    console.log(`Requesting fetch for: ${issuerUrl}`)
-    onFetchRequested(issuerUrl) // Call the prop function
+    onFetchRequested(issuerUrl)
   }
 
   // Define handleKeyDown correctly
@@ -76,79 +74,90 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <label htmlFor="issuer-url" className="block text-sm font-medium">
-            OpenID Provider URL
-          </label>
+    <Field orientation="responsive" className="gap-3">
+      <div className="flex items-center gap-2">
+        <FieldLabel htmlFor="issuer-url" className="flex items-center gap-2">
+          OpenID Provider URL
           <Popover>
-            <PopoverTrigger>
+            <PopoverTrigger asChild>
               <span
-                className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs font-medium cursor-help"
+                className="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
                 aria-label="Issuer URL info"
               >
                 ?
               </span>
             </PopoverTrigger>
-            <PopoverContent>
-              <div className="max-w-xs">
-                <p className="font-medium">What is an OpenID Provider URL?</p>
-                <p className="mt-1">
-                  This is the base URL of the identity provider that implements OpenID Connect. The
-                  app will append
-                  <code className="bg-muted px-1">.well-known/openid-configuration</code> to fetch
-                  configuration info.
-                </p>
-                <p className="mt-2 text-xs">
-                  Click the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button next
-                  to the input field to load a real-world example.
-                </p>
-              </div>
+            <PopoverContent align="start" className="w-72 text-sm">
+              <p className="font-medium">What is an OpenID Provider URL?</p>
+              <p className="mt-1 text-muted-foreground">
+                This is the base URL of the identity provider that implements OpenID Connect. We append
+                <code className="bg-muted px-1">/.well-known/openid-configuration</code> to fetch the
+                discovery document.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Use the <ShuffleIcon className="inline h-3 w-3 align-text-bottom" /> button to load a
+                real-world example instantly.
+              </p>
             </PopoverContent>
           </Popover>
-        </div>
+        </FieldLabel>
+      </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Input
-              id="issuer-url"
-              type="text"
-              value={issuerUrl}
-              onChange={(e) => setIssuerUrl(e.target.value)}
-              onKeyDown={handleKeyDown} // Ensure this prop uses the correctly defined function
-              placeholder="https://example.com/identity"
-              className="pr-20"
+      <div className="space-y-3">
+        <InputGroup>
+          <InputGroupInput
+            id="issuer-url"
+            type="text"
+            value={issuerUrl}
+            onChange={(e) => setIssuerUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="https://example.com/.well-known"
+            aria-describedby="issuer-url-helper"
+          />
+          <InputGroupAddon className="gap-1">
+            <IssuerHistory
+              onSelectIssuer={(url) => {
+                setIssuerUrl(url)
+                onFetchRequested(url)
+              }}
+              compact
+              configLoading={isLoading}
             />
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
-              <IssuerHistory
-                onSelectIssuer={(url) => {
-                  setIssuerUrl(url)
-                  onFetchRequested(url)
-                }}
-                compact={true}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={handleRandomExample}
-                className="h-8 w-8"
-                title="Load random example"
-              >
-                <ShuffleIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              onClick={handleRandomExample}
+              className="h-8 w-8"
+              title="Load random example"
+            >
+              <ShuffleIcon className="h-4 w-4" />
+              <span className="sr-only">Random issuer</span>
+            </Button>
+          </InputGroupAddon>
+        </InputGroup>
+
+        <FieldDescription id="issuer-url-helper" className="text-xs text-muted-foreground">
+          Enter the issuer base URL. Use the fetch button to load discovery metadata.
+        </FieldDescription>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start">
           <Button
             onClick={handleFetchConfig}
-            disabled={isLoading || !issuerUrl} // Use prop isLoading state
-            className="sm:w-auto w-full"
+            disabled={isLoading || !issuerUrl}
+            className="sm:w-auto"
           >
-            {isLoading ? 'Fetching...' : 'Fetch Config'}
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                Fetching configuration...
+              </span>
+            ) : (
+              'Fetch Config'
+            )}
           </Button>
         </div>
       </div>
-    </div>
+    </Field>
   )
 }
