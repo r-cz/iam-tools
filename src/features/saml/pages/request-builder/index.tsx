@@ -38,10 +38,14 @@ export default function SamlRequestBuilderPage() {
       return false
     }
   }
-  // Compute "safe" destination for use in form action
-  const destinationForForm = useMemo(
-    () => (isValidHttpUrl(destination) ? destination : '#'),
+  // Compute safe destination for use in form action and a validity flag
+  const isDestinationValid = useMemo(
+    () => isValidHttpUrl(destination),
     [destination]
+  )
+  const destinationForForm = useMemo(
+    () => (isDestinationValid ? destination : undefined),
+    [isDestinationValid, destination]
   )
   const [acsUrl, setAcsUrl] = useState('https://sp.example.com/saml/acs')
   const [nameIdFormat, setNameIdFormat] = useState(
@@ -414,6 +418,11 @@ export default function SamlRequestBuilderPage() {
                   <form
                     method="post"
                     action={destinationForForm}
+                    onSubmit={(e) => {
+                      if (!isDestinationValid) {
+                        e.preventDefault();
+                      }
+                    }}
                     target="_blank"
                     className="grid gap-2 min-w-0"
                   >
@@ -423,13 +432,20 @@ export default function SamlRequestBuilderPage() {
                       Submits via HTTP-POST to the IdP
                     </div>
                     <div className="flex gap-2">
-                      <Button type="submit">Submit POST to IdP</Button>
+                      <Button type="submit" disabled={!isDestinationValid}>
+                        Submit POST to IdP
+                      </Button>
                       <Button
                         variant="outline"
                         type="button"
                         onClick={() => copy(postEncoded, 'SAMLRequest copied')}
                       >
                         Copy POST SAMLRequest
+                    {!isDestinationValid && (
+                      <div className="text-xs text-red-600 mt-1">
+                        Invalid Destination URL. Please enter a valid https:// or http:// URL.
+                      </div>
+                    )}
                       </Button>
                     </div>
                   </form>
