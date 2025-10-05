@@ -356,7 +356,7 @@ export function ClientCredentialsFlow() {
           </form>
           {result && (
             <FieldSet className="mt-6 space-y-4 rounded-md border border-border p-4">
-              <FieldLegend>Token Response</FieldLegend>
+              <FieldLegend>Result</FieldLegend>
               <FieldDescription className="text-xs text-muted-foreground">
                 Details returned from the client credentials grant.
               </FieldDescription>

@@ -29,7 +29,7 @@ export default function HomePage() {
                   <Search className="h-6 w-6" />
                 </ItemMedia>
                 <ItemContent>
-                  <ItemTitle className="text-xl text-white">Token Inspector</ItemTitle>
+                  <h3 className="text-xl text-white font-semibold leading-tight">Token Inspector</h3>
                   <ItemDescription className="text-white/80">
                     Analyze JWT tokens, validate signatures, and inspect claims.
                   </ItemDescription>
@@ -47,7 +47,7 @@ export default function HomePage() {
                   <FileJson className="h-6 w-6" />
                 </ItemMedia>
                 <ItemContent>
-                  <ItemTitle className="text-xl text-white">OIDC Explorer</ItemTitle>
+                  <h3 className="text-xl text-white font-semibold leading-tight">OIDC Explorer</h3>
                   <ItemDescription className="text-white/80">
                     Explore OpenID Connect discovery documents and JWKS endpoints quickly.
                   </ItemDescription>
@@ -65,7 +65,7 @@ export default function HomePage() {
                   <KeyRound className="h-6 w-6" />
                 </ItemMedia>
                 <ItemContent>
-                  <ItemTitle className="text-xl text-white">OAuth Playground</ItemTitle>
+                  <h3 className="text-xl text-white font-semibold leading-tight">OAuth Playground</h3>
                   <ItemDescription className="text-white/80">
                     Test and explore OAuth 2.0 flows with step-by-step guidance.
                   </ItemDescription>
