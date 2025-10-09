@@ -25,6 +25,8 @@ const SamlResponseDecoderPage = lazy(() => import('./features/saml/pages/respons
 const SamlRequestBuilderPage = lazy(() => import('./features/saml/pages/request-builder'))
 const SamlMetadataValidatorPage = lazy(() => import('./features/saml/pages/metadata-validator'))
 const SpMetadataGeneratorPage = lazy(() => import('./features/saml/pages/sp-metadata'))
+const LdapSchemaExplorerPage = lazy(() => import('./features/ldap/pages/schema-explorer/index.tsx'))
+const LdifBuilderPage = lazy(() => import('./features/ldap/pages/ldif-builder/index.tsx'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -54,6 +56,8 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="saml/request-builder" element={<SamlRequestBuilderPage />} />
                   <Route path="saml/metadata-validator" element={<SamlMetadataValidatorPage />} />
                   <Route path="saml/sp-metadata" element={<SpMetadataGeneratorPage />} />
+                  <Route path="ldap/schema-explorer" element={<LdapSchemaExplorerPage />} />
+                  <Route path="ldap/ldif-builder" element={<LdifBuilderPage />} />
                 </Route>
                 <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
                 <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />

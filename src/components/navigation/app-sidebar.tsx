@@ -15,6 +15,9 @@ import {
   Hammer,
   BadgeCheck,
   FileCog,
+  Database,
+  FileText,
+  FilePlus2,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -105,6 +108,22 @@ const menuTree = [
         title: 'SP Metadata',
         url: '/saml/sp-metadata',
         icon: FileCog,
+      },
+    ],
+  },
+  {
+    title: 'LDAP Tools',
+    icon: Database,
+    items: [
+      {
+        title: 'Schema Explorer',
+        url: '/ldap/schema-explorer',
+        icon: FileText,
+      },
+      {
+        title: 'LDIF Builder',
+        url: '/ldap/ldif-builder',
+        icon: FilePlus2,
       },
     ],
   },
