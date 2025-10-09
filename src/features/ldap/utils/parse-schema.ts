@@ -57,7 +57,7 @@ function extractFlag(value: string, keyword: string): boolean {
 }
 
 function extractToken(value: string, keyword: string): string | undefined {
-  const pattern = new RegExp(`${keyword}\\s+([^\s\)]+)`, 'i')
+  const pattern = new RegExp(`${keyword}\\s+([^\\s\\)]+)`, 'i')
   const match = value.match(pattern)
   if (match) {
     return match[1].replace(/[,\s]/g, '')
