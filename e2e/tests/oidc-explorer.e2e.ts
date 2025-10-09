@@ -28,7 +28,14 @@ test.describe('OIDC Explorer', () => {
     const urlInput = page.locator(selectors.oidcExplorer.urlInput)
     const urlValue = await urlInput.inputValue()
     expect(urlValue).toBeTruthy()
-    expect(urlValue).toMatch(/^https?:\/\//)
+
+    const fullUrl = await urlInput.getAttribute('data-full-url')
+    expect(fullUrl).toBeTruthy()
+    expect(fullUrl).toMatch(/^https?:\/\//)
+
+    const schemePrefix = await page.locator(selectors.oidcExplorer.schemePrefix).textContent()
+    expect(fullUrl?.startsWith((schemePrefix ?? '').trim())).toBeTruthy()
+    expect(fullUrl?.replace(/^https?:\/\//, '')).toBe(urlValue)
 
     // Fetch button should be enabled
     await utils.waitForButtonEnabled('Fetch Config')
@@ -50,7 +57,12 @@ test.describe('OIDC Explorer', () => {
 
     // Verify the URL is still in the input (basic check)
     const urlValue = await page.locator(selectors.oidcExplorer.urlInput).inputValue()
-    expect(urlValue).toBe(demoUrl)
+    expect(urlValue).toBe(demoUrl.replace(/^https?:\/\//, ''))
+
+    const fullUrl = await page.locator(selectors.oidcExplorer.urlInput).getAttribute('data-full-url')
+    expect(fullUrl).toBe(demoUrl)
+    const schemePrefix = await page.locator(selectors.oidcExplorer.schemePrefix).textContent()
+    expect((schemePrefix ?? '').trim()).toBe('http://')
   })
 
   test('should display configuration details', async ({ page }) => {
@@ -106,7 +118,12 @@ test.describe('OIDC Explorer', () => {
 
     // Verify Google URL is still in the input (basic validation)
     const urlValue = await page.locator(selectors.oidcExplorer.urlInput).inputValue()
-    expect(urlValue).toBe('https://accounts.google.com')
+    expect(urlValue).toBe('accounts.google.com')
+
+    const fullUrl = await page.locator(selectors.oidcExplorer.urlInput).getAttribute('data-full-url')
+    expect(fullUrl).toBe('https://accounts.google.com')
+    const schemePrefix = await page.locator(selectors.oidcExplorer.schemePrefix).textContent()
+    expect((schemePrefix ?? '').trim()).toBe('https://')
   })
 
   test('should copy configuration to clipboard', async ({ page }) => {

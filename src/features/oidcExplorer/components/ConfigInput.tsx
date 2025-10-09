@@ -26,6 +26,9 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
 
   // Removed useEffect hooks
 
+  const normalizedIssuer = issuerUrl.trim()
+  const fullIssuerUrl = normalizedIssuer ? `${scheme}${normalizedIssuer}` : ''
+
   const stripScheme = (value: string) => value.replace(/^https?:\/\//i, '')
 
   const deriveScheme = (value: string): 'https://' | 'http://' =>
@@ -173,13 +176,17 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
           className="w-full px-3 pb-3 pt-0"
         >
           <div className="relative flex w-full items-center">
-            <span className="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-l-md border border-border/60 bg-muted/70 px-3 py-2 text-sm font-medium text-muted-foreground">
+            <span
+              className="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-l-md border border-border/60 bg-muted/70 px-3 py-2 text-sm font-medium text-muted-foreground"
+              data-testid="issuer-url-scheme"
+            >
               {scheme}
             </span>
             <InputGroupInput
               id="issuer-url"
               type="url"
               value={issuerUrl}
+              data-full-url={fullIssuerUrl || undefined}
               onChange={(e) => updateIssuerValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="issuer.example.com"
