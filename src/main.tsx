@@ -25,8 +25,8 @@ const SamlResponseDecoderPage = lazy(() => import('./features/saml/pages/respons
 const SamlRequestBuilderPage = lazy(() => import('./features/saml/pages/request-builder'))
 const SamlMetadataValidatorPage = lazy(() => import('./features/saml/pages/metadata-validator'))
 const SpMetadataGeneratorPage = lazy(() => import('./features/saml/pages/sp-metadata'))
-const LdapSchemaExplorerPage = lazy(() => import('./features/ldap/pages/schema-explorer'))
-const LdifBuilderPage = lazy(() => import('./features/ldap/pages/ldif-builder'))
+const LdapSchemaExplorerPage = lazy(() => import('./features/ldap/pages/schema-explorer/index.tsx'))
+const LdifBuilderPage = lazy(() => import('./features/ldap/pages/ldif-builder/index.tsx'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
