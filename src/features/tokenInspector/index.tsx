@@ -62,7 +62,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       // Decode will happen via the useEffect watching `token` state below
     }
     // Intentionally run only when initialToken prop changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [initialToken])
 
   // Effect to decode token whenever the 'token' state changes
@@ -71,7 +71,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       console.log('Token state changed, attempting decode...')
     }
     decodeToken(token, jwks) // Attempt decode with current token and JWKS state
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [token]) // Rerun when the main token string changes
 
   // Effect to fetch OIDC config when issuer changes
@@ -366,8 +366,8 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Input Card */}
-      <Card className="lg:col-span-1">
-        <CardContent className="p-5">
+      <Card className="lg:col-span-1 py-3">
+        <CardContent className="px-5 pb-4 pt-1">
           {/* Token Input Component with integrated history */}
           <TokenInput
             token={token}

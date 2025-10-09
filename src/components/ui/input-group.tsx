@@ -24,7 +24,7 @@ export const InputGroup = React.forwardRef<HTMLDivElement, InputGroupProps>(
         ref={ref}
         data-slot="input-group"
         className={cn(
-          'group/input-group flex w-full items-stretch overflow-hidden rounded-md border border-input bg-card shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background',
+          'group/input-group flex w-full items-stretch overflow-hidden rounded-md border border-input bg-card shadow-sm transition-colors',
           sizeClasses[size],
           className
         )}

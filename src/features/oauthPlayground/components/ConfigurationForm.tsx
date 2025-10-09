@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 // Removed Tabs imports
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge' // Import Badge
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce'
@@ -12,6 +12,7 @@ import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowTyp
 import { toast } from 'sonner'
 import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
+import { Label } from '@/components/ui/label'
 
 interface ConfigurationFormProps {
   onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void
@@ -182,42 +183,61 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                   <InputGroup className="flex-wrap">
                     <InputGroupAddon
                       align="block-start"
-                      className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+                      className="flex w-full flex-wrap items-center justify-between gap-2 border-0 bg-transparent pb-1"
                     >
-                      <span className="text-sm font-medium text-foreground">
+                      <Label
+                        htmlFor="issuer-url-discovery"
+                        className="text-sm font-medium text-foreground"
+                      >
                         Issuer URL (for Auto-Discovery)
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <IssuerHistory onSelectIssuer={handleSelectIssuer} compact />
-                        <InputGroupButton
-                          type="button"
-                          variant="outline"
-                          onClick={fetchOidcConfig}
-                          disabled={isLoadingDiscovery || !issuerUrl}
-                          className="flex items-center gap-1.5"
-                        >
-                          {isLoadingDiscovery ? (
-                            <>
-                              <Spinner size="sm" thickness="thin" aria-hidden="true" />
-                              <span>Discovering…</span>
-                            </>
-                          ) : (
-                            'Discover'
-                          )}
-                        </InputGroupButton>
-                      </div>
+                      </Label>
+                      <IssuerHistory
+                        onSelectIssuer={handleSelectIssuer}
+                        compact
+                        label="Recents"
+                        buttonVariant="input-group"
+                        configLoading={isLoadingDiscovery}
+                      />
                     </InputGroupAddon>
-                    <InputGroupInput
-                      placeholder="https://example.com"
-                      value={issuerUrl}
-                      onChange={(e) => {
-                        setIssuerUrl(e.target.value)
-                        setAuthEndpoint('')
-                        setTokenEndpoint('')
-                        setJwksEndpoint('')
-                        setEndpointsLocked(false)
-                      }}
-                    />
+                    <div
+                      data-slot="input-group-control"
+                      className="w-full px-3 pb-3 pt-0"
+                    >
+                      <InputGroupInput
+                        id="issuer-url-discovery"
+                        placeholder="https://example.com"
+                        value={issuerUrl}
+                        onChange={(e) => {
+                          setIssuerUrl(e.target.value)
+                          setAuthEndpoint('')
+                          setTokenEndpoint('')
+                          setJwksEndpoint('')
+                          setEndpointsLocked(false)
+                        }}
+                        className="h-11 rounded-none border-0 bg-transparent px-3 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      />
+                    </div>
+                    <InputGroupAddon
+                      align="block-end"
+                      className="flex w-full justify-end border-0 bg-transparent pt-0 text-foreground"
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={fetchOidcConfig}
+                        disabled={isLoadingDiscovery || !issuerUrl}
+                        className="flex items-center gap-2"
+                      >
+                        {isLoadingDiscovery ? (
+                          <>
+                            <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                            <span>Discovering…</span>
+                          </>
+                        ) : (
+                          'Discover'
+                        )}
+                      </Button>
+                    </InputGroupAddon>
                   </InputGroup>
                   <FieldDescription className="text-xs text-muted-foreground">
                     Enter the base URL of your IdP to attempt auto-discovery of endpoints via the

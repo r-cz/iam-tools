@@ -12,6 +12,7 @@ import {
   InputGroupInput,
 } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
+import { Label } from '@/components/ui/label'
 
 interface ConfigInputProps {
   onFetchRequested: (issuerUrl: string) => void // Renamed prop
@@ -20,13 +21,44 @@ interface ConfigInputProps {
 
 export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   const [issuerUrl, setIssuerUrl] = useState('')
+  const [scheme, setScheme] = useState<'https://' | 'http://'>('https://')
   // Removed hook instantiation
 
   // Removed useEffect hooks
 
+  const normalizedIssuer = issuerUrl.trim()
+  const fullIssuerUrl = normalizedIssuer ? `${scheme}${normalizedIssuer}` : ''
+
+  const stripScheme = (value: string) => value.replace(/^https?:\/\//i, '')
+
+  const deriveScheme = (value: string): 'https://' | 'http://' =>
+    value.toLowerCase().startsWith('http://') ? 'http://' : 'https://'
+
+  const updateIssuerValue = (value: string) => {
+    const trimmed = value.trim()
+
+    if (!trimmed) {
+      setIssuerUrl('')
+      setScheme('https://')
+      return
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+      const nextScheme = deriveScheme(trimmed)
+      setScheme(nextScheme)
+      setIssuerUrl(stripScheme(trimmed))
+      return
+    }
+
+    setIssuerUrl(trimmed)
+  }
+
   const handleFetchConfig = () => {
-    if (!issuerUrl) return
-    onFetchRequested(issuerUrl)
+    const trimmed = issuerUrl.trim()
+    if (!trimmed) return
+
+    const fullUrl = `${scheme}${trimmed}`
+    onFetchRequested(fullUrl)
   }
 
   // Define handleKeyDown correctly
@@ -62,7 +94,9 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   const handleRandomExample = () => {
     const randomIndex = Math.floor(Math.random() * realWorldIssuers.length)
     const selectedIssuer = realWorldIssuers[randomIndex]
-    setIssuerUrl(selectedIssuer.url)
+    const nextScheme = deriveScheme(selectedIssuer.url)
+    setScheme(nextScheme)
+    setIssuerUrl(stripScheme(selectedIssuer.url))
     toast.info(
       <div>
         <p>
@@ -78,15 +112,24 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     )
   }
 
+  const handleSelectIssuerFromHistory = (url: string) => {
+    const nextScheme = deriveScheme(url)
+    setScheme(nextScheme)
+    setIssuerUrl(stripScheme(url))
+    onFetchRequested(url)
+  }
+
   return (
     <Field orientation="vertical" className="gap-3">
       <InputGroup className="flex-wrap">
         <InputGroupAddon
           align="block-start"
-          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent border-0 pb-1"
         >
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <span>OpenID Provider URL</span>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="issuer-url" className="text-sm font-medium text-foreground">
+              OpenID Provider URL
+            </Label>
             <Popover>
               <PopoverTrigger asChild>
                 <span
@@ -107,10 +150,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
           </div>
           <div className="flex items-center gap-2">
             <IssuerHistory
-              onSelectIssuer={(url) => {
-                setIssuerUrl(url)
-                onFetchRequested(url)
-              }}
+              onSelectIssuer={handleSelectIssuerFromHistory}
               compact
               configLoading={isLoading}
               label="Recents"
@@ -131,22 +171,47 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
             </InputGroupButton>
           </div>
         </InputGroupAddon>
-        <InputGroupInput
-          id="issuer-url"
-          type="text"
-          value={issuerUrl}
-          onChange={(e) => setIssuerUrl(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="https://example.com/.well-known"
-        />
+        <div
+          data-slot="input-group-control"
+          className="w-full px-3 pb-3 pt-0"
+        >
+          <div className="relative flex w-full items-center">
+            <span
+              className="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-l-md border border-border/60 bg-muted/70 px-3 py-2 text-sm font-medium text-muted-foreground"
+              data-testid="issuer-url-scheme"
+            >
+              {scheme}
+            </span>
+            <InputGroupInput
+              id="issuer-url"
+              type="url"
+              value={issuerUrl}
+              data-full-url={fullIssuerUrl || undefined}
+              onChange={(e) => updateIssuerValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="issuer.example.com"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              inputMode="url"
+              aria-autocomplete="none"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-form-type="other"
+              name="issuer"
+              className="h-11 rounded-none border-0 bg-transparent pl-[5.5rem] pr-4 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+          </div>
+        </div>
 
         <InputGroupAddon
           align="block-end"
-          className="flex w-full justify-end bg-transparent text-foreground"
+          className="flex w-full justify-end bg-transparent text-foreground border-0"
         >
           <Button
             onClick={handleFetchConfig}
-            disabled={isLoading || !issuerUrl}
+            disabled={isLoading || !issuerUrl.trim()}
             variant="outline"
             className="flex items-center gap-2"
           >

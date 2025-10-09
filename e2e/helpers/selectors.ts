@@ -38,6 +38,7 @@ export const selectors = {
   oidcExplorer: {
     urlInput: 'input#issuer-url',
     randomExample: 'button[title="Load random example"]',
+    schemePrefix: '[data-testid="issuer-url-scheme"]',
     configDisplay: '.config-display',
     jwksDisplay: '.jwks-display',
   },

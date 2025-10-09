@@ -134,11 +134,11 @@ export function TokenInput({
   }
 
   return (
-    <div className="space-y-3">
-      <InputGroup className="flex-wrap">
+    <div className="space-y-2">
+      <InputGroup className="flex-wrap border-0 bg-transparent shadow-none">
         <InputGroupAddon
           align="block-start"
-          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent border-0 py-1.5"
         >
           <span className="text-sm font-medium text-foreground">OAuth/OIDC Token</span>
           <div className="flex items-center gap-1.5">
@@ -171,7 +171,7 @@ export function TokenInput({
             <InputGroupButton
               grouped={false}
               variant="ghost"
-              className="flex items-center gap-1.5 text-destructive hover:text-destructive border border-transparent"
+              className="flex items-center gap-1.5 border border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
               onClick={handleReset}
               aria-label="Clear token"
             >
@@ -209,7 +209,7 @@ export function TokenInput({
 
         <InputGroupAddon
           align="block-end"
-          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+          className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent border-0 py-1.5"
         >
           {token && (
             <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
@@ -219,7 +219,7 @@ export function TokenInput({
           <InputGroupButton
             onClick={onDecode}
             disabled={!token}
-            className="flex items-center gap-1.5 rounded-md"
+            className="ml-auto flex items-center gap-1.5 rounded-md"
             variant="outline"
             grouped={false}
             aria-label="Inspect token"
