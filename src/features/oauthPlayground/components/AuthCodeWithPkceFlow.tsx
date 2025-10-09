@@ -2,11 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { OAuthConfig, PkceParams, TokenResponse } from '../utils/types'
 import ConfigurationForm from './ConfigurationForm'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import AuthorizationRequest from './AuthorizationRequest'
 import TokenExchange from './TokenExchange'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent } from '@/components/ui/card'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 
 export function AuthCodeWithPkceFlow() {
   const location = useLocation()
@@ -113,47 +112,41 @@ export function AuthCodeWithPkceFlow() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
-      <Card>
-        <CardContent className="p-5">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid grid-cols-3 w-full mb-4">
-              <TabsTrigger value="config">1. Config</TabsTrigger>
-              <TabsTrigger value="auth" disabled={!isAuthTabEnabled}>
-                2. AuthZ
-              </TabsTrigger>
-              <TabsTrigger value="token" disabled={!isTokenTabEnabled}>
-                3. Get Token
-              </TabsTrigger>
-            </TabsList>
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
+      <TabsList className="grid grid-cols-3 w-full mb-4">
+        <TabsTrigger value="config">1. Config</TabsTrigger>
+        <TabsTrigger value="auth" disabled={!isAuthTabEnabled}>
+          2. AuthZ
+        </TabsTrigger>
+        <TabsTrigger value="token" disabled={!isTokenTabEnabled}>
+          3. Get Token
+        </TabsTrigger>
+      </TabsList>
 
-            <TabsContent value="config">
-              <ConfigurationForm onConfigComplete={handleConfigComplete} />
-            </TabsContent>
+      <TabsContent value="config">
+        <ConfigurationForm onConfigComplete={handleConfigComplete} />
+      </TabsContent>
 
-            <TabsContent value="auth">
-              {config && pkce && (
-                <AuthorizationRequest
-                  config={config}
-                  pkce={pkce}
-                  onAuthorizationComplete={handleAuthorizationComplete}
-                />
-              )}
-            </TabsContent>
+      <TabsContent value="auth">
+        {config && pkce && (
+          <AuthorizationRequest
+            config={config}
+            pkce={pkce}
+            onAuthorizationComplete={handleAuthorizationComplete}
+          />
+        )}
+      </TabsContent>
 
-            <TabsContent value="token">
-              {config && pkce && authCode && (
-                <TokenExchange
-                  config={config}
-                  pkce={pkce}
-                  authorizationCode={authCode}
-                  onTokenExchangeComplete={handleTokenExchangeComplete}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
+      <TabsContent value="token">
+        {config && pkce && authCode && (
+          <TokenExchange
+            config={config}
+            pkce={pkce}
+            authorizationCode={authCode}
+            onTokenExchangeComplete={handleTokenExchangeComplete}
+          />
+        )}
+      </TabsContent>
+    </Tabs>
   )
 }

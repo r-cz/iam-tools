@@ -23,7 +23,6 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
-import { ButtonGroup } from '@/components/ui/button-group'
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
 export function SamlResponseDecoder() {
@@ -60,64 +59,57 @@ export function SamlResponseDecoder() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Input Card */}
-      <Card className="lg:col-span-1">
-        <CardContent className="space-y-4 pt-6">
-          <div className="space-y-3">
-            <InputGroup className="flex-wrap">
-              <InputGroupAddon
-                align="block-start"
-                className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
-              >
-                <span className="text-sm font-medium text-foreground">SAML Response (Base64)</span>
-                <ButtonGroup>
-                  <InputGroupButton
-                    onClick={handleExample}
-                    className="flex items-center gap-1.5"
-                    aria-label="Load example response"
-                  >
-                    <TestTubeDiagonal size={16} />
-                    <span className="hidden sm:inline">Example</span>
-                  </InputGroupButton>
-                  <InputGroupButton
-                    variant="ghost"
-                    className="flex items-center gap-1.5 text-destructive hover:text-destructive"
-                    onClick={handleClear}
-                    aria-label="Clear response"
-                  >
-                    <RotateCcw size={16} />
-                    <span className="hidden sm:inline">Clear</span>
-                  </InputGroupButton>
-                </ButtonGroup>
-              </InputGroupAddon>
-              <InputGroupTextarea
-                id="saml-input"
-                placeholder="Paste your base64-encoded SAML Response here..."
-                value={input}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
-                className="min-h-[200px] resize-y font-mono text-sm"
-              />
-            </InputGroup>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
+      <Card className="lg:col-span-1 py-3">
+        <CardContent className="px-5 pb-4 pt-1 space-y-3">
+          <InputGroup className="flex-wrap border-0 bg-transparent shadow-none">
+            <InputGroupAddon
+              align="block-start"
+              className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent border-0 py-1.5"
+            >
+              <span className="text-sm font-medium text-foreground">SAML Response (Base64)</span>
+              <div className="flex items-center gap-1.5">
+                <InputGroupButton
+                  onClick={handleExample}
+                  grouped={false}
+                  variant="outline"
+                  className="flex items-center gap-1.5"
+                  aria-label="Load example response"
+                >
+                  <TestTubeDiagonal size={16} />
+                  <span className="hidden sm:inline">Example</span>
+                </InputGroupButton>
+                <InputGroupButton
+                  variant="ghost"
+                  grouped={false}
+                  className="flex items-center gap-1.5 border border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+                  onClick={handleClear}
+                  aria-label="Clear response"
+                >
+                  <RotateCcw size={16} />
+                  <span className="hidden sm:inline">Clear</span>
+                </InputGroupButton>
+              </div>
+            </InputGroupAddon>
+            <InputGroupTextarea
+              id="saml-input"
+              placeholder="Paste your base64-encoded SAML Response here..."
+              value={input}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+              className="min-h-[200px] resize-y font-mono text-sm"
+            />
             <InputGroupAddon
               align="block-end"
-              className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent"
+              className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent border-0 py-1.5"
             >
               {input && (
-                <InputGroupText className="font-mono text-xs text-muted-foreground">
+                <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
                   <span className="hidden sm:inline">Characters:</span> {input.length}
                 </InputGroupText>
               )}
               <InputGroupButton
                 variant="outline"
                 grouped={false}
-                className="flex items-center gap-1.5"
+                className="ml-auto flex items-center gap-1.5 rounded-md"
                 onClick={handleDecode}
                 disabled={!input.trim()}
                 aria-label="Decode response"
@@ -126,7 +118,14 @@ export function SamlResponseDecoder() {
                 <span className="hidden sm:inline">Decode Response</span>
               </InputGroupButton>
             </InputGroupAddon>
-          </div>
+          </InputGroup>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
