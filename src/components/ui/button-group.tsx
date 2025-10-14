@@ -93,7 +93,10 @@ export const ButtonGroupText = React.forwardRef<HTMLSpanElement, ButtonGroupText
     return (
       <span
         ref={ref}
-        className={cn('px-3 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground', className)}
+        className={cn(
+          'px-3 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground',
+          className
+        )}
         {...props}
       />
     )

@@ -61,7 +61,9 @@ export interface EmptyDescriptionProps extends React.HTMLAttributes<HTMLParagrap
 
 export const EmptyDescription = React.forwardRef<HTMLParagraphElement, EmptyDescriptionProps>(
   ({ className, ...props }, ref) => {
-    return <p ref={ref} className={cn('max-w-sm text-sm text-muted-foreground', className)} {...props} />
+    return (
+      <p ref={ref} className={cn('max-w-sm text-sm text-muted-foreground', className)} {...props} />
+    )
   }
 )
 EmptyDescription.displayName = 'EmptyDescription'
@@ -70,8 +72,13 @@ export interface EmptyContentProps extends React.HTMLAttributes<HTMLDivElement> 
 
 export const EmptyContent = React.forwardRef<HTMLDivElement, EmptyContentProps>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={cn('flex flex-wrap items-center justify-center gap-2', className)} {...props} />
+    return (
+      <div
+        ref={ref}
+        className={cn('flex flex-wrap items-center justify-center gap-2', className)}
+        {...props}
+      />
+    )
   }
 )
 EmptyContent.displayName = 'EmptyContent'
-

@@ -165,7 +165,9 @@ export default function LdapSchemaExplorerPage() {
                                 </Button>
                               </div>
                               <div className="flex flex-wrap gap-2 text-xs">
-                                <Badge variant="outline">{counts.objectClasses} object classes</Badge>
+                                <Badge variant="outline">
+                                  {counts.objectClasses} object classes
+                                </Badge>
                                 <Badge variant="outline">{counts.attributeTypes} attributes</Badge>
                                 {counts.errors > 0 && (
                                   <Badge variant="destructive">
@@ -324,7 +326,9 @@ export default function LdapSchemaExplorerPage() {
                       </div>
                     )}
                     <details className="rounded-md border bg-muted/40 p-2">
-                      <summary className="cursor-pointer text-sm font-medium">Show raw definition</summary>
+                      <summary className="cursor-pointer text-sm font-medium">
+                        Show raw definition
+                      </summary>
                       <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
                         {objectClass.raw}
                       </pre>
@@ -373,7 +377,8 @@ export default function LdapSchemaExplorerPage() {
                   <CardContent className="space-y-3 text-sm">
                     {attribute.names.length > 1 && (
                       <div>
-                        <span className="font-medium">Aliases:</span> {attribute.names.slice(1).join(', ')}
+                        <span className="font-medium">Aliases:</span>{' '}
+                        {attribute.names.slice(1).join(', ')}
                       </div>
                     )}
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -416,7 +421,9 @@ export default function LdapSchemaExplorerPage() {
                       )}
                     </div>
                     <details className="rounded-md border bg-muted/40 p-2">
-                      <summary className="cursor-pointer text-sm font-medium">Show raw definition</summary>
+                      <summary className="cursor-pointer text-sm font-medium">
+                        Show raw definition
+                      </summary>
                       <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
                         {attribute.raw}
                       </pre>
@@ -427,7 +434,6 @@ export default function LdapSchemaExplorerPage() {
             </div>
           )}
         </section>
-
       </div>
     </PageContainer>
   )

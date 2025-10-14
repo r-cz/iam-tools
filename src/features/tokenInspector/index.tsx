@@ -62,7 +62,6 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       // Decode will happen via the useEffect watching `token` state below
     }
     // Intentionally run only when initialToken prop changes
-     
   }, [initialToken])
 
   // Effect to decode token whenever the 'token' state changes
@@ -71,7 +70,6 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       console.log('Token state changed, attempting decode...')
     }
     decodeToken(token, jwks) // Attempt decode with current token and JWKS state
-     
   }, [token]) // Rerun when the main token string changes
 
   // Effect to fetch OIDC config when issuer changes
@@ -488,7 +486,8 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
           </EmptyMedia>
           <EmptyTitle>No token inspected</EmptyTitle>
           <EmptyDescription>
-            Paste or generate a token above, then choose <span className="font-medium">Inspect Token</span> to view claims and signature details.
+            Paste or generate a token above, then choose{' '}
+            <span className="font-medium">Inspect Token</span> to view claims and signature details.
           </EmptyDescription>
         </Empty>
       )}

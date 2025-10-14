@@ -1,12 +1,7 @@
 import { ReactNode, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 
 export interface FormFieldProps {
   label: string

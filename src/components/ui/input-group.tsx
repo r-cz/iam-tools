@@ -107,9 +107,7 @@ export const InputGroupButton = React.forwardRef<HTMLButtonElement, InputGroupBu
         variant={variant}
         className={cn(
           'h-9 px-3 text-xs font-medium transition-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none',
-          grouped
-            ? 'border-0 rounded-none first:rounded-l-md last:rounded-r-md'
-            : 'rounded-md',
+          grouped ? 'border-0 rounded-none first:rounded-l-md last:rounded-r-md' : 'rounded-md',
           isIcon ? 'h-9 w-9 px-0' : 'h-9',
           className
         )}
@@ -135,8 +133,7 @@ export const InputGroupText = React.forwardRef<HTMLSpanElement, InputGroupTextPr
 )
 InputGroupText.displayName = 'InputGroupText'
 
-export interface InputGroupTextareaProps
-  extends React.ComponentProps<typeof Textarea> {}
+export interface InputGroupTextareaProps extends React.ComponentProps<typeof Textarea> {}
 
 export const InputGroupTextarea = React.forwardRef<HTMLTextAreaElement, InputGroupTextareaProps>(
   ({ className, ...props }, ref) => {

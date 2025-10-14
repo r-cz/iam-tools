@@ -54,6 +54,28 @@ bun run clean:dry   # Preview what will be cleaned
 bun run clean:deep  # Deep clean (includes lock files)
 ```
 
+## Pre-commit Hooks
+
+This repository ships with a [pre-commit](https://pre-commit.com/) configuration to keep common issues from landing in mainline branches.
+
+```bash
+# Install the Python pre-commit tool once
+pip install pre-commit
+
+# Install the git hook
+pre-commit install
+
+# (Optional) run against entire codebase
+pre-commit run --all-files
+```
+
+The configured hooks cover:
+
+- Consistency checks for JSON/YAML, trailing whitespace, unexpected merge markers, and large files
+- Prettier formatting using the repo's `.prettierrc`
+- ESLint on staged JS/TS files (runs via `bunx eslint --max-warnings=0`)
+- TypeScript type-checking (`bunx tsc -p tsconfig.app.json --noEmit`)
+
 ## Testing
 
 The project uses a comprehensive testing strategy with two complementary approaches:

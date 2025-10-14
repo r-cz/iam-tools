@@ -59,7 +59,9 @@ test.describe('OIDC Explorer', () => {
     const urlValue = await page.locator(selectors.oidcExplorer.urlInput).inputValue()
     expect(urlValue).toBe(demoUrl.replace(/^https?:\/\//, ''))
 
-    const fullUrl = await page.locator(selectors.oidcExplorer.urlInput).getAttribute('data-full-url')
+    const fullUrl = await page
+      .locator(selectors.oidcExplorer.urlInput)
+      .getAttribute('data-full-url')
     expect(fullUrl).toBe(demoUrl)
     const schemePrefix = await page.locator(selectors.oidcExplorer.schemePrefix).textContent()
     expect((schemePrefix ?? '').trim()).toBe('http://')
@@ -120,7 +122,9 @@ test.describe('OIDC Explorer', () => {
     const urlValue = await page.locator(selectors.oidcExplorer.urlInput).inputValue()
     expect(urlValue).toBe('accounts.google.com')
 
-    const fullUrl = await page.locator(selectors.oidcExplorer.urlInput).getAttribute('data-full-url')
+    const fullUrl = await page
+      .locator(selectors.oidcExplorer.urlInput)
+      .getAttribute('data-full-url')
     expect(fullUrl).toBe('https://accounts.google.com')
     const schemePrefix = await page.locator(selectors.oidcExplorer.schemePrefix).textContent()
     expect((schemePrefix ?? '').trim()).toBe('https://')

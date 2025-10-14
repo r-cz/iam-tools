@@ -69,7 +69,7 @@ function normalizeLines(input: string): string[] {
   const rawLines = input
     .replace(/\r\n?/g, '\n')
     .split('\n')
-    .map((line) => line.replace(/\u0000/g, ''))
+    .map((line) => line.split('\u0000').join(''))
 
   const unfolded: string[] = []
   for (const line of rawLines) {

@@ -19,7 +19,14 @@ import {
 } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item'
 import { cn } from '@/lib/utils'
 import { Clock, Hash, Layers, ShieldCheck } from 'lucide-react'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -284,9 +291,7 @@ export function ClientCredentialsFlow() {
                       disabled={isDemoMode}
                       compact
                     />
-                    {configLoading && (
-                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
-                    )}
+                    {configLoading && <Spinner size="sm" thickness="thin" aria-hidden="true" />}
                   </div>
                 )}
               </InputGroupAddon>
@@ -297,15 +302,10 @@ export function ClientCredentialsFlow() {
                 onChange={(e) => setTokenEndpoint(e.target.value)}
                 required={!isDemoMode}
                 disabled={isDemoMode}
-                placeholder={
-                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/token'
-                }
+                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/token'}
               />
               {tokenEndpoint && !isDemoMode && (
-                <InputGroupAddon
-                  align="block-end"
-                  className="w-full justify-end bg-transparent"
-                >
+                <InputGroupAddon align="block-end" className="w-full justify-end bg-transparent">
                   <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
                     len: {tokenEndpoint.length}
                   </InputGroupText>
