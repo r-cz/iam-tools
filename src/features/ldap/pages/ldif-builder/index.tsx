@@ -17,19 +17,21 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useSavedSchemas } from '../../hooks/useSavedSchemas'
@@ -140,7 +142,9 @@ export default function LdifBuilderPage() {
     const builtInAttributes = new Set(['dn', 'changetype', 'control'])
 
     ldifResult.entries.forEach((entry) => {
-      const entryAttributeKeys = new Set(Object.keys(entry.attributes).map((key) => key.toLowerCase()))
+      const entryAttributeKeys = new Set(
+        Object.keys(entry.attributes).map((key) => key.toLowerCase())
+      )
       const objectClassValues = entry.attributes['objectclass']?.values ?? []
 
       objectClassValues.forEach((value) => {
@@ -292,7 +296,9 @@ export default function LdifBuilderPage() {
         <Card>
           <CardHeader>
             <CardTitle>LDIF Source</CardTitle>
-            <CardDescription>Entries stay local and feed the validation tools below.</CardDescription>
+            <CardDescription>
+              Entries stay local and feed the validation tools below.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <InputGroup className="flex-wrap border-0 bg-transparent shadow-none">
@@ -337,8 +343,12 @@ export default function LdifBuilderPage() {
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <p className="text-sm font-semibold text-foreground">{template.name}</p>
-                                <p className="text-xs text-muted-foreground">{template.description}</p>
+                                <p className="text-sm font-semibold text-foreground">
+                                  {template.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {template.description}
+                                </p>
                               </div>
                               <Badge variant="secondary" className="text-[10px]">
                                 {template.flavor}
@@ -376,28 +386,30 @@ export default function LdifBuilderPage() {
                         </div>
                       ) : (
                         <div className="max-h-80 overflow-y-auto divide-y">
-                          {schemaSummaries.map(({ schema: schemaEntry, objectClassCount, attributeCount }) => (
-                            <button
-                              type="button"
-                              key={schemaEntry.id}
-                              className="w-full space-y-1 px-4 py-3 text-left transition hover:bg-muted/40 focus:outline-none"
-                              onClick={() => handleSchemaSelect(schemaEntry.id)}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground">
-                                    {schemaEntry.name}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(schemaEntry.updatedAt).toLocaleString()}
-                                  </p>
+                          {schemaSummaries.map(
+                            ({ schema: schemaEntry, objectClassCount, attributeCount }) => (
+                              <button
+                                type="button"
+                                key={schemaEntry.id}
+                                className="w-full space-y-1 px-4 py-3 text-left transition hover:bg-muted/40 focus:outline-none"
+                                onClick={() => handleSchemaSelect(schemaEntry.id)}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-sm font-semibold text-foreground">
+                                      {schemaEntry.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(schemaEntry.updatedAt).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {objectClassCount} OC · {attributeCount} AT
+                                  </Badge>
                                 </div>
-                                <Badge variant="secondary" className="text-[10px]">
-                                  {objectClassCount} OC · {attributeCount} AT
-                                </Badge>
-                              </div>
-                            </button>
-                          ))}
+                              </button>
+                            )
+                          )}
                         </div>
                       )}
                     </PopoverContent>
@@ -454,10 +466,9 @@ export default function LdifBuilderPage() {
               </span>
               {selectedTemplate && (
                 <Badge variant="outline" className="bg-primary/10 text-primary">
-                  Based on template · {
-                    LDIF_TEMPLATES.find((template) => template.id === selectedTemplate)?.name ??
-                      'Custom'
-                  }
+                  Based on template ·{' '}
+                  {LDIF_TEMPLATES.find((template) => template.id === selectedTemplate)?.name ??
+                    'Custom'}
                 </Badge>
               )}
               {schemaDetails ? (
@@ -526,8 +537,8 @@ export default function LdifBuilderPage() {
                   <ShieldCheck className="h-4 w-4 text-emerald-600" />
                   <AlertTitle>No issues detected</AlertTitle>
                   <AlertDescription>
-                    Every attribute and object class in the LDIF matches definitions from the selected
-                    schema.
+                    Every attribute and object class in the LDIF matches definitions from the
+                    selected schema.
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -538,12 +549,16 @@ export default function LdifBuilderPage() {
                         <AlertTriangle className="h-5 w-5" /> Unknown attributes
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        These attribute names are missing from the selected schema snapshot. Double-check
-                        for typos or update the schema.
+                        These attribute names are missing from the selected schema snapshot.
+                        Double-check for typos or update the schema.
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {validation.unknownAttributes.map((name) => (
-                          <Badge key={name} variant="destructive" className="bg-amber-100 text-amber-800">
+                          <Badge
+                            key={name}
+                            variant="destructive"
+                            className="bg-amber-100 text-amber-800"
+                          >
                             {name}
                           </Badge>
                         ))}
@@ -561,7 +576,11 @@ export default function LdifBuilderPage() {
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {validation.unknownObjectClasses.map((name) => (
-                          <Badge key={name} variant="destructive" className="bg-amber-100 text-amber-800">
+                          <Badge
+                            key={name}
+                            variant="destructive"
+                            className="bg-amber-100 text-amber-800"
+                          >
                             {name}
                           </Badge>
                         ))}

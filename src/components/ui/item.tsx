@@ -18,7 +18,8 @@ export const Item = React.forwardRef<HTMLDivElement, ItemProps>(
         ref={ref as any}
         className={cn(
           'group/item relative flex items-start gap-4 rounded-xl border border-border bg-card/90 p-4 shadow-sm transition-colors',
-          interactive && 'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          interactive &&
+            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           className
         )}
         {...props}
@@ -28,18 +29,21 @@ export const Item = React.forwardRef<HTMLDivElement, ItemProps>(
 )
 Item.displayName = 'Item'
 
-const mediaVariants = cva('flex items-center justify-center rounded-lg bg-muted text-muted-foreground', {
-  variants: {
-    variant: {
-      icon: 'h-10 w-10 shrink-0',
-      avatar: 'h-12 w-12 shrink-0 overflow-hidden rounded-full',
-      square: 'h-14 w-14 shrink-0 rounded-xl',
+const mediaVariants = cva(
+  'flex items-center justify-center rounded-lg bg-muted text-muted-foreground',
+  {
+    variants: {
+      variant: {
+        icon: 'h-10 w-10 shrink-0',
+        avatar: 'h-12 w-12 shrink-0 overflow-hidden rounded-full',
+        square: 'h-14 w-14 shrink-0 rounded-xl',
+      },
     },
-  },
-  defaultVariants: {
-    variant: 'icon',
-  },
-})
+    defaultVariants: {
+      variant: 'icon',
+    },
+  }
+)
 
 export interface ItemMediaProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -65,7 +69,9 @@ export interface ItemTitleProps extends React.HTMLAttributes<HTMLParagraphElemen
 
 export const ItemTitle = React.forwardRef<HTMLParagraphElement, ItemTitleProps>(
   ({ className, ...props }, ref) => {
-    return <p ref={ref} className={cn('text-base font-semibold leading-tight', className)} {...props} />
+    return (
+      <p ref={ref} className={cn('text-base font-semibold leading-tight', className)} {...props} />
+    )
   }
 )
 ItemTitle.displayName = 'ItemTitle'
@@ -87,4 +93,3 @@ export const ItemGroup = React.forwardRef<HTMLDivElement, ItemGroupProps>(
   }
 )
 ItemGroup.displayName = 'ItemGroup'
-

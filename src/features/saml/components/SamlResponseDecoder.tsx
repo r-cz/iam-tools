@@ -188,7 +188,8 @@ export function SamlResponseDecoder() {
           </EmptyMedia>
           <EmptyTitle>No response loaded</EmptyTitle>
           <EmptyDescription>
-            Paste a SAML response above and select <span className="font-medium">Decode Response</span> to analyze it.
+            Paste a SAML response above and select{' '}
+            <span className="font-medium">Decode Response</span> to analyze it.
           </EmptyDescription>
         </Empty>
       )}

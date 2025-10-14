@@ -199,10 +199,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                         configLoading={isLoadingDiscovery}
                       />
                     </InputGroupAddon>
-                    <div
-                      data-slot="input-group-control"
-                      className="w-full px-3 pb-3 pt-0"
-                    >
+                    <div data-slot="input-group-control" className="w-full px-3 pb-3 pt-0">
                       <InputGroupInput
                         id="issuer-url-discovery"
                         placeholder="https://example.com"

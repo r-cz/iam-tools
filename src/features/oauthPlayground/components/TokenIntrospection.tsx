@@ -12,7 +12,12 @@ import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
 import { toast } from 'sonner'
-import { IssuerHistory, TokenHistoryDropdown, JsonDisplay, FormFieldInput } from '@/components/common'
+import {
+  IssuerHistory,
+  TokenHistoryDropdown,
+  JsonDisplay,
+  FormFieldInput,
+} from '@/components/common'
 import {
   InputGroup,
   InputGroupAddon,
@@ -22,7 +27,14 @@ import {
 } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item'
 import { cn } from '@/lib/utils'
 
 interface IntrospectionResponse {
@@ -302,13 +314,9 @@ export function TokenIntrospection() {
           </Badge>
         ),
         footer:
-          result.active === false && result.error
-            ? (
-                <p className="text-xs text-destructive">
-                  {result.error_description || result.error}
-                </p>
-              )
-            : undefined,
+          result.active === false && result.error ? (
+            <p className="text-xs text-destructive">{result.error_description || result.error}</p>
+          ) : undefined,
         tone: result.active ? 'success' : 'destructive',
       })
     }
@@ -415,9 +423,7 @@ export function TokenIntrospection() {
                       disabled={isDemoMode}
                       compact
                     />
-                    {configLoading && (
-                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
-                    )}
+                    {configLoading && <Spinner size="sm" thickness="thin" aria-hidden="true" />}
                   </div>
                 )}
               </InputGroupAddon>
@@ -477,7 +483,8 @@ export function TokenIntrospection() {
             <FieldSet className="space-y-4 rounded-md border border-border p-4">
               <FieldLegend>Client Authentication (Optional)</FieldLegend>
               <FieldDescription className="text-xs text-muted-foreground">
-                Provide client credentials if your introspection endpoint requires HTTP authentication.
+                Provide client credentials if your introspection endpoint requires HTTP
+                authentication.
               </FieldDescription>
 
               <FormFieldInput

@@ -171,10 +171,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
             </InputGroupButton>
           </div>
         </InputGroupAddon>
-        <div
-          data-slot="input-group-control"
-          className="w-full px-3 pb-3 pt-0"
-        >
+        <div data-slot="input-group-control" className="w-full px-3 pb-3 pt-0">
           <div className="relative flex w-full items-center">
             <span
               className="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-l-md border border-border/60 bg-muted/70 px-3 py-2 text-sm font-medium text-muted-foreground"

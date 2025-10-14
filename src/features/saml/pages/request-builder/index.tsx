@@ -39,10 +39,7 @@ export default function SamlRequestBuilderPage() {
     }
   }
   // Compute safe destination for use in form action and a validity flag
-  const isDestinationValid = useMemo(
-    () => isValidHttpUrl(destination),
-    [destination]
-  )
+  const isDestinationValid = useMemo(() => isValidHttpUrl(destination), [destination])
   const destinationForForm = useMemo(
     () => (isDestinationValid ? destination : undefined),
     [isDestinationValid, destination]
@@ -420,7 +417,7 @@ export default function SamlRequestBuilderPage() {
                     action={destinationForForm}
                     onSubmit={(e) => {
                       if (!isDestinationValid) {
-                        e.preventDefault();
+                        e.preventDefault()
                       }
                     }}
                     target="_blank"
@@ -441,11 +438,11 @@ export default function SamlRequestBuilderPage() {
                         onClick={() => copy(postEncoded, 'SAMLRequest copied')}
                       >
                         Copy POST SAMLRequest
-                    {!isDestinationValid && (
-                      <div className="text-xs text-red-600 mt-1">
-                        Invalid Destination URL. Please enter a valid https:// or http:// URL.
-                      </div>
-                    )}
+                        {!isDestinationValid && (
+                          <div className="text-xs text-red-600 mt-1">
+                            Invalid Destination URL. Please enter a valid https:// or http:// URL.
+                          </div>
+                        )}
                       </Button>
                     </div>
                   </form>

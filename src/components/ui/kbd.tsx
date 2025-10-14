@@ -61,4 +61,3 @@ export const KbdGroup = React.forwardRef<HTMLDivElement, KbdGroupProps>(
   }
 )
 KbdGroup.displayName = 'KbdGroup'
-

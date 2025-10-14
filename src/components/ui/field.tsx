@@ -67,13 +67,7 @@ export interface FieldDescriptionProps extends React.HTMLAttributes<HTMLParagrap
 
 export const FieldDescription = React.forwardRef<HTMLParagraphElement, FieldDescriptionProps>(
   ({ className, ...props }, ref) => {
-    return (
-      <p
-        ref={ref}
-        className={cn('text-sm text-muted-foreground', className)}
-        {...props}
-      />
-    )
+    return <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
   }
 )
 FieldDescription.displayName = 'FieldDescription'
@@ -121,4 +115,3 @@ export const FieldLegend = React.forwardRef<HTMLLegendElement, FieldLegendProps>
   }
 )
 FieldLegend.displayName = 'FieldLegend'
-

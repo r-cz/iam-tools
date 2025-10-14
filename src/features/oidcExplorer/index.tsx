@@ -41,7 +41,11 @@ export function OidcExplorer() {
     lastConfigSignatureRef.current = configSignature
     setCurrentIssuerUrl(config.issuer)
 
-    if (inputIssuerUrl && inputIssuerUrl.trim().length > 0 && !processedUrls.current.has(inputIssuerUrl)) {
+    if (
+      inputIssuerUrl &&
+      inputIssuerUrl.trim().length > 0 &&
+      !processedUrls.current.has(inputIssuerUrl)
+    ) {
       processedUrls.current.add(inputIssuerUrl)
       addIssuer(inputIssuerUrl)
     }
@@ -159,7 +163,9 @@ export function OidcExplorer() {
                       <KeyRound className="h-5 w-5" />
                     )}
                   </EmptyMedia>
-                  <EmptyTitle>{isJwksLoading ? 'Fetching JWKS' : 'JWKS not yet available'}</EmptyTitle>
+                  <EmptyTitle>
+                    {isJwksLoading ? 'Fetching JWKS' : 'JWKS not yet available'}
+                  </EmptyTitle>
                   <EmptyDescription>
                     {isJwksLoading
                       ? 'Hold tight while we retrieve the JSON Web Keys for this issuer.'

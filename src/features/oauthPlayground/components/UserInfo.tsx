@@ -21,7 +21,14 @@ import {
 } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item'
 
 interface UserInfoResponse {
   sub?: string
@@ -270,7 +277,9 @@ export function UserInfo() {
       profileItems.push({
         key: 'email',
         title: 'email',
-        description: result.email_verified ? 'Verified email address.' : 'Email address (not verified).',
+        description: result.email_verified
+          ? 'Verified email address.'
+          : 'Email address (not verified).',
         icon: <Mail className="h-4 w-4" />,
         value: <span className="text-xs text-foreground/80">{result.email}</span>,
       })
@@ -364,9 +373,7 @@ export function UserInfo() {
                       disabled={isDemoMode}
                       compact
                     />
-                    {configLoading && (
-                      <Spinner size="sm" thickness="thin" aria-hidden="true" />
-                    )}
+                    {configLoading && <Spinner size="sm" thickness="thin" aria-hidden="true" />}
                   </div>
                 )}
               </InputGroupAddon>
@@ -377,15 +384,10 @@ export function UserInfo() {
                 onChange={(e) => setUserInfoEndpoint(e.target.value)}
                 required={!isDemoMode}
                 disabled={isDemoMode}
-                placeholder={
-                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/userinfo'
-                }
+                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/userinfo'}
               />
               {userInfoEndpoint && !isDemoMode && (
-                <InputGroupAddon
-                  align="block-end"
-                  className="w-full justify-end bg-transparent"
-                >
+                <InputGroupAddon align="block-end" className="w-full justify-end bg-transparent">
                   <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
                     len: {userInfoEndpoint.length}
                   </InputGroupText>
@@ -456,9 +458,7 @@ export function UserInfo() {
 
               {result.error ? (
                 <Alert variant="destructive">
-                  <AlertDescription>
-                    {result.error_description || result.error}
-                  </AlertDescription>
+                  <AlertDescription>{result.error_description || result.error}</AlertDescription>
                 </Alert>
               ) : (
                 <>
@@ -482,10 +482,7 @@ export function UserInfo() {
                         <p className="text-xs text-muted-foreground flex items-center gap-2">
                           {result.email}
                           {result.email_verified === true && (
-                            <Badge
-                              variant="outline"
-                              className="bg-green-500/10 text-green-700"
-                            >
+                            <Badge variant="outline" className="bg-green-500/10 text-green-700">
                               Verified
                             </Badge>
                           )}

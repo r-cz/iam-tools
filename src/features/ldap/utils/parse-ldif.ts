@@ -54,7 +54,9 @@ function decodeValue(raw: string): string {
   return trimmed.replace(/^:/, '').trimStart()
 }
 
-function parseAttributeLine(line: string): { attribute: string; value: string; options: string[] } | null {
+function parseAttributeLine(
+  line: string
+): { attribute: string; value: string; options: string[] } | null {
   const separatorIndex = line.indexOf(':')
   if (separatorIndex === -1) {
     return null

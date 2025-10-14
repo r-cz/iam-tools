@@ -4,12 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InfoIcon, ExternalLink } from 'lucide-react'
 import { providerInfoData } from '../data/provider-info'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia } from '@/components/ui/item'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
 interface ProviderInfoProps {
   providerName: string | null
