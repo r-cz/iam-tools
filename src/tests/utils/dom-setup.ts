@@ -24,13 +24,22 @@ if (globalThis.window && !(globalThis as any).location) {
 
 // Provide a localStorage polyfill only if not present (happy-dom supplies one)
 if (!(globalThis as any).localStorage) {
+  let store: Record<string, string> = {}
   ;(globalThis as any).localStorage = {
-    getItem: (_key: string) => null,
-    setItem: (_key: string, _value: string) => {},
-    removeItem: (_key: string) => {},
-    clear: () => {},
-    key: (_index: number) => null,
-    length: 0,
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
+    key: (index: number) => Object.keys(store)[index] ?? null,
+    get length() {
+      return Object.keys(store).length
+    },
   } as unknown as Storage
 }
 
