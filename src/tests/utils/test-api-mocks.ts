@@ -22,33 +22,31 @@ export function setupApiMocks() {
   let mockedResponses: Record<string, MockedResponse> = {}
 
   // Mock global fetch
-  const fetchMock = mock(() => {
-    return async (url: string, options?: RequestInit) => {
-      // Check if we have a mocked response for this URL
-      const urlPattern = Object.keys(mockedResponses).find((pattern) => {
-        if (pattern === url) return true
-        try {
-          return new RegExp(pattern).test(url)
-        } catch {
-          return false
-        }
-      })
-
-      if (urlPattern) {
-        return Promise.resolve(mockedResponses[urlPattern])
+  const fetchMock = mock(async (url: string, _options?: RequestInit) => {
+    // Check if we have a mocked response for this URL
+    const urlPattern = Object.keys(mockedResponses).find((pattern) => {
+      if (pattern === url) return true
+      try {
+        return new RegExp(pattern).test(url)
+      } catch {
+        return false
       }
+    })
 
-      // If no mock defined, return a not found response
-      return Promise.resolve({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-        headers: {},
-        json: () => Promise.resolve({ error: 'No mock defined for this URL' }),
-        text: () => Promise.resolve('No mock defined for this URL'),
-        blob: () => Promise.resolve(new Blob()),
-      })
+    if (urlPattern) {
+      return mockedResponses[urlPattern]
     }
+
+    // If no mock defined, return a not found response
+    return {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: {},
+      json: () => Promise.resolve({ error: 'No mock defined for this URL' }),
+      text: () => Promise.resolve('No mock defined for this URL'),
+      blob: () => Promise.resolve(new Blob()),
+    } as MockedResponse
   })
 
   // Replace global fetch with our mock
