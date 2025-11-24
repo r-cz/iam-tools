@@ -9,7 +9,9 @@ test.describe('LDAP Schema Explorer', () => {
   })
 
   test('should display page title and description', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('LDAP Schema Explorer')
+    await expect(
+      page.locator('[data-slot="card-title"]:has-text("LDAP Schema Explorer")')
+    ).toBeVisible()
     await expect(page.locator('text=Drop output from ldapsearch')).toBeVisible()
   })
 
@@ -44,10 +46,11 @@ test.describe('LDAP Schema Explorer', () => {
     // Wait for parsing
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('text=Attribute Types')).toBeVisible()
+    // Look for the section heading (h2 with exact text)
+    await expect(page.locator('h2:has-text("Attribute Types")').first()).toBeVisible()
     await expect(page.locator('text=1 found')).toBeVisible()
-    await expect(page.locator('text=cn')).toBeVisible()
-    await expect(page.locator('text=Common Name')).toBeVisible()
+    await expect(page.locator('text=cn').first()).toBeVisible()
+    await expect(page.locator('text=Common Name').first()).toBeVisible()
   })
 
   test('should parse and display object classes', async ({ page }) => {
@@ -58,10 +61,11 @@ test.describe('LDAP Schema Explorer', () => {
 
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('text=Object Classes')).toBeVisible()
+    // Look for the section heading (h2 with exact text)
+    await expect(page.locator('h2:has-text("Object Classes")').first()).toBeVisible()
     await expect(page.locator('text=1 found')).toBeVisible()
-    await expect(page.locator('text=person')).toBeVisible()
-    await expect(page.locator('text=RFC4519: represents a person')).toBeVisible()
+    await expect(page.locator('text=person').first()).toBeVisible()
+    await expect(page.locator('text=RFC4519: represents a person').first()).toBeVisible()
   })
 
   test('should show quick summary metrics', async ({ page }) => {
@@ -72,8 +76,9 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
     await page.waitForTimeout(1000)
 
     await expect(page.locator('text=Quick Summary')).toBeVisible()
-    await expect(page.locator('text=Object classes')).toBeVisible()
-    await expect(page.locator('text=Attribute types')).toBeVisible()
+    // Look for metrics labels specifically (dt elements)
+    await expect(page.locator('dt:has-text("Object classes")').first()).toBeVisible()
+    await expect(page.locator('dt:has-text("Attribute types")').first()).toBeVisible()
   })
 
   test('should display parse warnings for errors', async ({ page }) => {
@@ -83,8 +88,8 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
     await page.waitForTimeout(1000)
 
-    // Should still attempt to parse but may show warnings
-    await expect(page.locator('text=Attribute Types')).toBeVisible()
+    // Should still attempt to parse but may show warnings - look for the section heading
+    await expect(page.getByRole('heading', { name: 'Attribute Types' })).toBeVisible()
   })
 
   test('should clear schema when clear button clicked', async ({ page }) => {
@@ -105,22 +110,26 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('text=OID 2.5.6.0')).toBeVisible()
-    await expect(page.locator('text=ABSTRACT')).toBeVisible()
+    await expect(page.locator('text=OID 2.5.6.0').first()).toBeVisible()
+    await expect(page.locator('span.inline-flex:has-text("ABSTRACT")').first()).toBeVisible()
   })
 
   test('should display required and optional attributes for object classes', async ({ page }) => {
     const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
     await schemaInput.fill(
-      `objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST ( sn $ cn ) MAY userPassword )`
+      `objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST ( sn $ cn ) MAY ( userPassword $ telephoneNumber ) )`
     )
 
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('text=Required attributes')).toBeVisible()
-    await expect(page.locator('text=sn, cn')).toBeVisible()
-    await expect(page.locator('text=Optional attributes')).toBeVisible()
-    await expect(page.locator('text=userPassword')).toBeVisible()
+    await expect(
+      page.locator('span.font-medium:has-text("Required attributes:")').first()
+    ).toBeVisible()
+    await expect(page.locator('text=sn, cn').first()).toBeVisible()
+    await expect(
+      page.locator('span.font-medium:has-text("Optional attributes:")').first()
+    ).toBeVisible()
+    await expect(page.locator('text=userPassword, telephoneNumber').first()).toBeVisible()
   })
 
   test('should show attribute details including syntax and equality', async ({ page }) => {
@@ -131,9 +140,10 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('text=name')).toBeVisible()
-    await expect(page.locator('text=caseIgnoreMatch')).toBeVisible()
-    await expect(page.locator('text=Single-valued')).toBeVisible()
+    await expect(page.locator('text=name').first()).toBeVisible()
+    await expect(page.locator('span.font-medium:has-text("Equality")').first()).toBeVisible()
+    await expect(page.locator('text=caseIgnoreMatch').first()).toBeVisible()
+    await expect(page.locator('text=Single-valued').first()).toBeVisible()
   })
 
   test('should expand raw definition on click', async ({ page }) => {
@@ -145,7 +155,8 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
     const detailsElement = page.locator('details:has-text("Show raw definition")').first()
     await detailsElement.click()
 
-    await expect(page.locator('text=2.5.4.3')).toBeVisible()
+    // Verify OID is visible within the expanded details section (in pre tag)
+    await expect(detailsElement.locator('pre:has-text("2.5.4.3")')).toBeVisible()
   })
 
   test('should handle empty state gracefully', async ({ page }) => {
@@ -172,7 +183,7 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
     // Open saved schemas
     await page.click('button:has-text("Saved schemas")')
 
-    // Should see the auto-saved schema
-    await expect(page.locator('text=person')).toBeVisible()
+    // Should see the auto-saved schema name in the popover (schema name contains object class name)
+    await expect(page.locator('p.text-sm.font-medium:has-text("person")')).toBeVisible()
   })
 })
