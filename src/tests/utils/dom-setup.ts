@@ -48,6 +48,25 @@ if (!globalThis.fetch) {
   ;(globalThis as any).fetch = () => Promise.reject(new Error('fetch not implemented'))
 }
 
+// Provide DOMParser if not available (for SAML tests)
+if (!(globalThis as any).DOMParser) {
+  try {
+    // Try to get DOMParser from happy-dom's window
+    const win = (globalThis as any).window
+    if (win && win.DOMParser) {
+      ;(globalThis as any).DOMParser = win.DOMParser
+    }
+  } catch {
+    // If that fails, provide a minimal mock
+    ;(globalThis as any).DOMParser = class DOMParser {
+      parseFromString(str: string, type: string) {
+        // This is a minimal implementation - in real tests, happy-dom should provide this
+        throw new Error('DOMParser not available - happy-dom may not be loaded correctly')
+      }
+    }
+  }
+}
+
 // Export for tests to use
 export const testEnvironment = {
   window: globalThis.window,
