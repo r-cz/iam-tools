@@ -35,7 +35,7 @@ export default function HomePage() {
             <Item
               asChild
               interactive
-              className="h-full border border-blue-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-blue-600/20 dark:via-blue-500/10 dark:to-blue-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+              className="h-full border border-blue-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-blue-500/30 dark:bg-gradient-to-br dark:from-blue-600/60 dark:via-blue-500/40 dark:to-blue-600/70 dark:text-white dark:shadow-lg dark:hover:from-blue-600/70 dark:hover:via-blue-500/50 dark:hover:to-blue-600/80 dark:focus-visible:ring-white/60"
             >
               <Link to="/token-inspector" className="flex h-full w-full items-center gap-4 p-6">
                 <ItemMedia
@@ -58,7 +58,7 @@ export default function HomePage() {
             <Item
               asChild
               interactive
-              className="h-full border border-indigo-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-indigo-600/20 dark:via-purple-500/10 dark:to-indigo-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+              className="h-full border border-indigo-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:border-indigo-500/30 dark:bg-gradient-to-br dark:from-indigo-600/60 dark:via-purple-500/40 dark:to-indigo-600/70 dark:text-white dark:shadow-lg dark:hover:from-indigo-600/70 dark:hover:via-purple-500/50 dark:hover:to-indigo-600/80 dark:focus-visible:ring-white/60"
             >
               <Link to="/oidc-explorer" className="flex h-full w-full items-center gap-4 p-6">
                 <ItemMedia
@@ -81,7 +81,7 @@ export default function HomePage() {
             <Item
               asChild
               interactive
-              className="h-full border border-emerald-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-emerald-600/20 dark:via-emerald-500/10 dark:to-emerald-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+              className="h-full border border-emerald-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-emerald-500/30 dark:bg-gradient-to-br dark:from-emerald-600/60 dark:via-emerald-500/40 dark:to-emerald-600/70 dark:text-white dark:shadow-lg dark:hover:from-emerald-600/70 dark:hover:via-emerald-500/50 dark:hover:to-emerald-600/80 dark:focus-visible:ring-white/60"
             >
               <Link to="/oauth-playground" className="flex h-full w-full items-center gap-4 p-6">
                 <ItemMedia
@@ -113,7 +113,7 @@ export default function HomePage() {
               <Item
                 asChild
                 interactive
-                className="h-full border border-purple-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-purple-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-purple-600/20 dark:via-purple-500/10 dark:to-purple-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+                className="h-full border border-purple-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-purple-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:border-purple-500/30 dark:bg-gradient-to-br dark:from-purple-600/60 dark:via-purple-500/40 dark:to-purple-600/70 dark:text-white dark:shadow-lg dark:hover:from-purple-600/70 dark:hover:via-purple-500/50 dark:hover:to-purple-600/80 dark:focus-visible:ring-white/60"
               >
                 <Link
                   to="/saml/response-decoder"
@@ -139,7 +139,7 @@ export default function HomePage() {
               <Item
                 asChild
                 interactive
-                className="h-full border border-amber-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-amber-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-amber-600/20 dark:via-amber-500/10 dark:to-amber-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+                className="h-full border border-amber-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-amber-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-amber-500/30 dark:bg-gradient-to-br dark:from-amber-600/60 dark:via-amber-500/40 dark:to-amber-600/70 dark:text-white dark:shadow-lg dark:hover:from-amber-600/70 dark:hover:via-amber-500/50 dark:hover:to-amber-600/80 dark:focus-visible:ring-white/60"
               >
                 <Link
                   to="/saml/request-builder"
@@ -166,7 +166,7 @@ export default function HomePage() {
               <Item
                 asChild
                 interactive
-                className="h-full border border-emerald-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-emerald-600/20 dark:via-emerald-500/10 dark:to-emerald-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+                className="h-full border border-emerald-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-emerald-500/30 dark:bg-gradient-to-br dark:from-emerald-600/60 dark:via-emerald-500/40 dark:to-emerald-600/70 dark:text-white dark:shadow-lg dark:hover:from-emerald-600/70 dark:hover:via-emerald-500/50 dark:hover:to-emerald-600/80 dark:focus-visible:ring-white/60"
               >
                 <Link
                   to="/saml/metadata-validator"
@@ -192,7 +192,7 @@ export default function HomePage() {
               <Item
                 asChild
                 interactive
-                className="h-full border border-sky-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-sky-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-sky-600/20 dark:via-sky-500/10 dark:to-sky-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+                className="h-full border border-sky-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-sky-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:border-sky-500/30 dark:bg-gradient-to-br dark:from-sky-600/60 dark:via-sky-500/40 dark:to-sky-600/70 dark:text-white dark:shadow-lg dark:hover:from-sky-600/70 dark:hover:via-sky-500/50 dark:hover:to-sky-600/80 dark:focus-visible:ring-white/60"
               >
                 <Link to="/saml/sp-metadata" className="flex h-full w-full items-center gap-4 p-6">
                   <ItemMedia
@@ -223,7 +223,7 @@ export default function HomePage() {
               <Item
                 asChild
                 interactive
-                className="h-full border border-teal-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-teal-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-teal-600/20 dark:via-teal-500/10 dark:to-teal-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+                className="h-full border border-teal-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-teal-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:border-teal-500/30 dark:bg-gradient-to-br dark:from-teal-600/60 dark:via-teal-500/40 dark:to-teal-600/70 dark:text-white dark:shadow-lg dark:hover:from-teal-600/70 dark:hover:via-teal-500/50 dark:hover:to-teal-600/80 dark:focus-visible:ring-white/60"
               >
                 <Link
                   to="/ldap/schema-explorer"
@@ -250,7 +250,7 @@ export default function HomePage() {
               <Item
                 asChild
                 interactive
-                className="h-full border border-rose-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-rose-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 dark:border-transparent dark:bg-gradient-to-br dark:from-rose-600/20 dark:via-rose-500/10 dark:to-rose-600/30 dark:text-white dark:shadow-lg dark:hover:bg-transparent dark:focus-visible:ring-white/60"
+                className="h-full border border-rose-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-rose-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 dark:border-rose-500/30 dark:bg-gradient-to-br dark:from-rose-600/60 dark:via-rose-500/40 dark:to-rose-600/70 dark:text-white dark:shadow-lg dark:hover:from-rose-600/70 dark:hover:via-rose-500/50 dark:hover:to-rose-600/80 dark:focus-visible:ring-white/60"
               >
                 <Link to="/ldap/ldif-builder" className="flex h-full w-full items-center gap-4 p-6">
                   <ItemMedia
