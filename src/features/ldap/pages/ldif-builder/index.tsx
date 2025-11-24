@@ -6,11 +6,8 @@ import {
   Eraser,
   ClipboardCopy,
   FileInput,
-  BookMarked,
-  AlertTriangle,
-  ShieldCheck,
-  ListChecks,
   BookOpen,
+  AlertTriangle,
   XCircle,
 } from 'lucide-react'
 
@@ -24,26 +21,15 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useSavedSchemas } from '../../hooks/useSavedSchemas'
+import { useSchemaDetails, useSchemaSummaries } from '../../hooks/useSchemaDetails'
+import { useLdifValidation } from '../../hooks/useLdifValidation'
 import { LDIF_TEMPLATES } from '../../data/ldif-templates'
-import { parseLdapSchema, type ParsedObjectClass } from '../../utils/parse-schema'
 import { parseLdif } from '../../utils/parse-ldif'
-
-interface ValidationSummary {
-  unknownAttributes: string[]
-  unknownObjectClasses: string[]
-  missingRequired: Array<{ dn: string; objectClass: string; attributes: string[] }>
-}
+import { QuickMetrics } from '../../components/QuickMetrics'
+import { ValidationResults } from '../../components/ValidationResults'
 
 export default function LdifBuilderPage() {
   const [ldifText, setLdifText] = useState('')
@@ -54,151 +40,10 @@ export default function LdifBuilderPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const { schemas } = useSavedSchemas()
-
-  const schemaSummaries = useMemo(
-    () =>
-      schemas.map((schema) => {
-        const parsed = parseLdapSchema(schema.schemaText)
-        return {
-          schema,
-          parsed,
-          objectClassCount: parsed.objectClasses.length,
-          attributeCount: parsed.attributeTypes.length,
-        }
-      }),
-    [schemas]
-  )
-
-  const schemaDetails = useMemo(() => {
-    if (!selectedSchemaId) {
-      return null
-    }
-    const summary = schemaSummaries.find((item) => item.schema.id === selectedSchemaId)
-    const stored = summary?.schema
-    if (!stored) {
-      return null
-    }
-
-    const parsed = summary.parsed
-    const attributeMap = new Map<string, { canonical: string; aliases: string[] }>()
-    parsed.attributeTypes.forEach((attribute) => {
-      const canonical = attribute.names[0] ?? attribute.oid
-      const aliasSet = new Set<string>()
-
-      if (attribute.oid) {
-        aliasSet.add(attribute.oid.toLowerCase())
-      }
-
-      attribute.names.forEach((name) => {
-        if (name) {
-          aliasSet.add(name.toLowerCase())
-        }
-      })
-
-      if (canonical) {
-        aliasSet.add(canonical.toLowerCase())
-      }
-
-      const entry = {
-        canonical,
-        aliases: Array.from(aliasSet),
-      }
-
-      aliasSet.forEach((alias) => {
-        attributeMap.set(alias, entry)
-      })
-    })
-
-    const objectClassEntries: Array<[string, ParsedObjectClass]> = parsed.objectClasses.flatMap(
-      (objectClass) => {
-        const keys = [objectClass.oid, ...objectClass.names]
-        return keys
-          .filter((key): key is string => Boolean(key))
-          .map((key) => [key.toLowerCase(), objectClass] as [string, ParsedObjectClass])
-      }
-    )
-
-    const objectClassMap = new Map<string, ParsedObjectClass>(objectClassEntries)
-
-    return {
-      stored,
-      parsed,
-      attributeMap,
-      objectClassMap,
-    }
-  }, [schemaSummaries, selectedSchemaId])
-
+  const schemaSummaries = useSchemaSummaries(schemas)
+  const schemaDetails = useSchemaDetails(schemas, selectedSchemaId)
   const ldifResult = useMemo(() => parseLdif(ldifText), [ldifText])
-
-  const validation = useMemo<ValidationSummary>(() => {
-    if (!schemaDetails) {
-      return { unknownAttributes: [], unknownObjectClasses: [], missingRequired: [] }
-    }
-
-    const unknownAttributes = new Set<string>()
-    const unknownObjectClasses = new Set<string>()
-    const missingRequired: ValidationSummary['missingRequired'] = []
-
-    const builtInAttributes = new Set(['dn', 'changetype', 'control'])
-
-    ldifResult.entries.forEach((entry) => {
-      const entryAttributeKeys = new Set(
-        Object.keys(entry.attributes).map((key) => key.toLowerCase())
-      )
-      const objectClassValues = entry.attributes['objectclass']?.values ?? []
-
-      objectClassValues.forEach((value) => {
-        const lookupKey = value.toLowerCase()
-        const schemaObjectClass = schemaDetails.objectClassMap.get(lookupKey)
-
-        if (!schemaObjectClass) {
-          unknownObjectClasses.add(value)
-          return
-        }
-
-        if (schemaObjectClass.must && schemaObjectClass.must.length > 0) {
-          const missing = schemaObjectClass.must.filter((requiredAttribute: string) => {
-            const requiredKey = requiredAttribute.toLowerCase()
-
-            if (entryAttributeKeys.has(requiredKey)) {
-              return false
-            }
-
-            const attributeMeta = schemaDetails.attributeMap.get(requiredKey)
-            if (!attributeMeta) {
-              return true
-            }
-
-            return !attributeMeta.aliases.some((alias) => entryAttributeKeys.has(alias))
-          })
-
-          if (missing.length > 0) {
-            missingRequired.push({
-              dn: entry.dn,
-              objectClass: schemaObjectClass.names[0] ?? schemaObjectClass.oid,
-              attributes: missing,
-            })
-          }
-        }
-      })
-
-      Object.entries(entry.attributes).forEach(([key, attribute]) => {
-        if (key === 'objectclass' || builtInAttributes.has(key)) {
-          return
-        }
-
-        if (!schemaDetails.attributeMap.has(key)) {
-          unknownAttributes.add(attribute.name)
-        }
-      })
-    })
-
-    return {
-      unknownAttributes: Array.from(unknownAttributes).sort(),
-      unknownObjectClasses: Array.from(unknownObjectClasses).sort(),
-      missingRequired,
-    }
-  }, [ldifResult.entries, schemaDetails])
+  const validation = useLdifValidation(ldifResult.entries, schemaDetails)
 
   const attributeLineCount = useMemo(() => {
     let count = 0
@@ -496,156 +341,16 @@ export default function LdifBuilderPage() {
           </Alert>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Metrics</CardTitle>
-            <CardDescription>Summary of LDIF entries currently loaded.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-lg border bg-muted/40 p-4 text-center">
-                <dt className="text-sm text-muted-foreground">Entries</dt>
-                <dd className="text-2xl font-semibold">{ldifResult.entries.length}</dd>
-              </div>
-              <div className="rounded-lg border bg-muted/40 p-4 text-center">
-                <dt className="text-sm text-muted-foreground">Attribute values</dt>
-                <dd className="text-2xl font-semibold">{attributeLineCount}</dd>
-              </div>
-              <div className="rounded-lg border bg-muted/40 p-4 text-center">
-                <dt className="text-sm text-muted-foreground">Schema checks enabled</dt>
-                <dd className="text-2xl font-semibold">{schemaDetails ? 'Yes' : 'No'}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
+        <QuickMetrics
+          entryCount={ldifResult.entries.length}
+          attributeValueCount={attributeLineCount}
+          schemaEnabled={!!schemaDetails}
+        />
 
-        {schemaDetails ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-emerald-500" /> Schema validation results
-              </CardTitle>
-              <CardDescription>
-                Checking against <span className="font-medium">{schemaDetails.stored.name}</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {validation.unknownAttributes.length === 0 &&
-              validation.unknownObjectClasses.length === 0 &&
-              validation.missingRequired.length === 0 ? (
-                <Alert variant="default" className="border-emerald-200 bg-emerald-50/60">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                  <AlertTitle>No issues detected</AlertTitle>
-                  <AlertDescription>
-                    Every attribute and object class in the LDIF matches definitions from the
-                    selected schema.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="space-y-6">
-                  {validation.unknownAttributes.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="flex items-center gap-2 text-lg font-semibold text-amber-600">
-                        <AlertTriangle className="h-5 w-5" /> Unknown attributes
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        These attribute names are missing from the selected schema snapshot.
-                        Double-check for typos or update the schema.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {validation.unknownAttributes.map((name) => (
-                          <Badge
-                            key={name}
-                            variant="destructive"
-                            className="bg-amber-100 text-amber-800"
-                          >
-                            {name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {validation.unknownObjectClasses.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="flex items-center gap-2 text-lg font-semibold text-amber-600">
-                        <AlertTriangle className="h-5 w-5" /> Unknown object classes
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Object classes below were not found in the saved schema definitions.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {validation.unknownObjectClasses.map((name) => (
-                          <Badge
-                            key={name}
-                            variant="destructive"
-                            className="bg-amber-100 text-amber-800"
-                          >
-                            {name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {validation.missingRequired.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="flex items-center gap-2 text-lg font-semibold text-amber-600">
-                        <ListChecks className="h-5 w-5" /> Missing required attributes
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Each listed entry/object class combination is missing mandatory attributes.
-                      </p>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Entry DN</TableHead>
-                            <TableHead>Object class</TableHead>
-                            <TableHead>Missing attributes</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {validation.missingRequired.map((item, index) => (
-                            <TableRow key={`${item.dn}-${item.objectClass}-${index}`}>
-                              <TableCell className="font-mono text-xs">{item.dn}</TableCell>
-                              <TableCell>{item.objectClass}</TableCell>
-                              <TableCell>
-                                <div className="flex flex-wrap gap-2">
-                                  {item.attributes.map((attr) => (
-                                    <Badge key={attr} variant="outline">
-                                      {attr}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookMarked className="h-5 w-5" /> Schema validation disabled
-              </CardTitle>
-              <CardDescription>
-                Choose a saved schema to unlock attribute validation and required attribute checks.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Saved schemas can be created from the LDAP Schema Explorer. They are stored locally
-                within your browser profile.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        <ValidationResults
+          schemaName={schemaDetails?.stored.name ?? null}
+          validation={validation}
+        />
 
         <Card>
           <CardHeader>

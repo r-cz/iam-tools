@@ -21,6 +21,9 @@ async function setupDom() {
       ;(globalThis as any).document = win.document
       ;(globalThis as any).navigator = win.navigator
       ;(globalThis as any).location = win.location
+      ;(globalThis as any).DOMParser = win.DOMParser
+      ;(globalThis as any).Element = win.Element
+      ;(globalThis as any).Node = win.Node
       return
     }
   } catch {}
