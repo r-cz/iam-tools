@@ -9,7 +9,9 @@ test.describe('LDAP LDIF Builder', () => {
   })
 
   test('should display page title and description', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('LDIF Builder & Viewer')
+    await expect(
+      page.locator('[data-slot="card-title"]:has-text("LDIF Builder & Viewer")')
+    ).toBeVisible()
     await expect(page.locator('text=Generate, inspect, and validate LDIF')).toBeVisible()
   })
 
@@ -31,8 +33,8 @@ sn: Doe`
     const templatesButton = page.locator('button:has-text("Templates")')
     await templatesButton.click()
 
-    // Should show template options
-    await expect(page.locator('text=Person')).toBeVisible()
+    // Should show template options - look specifically in the popover content
+    await expect(page.getByRole('button', { name: /Person/i }).first()).toBeVisible()
   })
 
   test('should insert template when selected', async ({ page }) => {
@@ -62,7 +64,8 @@ cn: Alice Smith
 sn: Smith`)
 
     await expect(page.locator('text=Quick Metrics')).toBeVisible()
-    await expect(page.locator('text=Entries')).toBeVisible()
+    // Look for the metric label specifically in the metrics section
+    await expect(page.locator('dt:has-text("Entries")').first()).toBeVisible()
   })
 
   test('should clear LDIF when clear button clicked', async ({ page }) => {
@@ -81,7 +84,8 @@ sn: Smith`)
 cn: Test User`)
 
     await expect(page.locator('text=Entry Preview')).toBeVisible()
-    await expect(page.locator('text=uid=test,dc=example,dc=com')).toBeVisible()
+    // Look for the DN in the preview section (not in the textarea)
+    await expect(page.locator('pre:has-text("uid=test,dc=example,dc=com")')).toBeVisible()
   })
 
   test('should show schema validation section', async ({ page }) => {
@@ -149,7 +153,8 @@ mail: admin@corp.example.com`)
 
     // Entry should be parsed and displayed
     await expect(page.locator('text=Entry Preview')).toBeVisible()
-    await expect(page.locator('text=admin@example.com')).toBeVisible()
+    // Look for the email in the preview section (not in the textarea)
+    await expect(page.locator('pre:has-text("admin@example.com")')).toBeVisible()
   })
 
   test('should show empty state when no LDIF provided', async ({ page }) => {
