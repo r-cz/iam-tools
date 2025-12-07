@@ -14,7 +14,7 @@ test.describe('SAML Signature Verification UI', () => {
 
   test('Response Decoder shows No signature for unsigned response', async ({ page }) => {
     await utils.navigateTo('/saml/response-decoder')
-    await expect(page.locator('text=SAML Response Decoder')).toBeVisible()
+    await expect(page.locator('#main-content').getByText('SAML Response Decoder')).toBeVisible()
 
     // Paste sample base64 response and decode
     await page.locator('textarea#saml-input').fill(SAMPLE_BASE64_RESPONSE)
