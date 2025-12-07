@@ -120,16 +120,30 @@
   }
 }
 
-/* JWT Syntax Highlighting */
+/* JWT Syntax Highlighting - Light mode */
 .jwt-header {
-  color: #dc2626; /* Red */
+  color: #dc2626; /* Red 600 */
 }
 .jwt-payload {
-  color: #d97706; /* Amber */
+  color: #d97706; /* Amber 600 */
 }
 .jwt-signature {
-  color: #059669; /* Emerald */
+  color: #059669; /* Emerald 600 */
 }
 .jwt-dot {
-  color: #6b7280; /* Gray */
+  color: #6b7280; /* Gray 500 */
+}
+
+/* JWT Syntax Highlighting - Dark mode (higher contrast) */
+.dark .jwt-header {
+  color: #f87171; /* Red 400 */
+}
+.dark .jwt-payload {
+  color: #fbbf24; /* Amber 400 */
+}
+.dark .jwt-signature {
+  color: #34d399; /* Emerald 400 */
+}
+.dark .jwt-dot {
+  color: #9ca3af; /* Gray 400 */
 }

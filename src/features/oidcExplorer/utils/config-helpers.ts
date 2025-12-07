@@ -35,7 +35,9 @@ function isUrlFromDomain(urlString: string, domain: string): boolean {
  */
 export async function fetchJwks(jwksUri: string): Promise<Jwks> {
   try {
-    console.log(`Fetching JWKS from: ${jwksUri}`)
+    if (import.meta?.env?.DEV) {
+      console.log(`Fetching JWKS from: ${jwksUri}`)
+    }
 
     // Fetch the JWKS
     const response = await proxyFetch(jwksUri)
@@ -54,16 +56,22 @@ export async function fetchJwks(jwksUri: string): Promise<Jwks> {
     // Additional validation: each key should have kid and kty
     for (const key of jwks.keys) {
       if (!key.kid) {
-        console.warn('JWKS contains key without kid', key)
+        if (import.meta?.env?.DEV) {
+          console.warn('JWKS contains key without kid', key)
+        }
       }
       if (!key.kty) {
-        console.warn('JWKS contains key without kty', key)
+        if (import.meta?.env?.DEV) {
+          console.warn('JWKS contains key without kty', key)
+        }
       }
     }
 
     return jwks
   } catch (error: any) {
-    console.error('Error fetching JWKS:', error)
+    if (import.meta?.env?.DEV) {
+      console.error('Error fetching JWKS:', error)
+    }
 
     // Enhance error messages for common issues
     if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
@@ -124,7 +132,9 @@ export function detectProvider(
   try {
     parsedUrl = new URL(url)
   } catch {
-    console.warn('Could not parse issuer URL:', url)
+    if (import.meta?.env?.DEV) {
+      console.warn('Could not parse issuer URL:', url)
+    }
   }
 
   // First try to detect provider using the configuration if available
@@ -378,24 +388,18 @@ function hasOktaMarkers(config: OidcConfiguration): boolean {
  * Checks for Auth0 specific properties in the OIDC configuration
  */
 function hasAuth0Markers(config: OidcConfiguration): boolean {
-  // Auth0 has specific endpoints and patterns
+  // Auth0 has specific endpoints - must be Auth0 domain, not just any userinfo endpoint
   const hasAuth0Endpoints =
     (config.issuer && isUrlFromDomain(config.issuer, 'auth0.com')) ||
-    config.userinfo_endpoint?.includes('userinfo') ||
-    false
+    (config.userinfo_endpoint && isUrlFromDomain(config.userinfo_endpoint, 'auth0.com')) ||
+    (config.token_endpoint && isUrlFromDomain(config.token_endpoint, 'auth0.com'))
 
-  // Auth0 often includes specific scopes
-  const hasAuth0Scopes =
-    config.scopes_supported?.includes('offline_access') &&
-    config.scopes_supported?.includes('openid') &&
-    config.scopes_supported?.includes('device')
-
-  // Auth0 specific properties
+  // Auth0 specific properties that are unique to Auth0
   const hasAuth0Properties =
     Object.keys(config).includes('device_code_validity_seconds') ||
     Object.keys(config).includes('mfa_challenge_endpoint')
 
-  return hasAuth0Endpoints || hasAuth0Scopes || hasAuth0Properties
+  return !!(hasAuth0Endpoints || hasAuth0Properties)
 }
 
 /**

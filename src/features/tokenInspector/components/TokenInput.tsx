@@ -94,17 +94,21 @@ export function TokenInput({
       const freshToken = await generateFreshToken()
 
       // Log token details
-      const payload = JSON.parse(
-        atob(freshToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-      )
-      console.log('Generated example token with issuer:', payload.iss)
+      if (import.meta?.env?.DEV) {
+        const payload = JSON.parse(
+          atob(freshToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+        )
+        console.log('Generated example token with issuer:', payload.iss)
+      }
 
       setToken(freshToken)
       setIsExampleToken(true)
 
       // If we have an onJwksResolved callback, provide the demo JWKS directly
       if (onJwksResolved) {
-        console.log('Providing demo JWKS directly to parent component:', DEMO_JWKS)
+        if (import.meta?.env?.DEV) {
+          console.log('Providing demo JWKS directly to parent component:', DEMO_JWKS)
+        }
         onJwksResolved(DEMO_JWKS)
       }
 
@@ -114,7 +118,9 @@ export function TokenInput({
         duration: 3000,
       })
     } catch (error) {
-      console.error('Error generating example token:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error generating example token:', error)
+      }
       toast.error('Error generating example token. Please try again.', {
         id: 'example-token-error',
         duration: 5000,

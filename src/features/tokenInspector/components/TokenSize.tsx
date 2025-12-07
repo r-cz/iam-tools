@@ -30,13 +30,17 @@ export function TokenSize({ token }: TokenSizeProps) {
   try {
     decodedHeader = headerPart ? JSON.parse(base64UrlDecode(headerPart)) : {}
   } catch (e) {
-    console.error('Error decoding header:', e)
+    if (import.meta?.env?.DEV) {
+      console.error('Error decoding header:', e)
+    }
   }
 
   try {
     decodedPayload = payloadPart ? JSON.parse(base64UrlDecode(payloadPart)) : {}
   } catch (e) {
-    console.error('Error decoding payload:', e)
+    if (import.meta?.env?.DEV) {
+      console.error('Error decoding payload:', e)
+    }
   }
 
   const decodedHeaderSize = new Blob([JSON.stringify(decodedHeader)]).size

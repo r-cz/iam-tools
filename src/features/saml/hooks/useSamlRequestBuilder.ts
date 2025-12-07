@@ -184,7 +184,9 @@ export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
       setSignedRedirectUrl(url)
       toast.success('Redirect URL signed')
     } catch (e: any) {
-      console.error(e)
+      if (import.meta?.env?.DEV) {
+        console.error(e)
+      }
       toast.error('Signing failed', { description: e?.message })
       setSignedRedirectUrl('')
     }

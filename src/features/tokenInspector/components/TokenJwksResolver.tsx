@@ -39,7 +39,9 @@ export function TokenJwksResolver({
   useEffect(() => {
     // Only fetch if we have a JWKS URI, aren't currently loading, and haven't already fetched this URI
     if (oidcConfig?.jwks_uri && !isJwksLoading && oidcConfig.jwks_uri !== lastFetchedUri) {
-      console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfig.jwks_uri}`)
+      if (import.meta?.env?.DEV) {
+        console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfig.jwks_uri}`)
+      }
       setLastFetchedUri(oidcConfig.jwks_uri)
       fetchJwks(oidcConfig.jwks_uri)
     }
@@ -48,7 +50,9 @@ export function TokenJwksResolver({
   // Effect to handle successful JWKS fetch
   useEffect(() => {
     if (jwksData) {
-      console.log('JWKS data loaded via hook:', jwksData)
+      if (import.meta?.env?.DEV) {
+        console.log('JWKS data loaded via hook:', jwksData)
+      }
       // Assuming hook's JwkSet is compatible or can be cast to JSONWebKeySet
       onJwksResolved(jwksData as JSONWebKeySet)
       toast.success(
@@ -69,7 +73,9 @@ export function TokenJwksResolver({
   // Effect to handle errors from JWKS hook
   useEffect(() => {
     if (jwksError) {
-      console.error('Error fetching JWKS:', jwksError)
+      if (import.meta?.env?.DEV) {
+        console.error('Error fetching JWKS:', jwksError)
+      }
       const errorMessage = jwksError.message || 'Unknown error'
       // Show more informative error toast
       toast.error(
@@ -104,7 +110,9 @@ export function TokenJwksResolver({
 
     // If we already have OIDC config with JWKS URI, fetch JWKS directly
     if (oidcConfig?.jwks_uri) {
-      console.log(`Fetching JWKS directly from: ${oidcConfig.jwks_uri}`)
+      if (import.meta?.env?.DEV) {
+        console.log(`Fetching JWKS directly from: ${oidcConfig.jwks_uri}`)
+      }
       fetchJwks(oidcConfig.jwks_uri, true) // Force refresh
     } else {
       toast.info('OIDC configuration not yet loaded. Please wait...')
@@ -128,14 +136,18 @@ export function TokenJwksResolver({
       // Basic validation for keys
       for (const key of parsedJwks.keys) {
         if (!key.kty || !key.kid) {
-          console.warn("Key missing 'kty' or 'kid':", key)
+          if (import.meta?.env?.DEV) {
+            console.warn("Key missing 'kty' or 'kid':", key)
+          }
         }
       }
 
-      console.log('Manual JWKS parsed successfully:', {
-        keyCount: parsedJwks.keys.length,
-        keyIds: parsedJwks.keys.map((k) => k.kid), // Use map directly
-      })
+      if (import.meta?.env?.DEV) {
+        console.log('Manual JWKS parsed successfully:', {
+          keyCount: parsedJwks.keys.length,
+          keyIds: parsedJwks.keys.map((k) => k.kid), // Use map directly
+        })
+      }
 
       // Pass the parsed JWKS up
       onJwksResolved(parsedJwks)
@@ -149,7 +161,9 @@ export function TokenJwksResolver({
         { id: 'jwks-manual-success', duration: 3000 }
       )
     } catch (err: any) {
-      console.error('Error parsing manual JWKS:', err)
+      if (import.meta?.env?.DEV) {
+        console.error('Error parsing manual JWKS:', err)
+      }
       const errorText = `Invalid JWKS JSON: ${err.message}`
       // setError(errorText); // Removed call to non-existent function
       toast.error(
@@ -167,7 +181,9 @@ export function TokenJwksResolver({
   // Function to load the built-in DEMO_JWKS
   const loadDemoJwks = () => {
     try {
-      console.log('Loading DEMO_JWKS manually via button click')
+      if (import.meta?.env?.DEV) {
+        console.log('Loading DEMO_JWKS manually via button click')
+      }
       onJwksResolved(DEMO_JWKS as JSONWebKeySet) // Assert type
       setManualJwks(JSON.stringify(DEMO_JWKS, null, 2)) // Pre-fill the manual text area
       setJwksMode('manual') // Switch to the manual tab to show the loaded JWKS
@@ -177,7 +193,9 @@ export function TokenJwksResolver({
         duration: 3000,
       })
     } catch (e) {
-      console.error('Error loading demo JWKS:', e)
+      if (import.meta?.env?.DEV) {
+        console.error('Error loading demo JWKS:', e)
+      }
       toast.error('Failed to load Demo JWKS.')
     }
   }

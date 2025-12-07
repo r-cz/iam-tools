@@ -83,7 +83,9 @@ export function TokenIntrospection() {
             setToken(demoToken)
             toast.success('Demo token loaded')
           } catch (error) {
-            console.error('Error loading demo token:', error)
+            if (import.meta?.env?.DEV) {
+              console.error('Error loading demo token:', error)
+            }
             toast.error('Failed to load demo token')
           } finally {
             setIsLoadingDemoToken(false)
@@ -153,7 +155,9 @@ export function TokenIntrospection() {
         username: payload.sub,
       }
     } catch (error: any) {
-      console.error('Error generating demo introspection response:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error generating demo introspection response:', error)
+      }
       return {
         active: false,
         error: 'invalid_token',

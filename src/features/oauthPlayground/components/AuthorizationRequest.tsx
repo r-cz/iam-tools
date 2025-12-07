@@ -87,7 +87,9 @@ export function AuthorizationRequest({
         const sanitizedUrl = new URL(constructedUrl)
         setAuthUrl(sanitizedUrl.toString())
       } catch (error) {
-        console.error('Invalid authorization URL:', error)
+        if (import.meta?.env?.DEV) {
+          console.error('Invalid authorization URL:', error)
+        }
         setAuthUrl('')
       }
     }
@@ -120,7 +122,9 @@ export function AuthorizationRequest({
       if (authUrl) {
         window.location.href = authUrl
       } else {
-        console.error('Authorization URL is invalid or empty.')
+        if (import.meta?.env?.DEV) {
+          console.error('Authorization URL is invalid or empty.')
+        }
       }
     }
   }

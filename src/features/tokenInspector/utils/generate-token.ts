@@ -25,11 +25,15 @@ export async function generateFreshToken(): Promise<string> {
     }
 
     // 2. Call the unified signToken function with this payload
-    console.log('Generating fresh example token using signToken...')
+    if (import.meta?.env?.DEV) {
+      console.log('Generating fresh example token using signToken...')
+    }
     const signedToken = await signToken(examplePayload)
     return signedToken
   } catch (error) {
-    console.error('Error generating fresh example token:', error)
+    if (import.meta?.env?.DEV) {
+      console.error('Error generating fresh example token:', error)
+    }
     // Re-throw the error so the component calling this can handle it (e.g., show a toast)
     throw error
   }

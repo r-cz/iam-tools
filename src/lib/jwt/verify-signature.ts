@@ -11,8 +11,10 @@ export async function verifySignature(
   jwks: any
 ): Promise<{ valid: boolean; error?: string }> {
   try {
-    console.log('Starting signature verification with token:', token.substring(0, 20) + '...')
-    console.log('JWKS:', JSON.stringify(jwks, null, 2))
+    if (import.meta?.env?.DEV) {
+      console.log('Starting signature verification with token:', token.substring(0, 20) + '...')
+      console.log('JWKS:', JSON.stringify(jwks, null, 2))
+    }
 
     if (!jwks?.keys?.length) {
       return {
@@ -24,7 +26,9 @@ export async function verifySignature(
     // Extract the JWK that matches the token's kid (key ID)
     const tokenHeader = JSON.parse(atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')))
 
-    console.log('Token header:', tokenHeader)
+    if (import.meta?.env?.DEV) {
+      console.log('Token header:', tokenHeader)
+    }
 
     // Check if the token has a key ID
     if (!tokenHeader.kid) {
@@ -38,22 +42,28 @@ export async function verifySignature(
     const matchingKey = jwks.keys.find((key: any) => key.kid === tokenHeader.kid)
 
     if (!matchingKey) {
-      console.error(`No key with ID "${tokenHeader.kid}" found in JWKS`)
-      console.log(
-        'Available keys:',
-        jwks.keys.map((k: any) => k.kid)
-      )
+      if (import.meta?.env?.DEV) {
+        console.error(`No key with ID "${tokenHeader.kid}" found in JWKS`)
+        console.log(
+          'Available keys:',
+          jwks.keys.map((k: any) => k.kid)
+        )
+      }
       return {
         valid: false,
         error: `No key with ID "${tokenHeader.kid}" found in the JWKS`,
       }
     }
 
-    console.log('Found matching key:', matchingKey)
+    if (import.meta?.env?.DEV) {
+      console.log('Found matching key:', matchingKey)
+    }
 
     // Verify the token using jose
     const result = await jwtVerify(token, async (header) => {
-      console.log('Verification header:', header)
+      if (import.meta?.env?.DEV) {
+        console.log('Verification header:', header)
+      }
       const key = matchingKey
 
       let algorithm
@@ -91,20 +101,28 @@ export async function verifySignature(
           ['verify']
         )
 
-        console.log('Successfully imported key for verification')
+        if (import.meta?.env?.DEV) {
+          console.log('Successfully imported key for verification')
+        }
         return cryptoKey
       } catch (error) {
-        console.error('Error importing key:', error)
+        if (import.meta?.env?.DEV) {
+          console.error('Error importing key:', error)
+        }
         throw error
       }
     })
 
-    console.log('Verification result:', result)
+    if (import.meta?.env?.DEV) {
+      console.log('Verification result:', result)
+    }
 
     // If we get here, the verification was successful
     return { valid: true }
   } catch (error: any) {
-    console.error('Token verification error:', error)
+    if (import.meta?.env?.DEV) {
+      console.error('Token verification error:', error)
+    }
     return {
       valid: false,
       error: error.message || 'Invalid signature',

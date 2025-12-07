@@ -47,7 +47,9 @@ export function addTokenToHistory(
       issuer = typeof payload.iss === 'string' ? payload.iss : undefined
     }
   } catch (error) {
-    console.error('Error extracting token data:', error)
+    if (import.meta?.env?.DEV) {
+      console.error('Error extracting token data:', error)
+    }
   }
 
   // Add new token to history

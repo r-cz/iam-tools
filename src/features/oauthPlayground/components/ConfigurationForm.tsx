@@ -102,7 +102,9 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       toast.success('OIDC configuration loaded successfully')
     } catch (error) {
       setEndpointsLocked(false) // Unlock on error
-      console.error('Error fetching OIDC configuration:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error fetching OIDC configuration:', error)
+      }
       toast.error('Failed to fetch OIDC configuration')
     } finally {
       setIsLoadingDiscovery(false)
