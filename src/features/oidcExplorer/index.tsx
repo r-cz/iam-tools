@@ -73,7 +73,9 @@ export function OidcExplorer() {
   useEffect(() => {
     const error = oidcConfigHook.error || jwksError
     if (error) {
-      console.error('Error fetching OIDC config or JWKS:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error fetching OIDC config or JWKS:', error)
+      }
       toast.error('Failed to fetch data', {
         description: error.message,
         duration: 8000,

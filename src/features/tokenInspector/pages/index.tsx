@@ -16,7 +16,9 @@ export default function TokenInspectorPage() {
     const tokenParam = searchParams.get('token')
 
     if (tokenParam) {
-      console.log('Token found in URL parameters:', tokenParam.substring(0, 10) + '...')
+      if (import.meta?.env?.DEV) {
+        console.log('Token found in URL parameters:', tokenParam.substring(0, 10) + '...')
+      }
       setUrlToken(tokenParam)
     } else {
       setUrlToken(null)

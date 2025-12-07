@@ -8,8 +8,10 @@ import { AppStateProvider } from './lib/state'
 import { Layout } from './components/layout'
 import { Toaster } from './components/ui/sonner'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { PageLoading } from './components/common/PageLoading'
 
 const HomePage = lazy(() => import('./features/home'))
+const NotFoundPage = lazy(() => import('./features/not-found'))
 const TokenInspectorPage = lazy(() => import('./features/tokenInspector/pages'))
 const OidcExplorerPage = lazy(() => import('./features/oidcExplorer/pages'))
 const OAuthPlaygroundPage = lazy(() => import('./features/oauthPlayground/pages'))
@@ -35,7 +37,7 @@ createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <Toaster position="bottom-right" closeButton richColors />
           <ErrorBoundary>
-            <Suspense fallback={null}>
+            <Suspense fallback={<PageLoading />}>
               <Routes>
                 <Route path="/" element={<Layout />}>
                   <Route index element={<HomePage />} />
@@ -58,6 +60,8 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="saml/sp-metadata" element={<SpMetadataGeneratorPage />} />
                   <Route path="ldap/schema-explorer" element={<LdapSchemaExplorerPage />} />
                   <Route path="ldap/ldif-builder" element={<LdifBuilderPage />} />
+                  {/* Catch-all 404 route */}
+                  <Route path="*" element={<NotFoundPage />} />
                 </Route>
                 <Route path="oauth-playground/callback" element={<OAuthCallbackPage />} />
                 <Route path="oauth-playground/demo-auth" element={<DemoAuthPage />} />

@@ -123,7 +123,9 @@ export function useJwks(): UseJwksResult {
         jwksCache.removePendingRequest(jwksUri)
       }
     } catch (err) {
-      console.error('Error fetching JWKS:', err)
+      if (import.meta?.env?.DEV) {
+        console.error('Error fetching JWKS:', err)
+      }
       setError(
         err instanceof Error ? err : new Error('An unknown error occurred while fetching JWKS')
       )

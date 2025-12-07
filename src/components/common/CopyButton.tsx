@@ -32,22 +32,26 @@ export function CopyButton({
     onCopy?.()
   }
 
+  // Provide aria-label for icon-only buttons (when showText is false)
+  const ariaLabel = !showText ? (copied ? 'Copied to clipboard' : 'Copy to clipboard') : undefined
+
   return (
     <Button
       variant={variant}
       size={size}
       onClick={handleCopy}
       className={cn('transition-all', className)}
+      aria-label={ariaLabel}
       {...props}
     >
       {copied ? (
         <>
-          <Check className={cn(iconSize, showText && 'mr-1')} />
+          <Check className={cn(iconSize, showText && 'mr-1')} aria-hidden="true" />
           {showText && copiedText}
         </>
       ) : (
         <>
-          <Copy className={cn(iconSize, showText && 'mr-1')} />
+          <Copy className={cn(iconSize, showText && 'mr-1')} aria-hidden="true" />
           {showText && 'Copy'}
         </>
       )}

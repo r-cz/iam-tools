@@ -29,7 +29,9 @@ export async function generateSignedToken(payload?: Record<string, any>): Promis
   const currentTime = Math.floor(Date.now() / 1000)
   const issuer = getIssuerBaseUrl()
 
-  console.log('Generating token with issuer:', issuer)
+  if (import.meta?.env?.DEV) {
+    console.log('Generating token with issuer:', issuer)
+  }
 
   // Create the default payload
   const defaultPayload = {
@@ -74,7 +76,9 @@ export async function generateSignedToken(payload?: Record<string, any>): Promis
     // Return the token
     return `${encodedHeader}.${encodedPayload}.${dummySignature}`
   } catch (error) {
-    console.error('Error generating token:', error)
+    if (import.meta?.env?.DEV) {
+      console.error('Error generating token:', error)
+    }
     throw error
   }
 }

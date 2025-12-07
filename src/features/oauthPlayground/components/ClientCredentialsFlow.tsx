@@ -133,7 +133,9 @@ export function ClientCredentialsFlow() {
         scope: accessTokenPayload.scope,
       }
     } catch (error: any) {
-      console.error('Error generating demo CC token:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error generating demo CC token:', error)
+      }
       return {
         error: 'token_generation_failed',
         error_description: error.message || 'Failed to generate demo token',

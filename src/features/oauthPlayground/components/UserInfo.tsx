@@ -90,7 +90,9 @@ export function UserInfo() {
             setAccessToken(demoToken)
             toast.success('Demo token loaded')
           } catch (error) {
-            console.error('Error loading demo token:', error)
+            if (import.meta?.env?.DEV) {
+              console.error('Error loading demo token:', error)
+            }
             toast.error('Failed to load demo token')
           } finally {
             setIsLoadingDemoToken(false)
@@ -170,7 +172,9 @@ export function UserInfo() {
         is_demo_response: true, // Mark as demo response
       }
     } catch (error: any) {
-      console.error('Error generating demo userinfo:', error)
+      if (import.meta?.env?.DEV) {
+        console.error('Error generating demo userinfo:', error)
+      }
       return {
         error: 'userinfo_generation_failed',
         error_description: error.message || 'Failed to generate demo user info',
