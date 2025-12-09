@@ -86,6 +86,11 @@ function buildEntry(lines: string[]): { entry: LdifEntry | null; errors: string[
       continue
     }
 
+    // Handle LDIF modification separator (used between modify operations)
+    if (line.trim() === '-') {
+      continue
+    }
+
     const parsed = parseAttributeLine(line)
     if (!parsed) {
       errors.push(`Could not parse line: "${line}"`)

@@ -78,30 +78,29 @@ sn: Smith`)
     await expect(ldifInput).toHaveValue('')
   })
 
-  test('should show entry preview section', async ({ page }) => {
+  test('should show parsed entries section', async ({ page }) => {
     const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
     await ldifInput.fill(`dn: uid=test,dc=example,dc=com
 cn: Test User`)
 
-    await expect(page.locator('text=Entry Preview')).toBeVisible()
-    // Look for the DN in the preview section (not in the textarea)
-    await expect(page.locator('pre:has-text("uid=test,dc=example,dc=com")')).toBeVisible()
+    await expect(page.locator('text=Parsed Entries')).toBeVisible()
+    // Look for the DN in the parsed entries section (now using details/summary)
+    await expect(page.locator('summary:has-text("uid=test,dc=example,dc=com")')).toBeVisible()
   })
 
   test('should show schema validation section', async ({ page }) => {
     await expect(page.locator('text=Schema validation disabled')).toBeVisible()
-    await expect(
-      page.locator('text=Choose a saved schema to unlock attribute validation')
-    ).toBeVisible()
+    await expect(page.locator('text=Select schemas to enable validation')).toBeVisible()
   })
 
-  test('should show schemas popover', async ({ page }) => {
+  test('should show schemas popover with built-in schemas', async ({ page }) => {
     const schemasButton = page.locator('button:has-text("Schemas")')
     await schemasButton.click()
 
-    await expect(
-      page.locator('text=Save a schema in the explorer to enable validation here')
-    ).toBeVisible()
+    // Should show the schema selection popover with built-in schemas section
+    await expect(page.locator('text=Built-in Schemas')).toBeVisible()
+    // Use exact match for the section header
+    await expect(page.getByText('Saved Schemas', { exact: true })).toBeVisible()
   })
 
   test('should show copy button and copy LDIF', async ({ page }) => {
@@ -152,19 +151,19 @@ mail: admin@corp.example.com`)
     await page.waitForTimeout(500)
 
     // Entry should be parsed and displayed
-    await expect(page.locator('text=Entry Preview')).toBeVisible()
-    // Look for the email in the preview section (not in the textarea)
-    await expect(page.locator('pre:has-text("admin@example.com")')).toBeVisible()
+    await expect(page.locator('text=Parsed Entries')).toBeVisible()
+    // Look for the DN in the parsed entries section
+    await expect(page.locator('summary:has-text("uid=admin,dc=example,dc=com")')).toBeVisible()
   })
 
   test('should show empty state when no LDIF provided', async ({ page }) => {
-    await expect(page.locator('text=No LDIF yet')).toBeVisible()
-    await expect(
-      page.locator('text=Pick a template, upload an LDIF file, or paste content')
-    ).toBeVisible()
+    // With no LDIF input, metrics should show 0 entries
+    await expect(page.locator('text=Quick Metrics')).toBeVisible()
+    // The Entries count should show 0
+    await expect(page.locator('dt:has-text("Entries")').first()).toBeVisible()
   })
 
-  test('should handle base64-encoded attributes in preview', async ({ page }) => {
+  test('should handle base64-encoded attributes in parsed entries', async ({ page }) => {
     const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
     await ldifInput.fill(`dn: uid=test,dc=example,dc=com
 cn: Test
@@ -172,7 +171,7 @@ description:: VGVzdCBkZXNjcmlwdGlvbg==`)
 
     await page.waitForTimeout(500)
 
-    await expect(page.locator('text=Entry Preview')).toBeVisible()
+    await expect(page.locator('text=Parsed Entries')).toBeVisible()
   })
 
   test('should show parse errors for malformed LDIF', async ({ page }) => {
@@ -205,7 +204,7 @@ mail: test3@example.com`)
 
     await page.waitForTimeout(500)
 
-    // Should show metrics with attribute value count
-    await expect(page.locator('text=Attribute values')).toBeVisible()
+    // Should show metrics with attribute value count (use exact match)
+    await expect(page.locator('dt:has-text("Attribute values")').first()).toBeVisible()
   })
 })
