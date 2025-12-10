@@ -6,14 +6,16 @@ import {
   Eraser,
   ClipboardCopy,
   FileInput,
-  BookOpen,
   AlertTriangle,
   XCircle,
+  Download,
+  Layers,
 } from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import {
   InputGroup,
@@ -24,9 +26,11 @@ import {
 import { PageContainer, PageHeader } from '@/components/page'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useSavedSchemas } from '../../hooks/useSavedSchemas'
-import { useSchemaDetails, useSchemaSummaries } from '../../hooks/useSchemaDetails'
+import { useSchemaSummaries } from '../../hooks/useSchemaDetails'
 import { useLdifValidation } from '../../hooks/useLdifValidation'
+import { useMergedSchemaDetails } from '../../hooks/useMergedSchemaDetails'
 import { LDIF_TEMPLATES } from '../../data/ldif-templates'
+import { BUILTIN_SCHEMAS } from '../../data/builtin-schemas'
 import { parseLdif } from '../../utils/parse-ldif'
 import { QuickMetrics } from '../../components/QuickMetrics'
 import { ValidationResults } from '../../components/ValidationResults'
@@ -34,14 +38,15 @@ import { ValidationResults } from '../../components/ValidationResults'
 export default function LdifBuilderPage() {
   const [ldifText, setLdifText] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
-  const [selectedSchemaId, setSelectedSchemaId] = useState<string | null>(null)
+  const [selectedSchemaIds, setSelectedSchemaIds] = useState<string[]>([])
+  const [selectedBuiltinIds, setSelectedBuiltinIds] = useState<string[]>([])
   const [isSchemaPopoverOpen, setIsSchemaPopoverOpen] = useState(false)
   const [isTemplateOpen, setIsTemplateOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const { schemas } = useSavedSchemas()
   const schemaSummaries = useSchemaSummaries(schemas)
-  const schemaDetails = useSchemaDetails(schemas, selectedSchemaId)
+  const schemaDetails = useMergedSchemaDetails(schemas, selectedSchemaIds, selectedBuiltinIds)
   const ldifResult = useMemo(() => parseLdif(ldifText), [ldifText])
   const validation = useLdifValidation(ldifResult.entries, schemaDetails)
 
@@ -55,6 +60,19 @@ export default function LdifBuilderPage() {
     return count
   }, [ldifResult.entries])
 
+  const selectedSchemaNames = useMemo(() => {
+    const names: string[] = []
+    selectedSchemaIds.forEach((id) => {
+      const schema = schemas.find((s) => s.id === id)
+      if (schema) names.push(schema.name)
+    })
+    selectedBuiltinIds.forEach((id) => {
+      const builtin = BUILTIN_SCHEMAS.find((s) => s.id === id)
+      if (builtin) names.push(builtin.name)
+    })
+    return names
+  }, [selectedSchemaIds, selectedBuiltinIds, schemas])
+
   const handleTemplateInsert = (templateId: string) => {
     const template = LDIF_TEMPLATES.find((item) => item.id === templateId)
     if (!template) {
@@ -66,17 +84,21 @@ export default function LdifBuilderPage() {
     toast.success('Template inserted', { description: template.name })
   }
 
-  const handleSchemaSelect = (schemaId: string) => {
-    const chosen = schemaSummaries.find((item) => item.schema.id === schemaId)
-    setSelectedSchemaId(schemaId)
-    setIsSchemaPopoverOpen(false)
-    if (chosen) {
-      toast.success('Schema selected', { description: chosen.schema.name })
+  const handleSchemaToggle = (schemaId: string, isBuiltin: boolean) => {
+    if (isBuiltin) {
+      setSelectedBuiltinIds((prev) =>
+        prev.includes(schemaId) ? prev.filter((id) => id !== schemaId) : [...prev, schemaId]
+      )
+    } else {
+      setSelectedSchemaIds((prev) =>
+        prev.includes(schemaId) ? prev.filter((id) => id !== schemaId) : [...prev, schemaId]
+      )
     }
   }
 
   const handleClearSchemaSelection = () => {
-    setSelectedSchemaId(null)
+    setSelectedSchemaIds([])
+    setSelectedBuiltinIds([])
     toast.info('Schema validation disabled')
   }
 
@@ -121,6 +143,23 @@ export default function LdifBuilderPage() {
     }
   }
 
+  const handleDownload = () => {
+    if (!ldifText.trim()) return
+
+    const blob = new Blob([ldifText], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'entries.ldif'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success('LDIF downloaded', { description: 'entries.ldif' })
+  }
+
+  const hasSchemaSelected = selectedSchemaIds.length > 0 || selectedBuiltinIds.length > 0
+
   return (
     <PageContainer>
       <PageHeader
@@ -152,7 +191,7 @@ export default function LdifBuilderPage() {
                 className="flex w-full flex-wrap items-center justify-between gap-2 bg-transparent border-0 py-1.5"
               >
                 <span className="text-sm font-medium text-foreground">LDIF entries</span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <InputGroupButton
                     type="button"
                     grouped={false}
@@ -218,48 +257,91 @@ export default function LdifBuilderPage() {
                         grouped={false}
                         variant="outline"
                         className="flex items-center gap-1.5"
-                        aria-label="Select schema for validation"
+                        aria-label="Select schemas for validation"
                       >
-                        <BookOpen size={16} />
+                        <Layers size={16} />
                         <span className="hidden sm:inline">Schemas</span>
+                        {hasSchemaSelected && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                            {selectedSchemaIds.length + selectedBuiltinIds.length}
+                          </Badge>
+                        )}
                       </InputGroupButton>
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-96 p-0">
-                      {schemaSummaries.length === 0 ? (
-                        <div className="p-4 text-sm text-muted-foreground">
-                          Save a schema in the explorer to enable validation here.
+                      <div className="p-3 border-b">
+                        <p className="text-sm font-medium">Schema Validation</p>
+                        <p className="text-xs text-muted-foreground">
+                          Select one or more schemas to merge for validation
+                        </p>
+                      </div>
+
+                      {/* Built-in schemas */}
+                      <div className="border-b">
+                        <div className="px-3 py-2 bg-muted/30">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Built-in Schemas
+                          </p>
                         </div>
-                      ) : (
-                        <div className="max-h-80 overflow-y-auto divide-y">
-                          {schemaSummaries.map(
-                            ({ schema: schemaEntry, objectClassCount, attributeCount }) => (
-                              <button
-                                type="button"
-                                key={schemaEntry.id}
-                                className="w-full space-y-1 px-4 py-3 text-left transition hover:bg-muted/40 focus:outline-none"
-                                onClick={() => handleSchemaSelect(schemaEntry.id)}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div>
-                                    <p className="text-sm font-semibold text-foreground">
-                                      {schemaEntry.name}
-                                    </p>
+                        <div className="max-h-40 overflow-y-auto divide-y">
+                          {BUILTIN_SCHEMAS.map((schema) => (
+                            <label
+                              key={schema.id}
+                              className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={selectedBuiltinIds.includes(schema.id)}
+                                onCheckedChange={() => handleSchemaToggle(schema.id, true)}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium">{schema.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {schema.source}
+                                </p>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Saved schemas */}
+                      <div>
+                        <div className="px-3 py-2 bg-muted/30">
+                          <p className="text-xs font-medium text-muted-foreground">Saved Schemas</p>
+                        </div>
+                        {schemaSummaries.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground">
+                            No saved schemas. Create one in the Schema Explorer.
+                          </div>
+                        ) : (
+                          <div className="max-h-40 overflow-y-auto divide-y">
+                            {schemaSummaries.map(
+                              ({ schema: schemaEntry, objectClassCount, attributeCount }) => (
+                                <label
+                                  key={schemaEntry.id}
+                                  className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer"
+                                >
+                                  <Checkbox
+                                    checked={selectedSchemaIds.includes(schemaEntry.id)}
+                                    onCheckedChange={() =>
+                                      handleSchemaToggle(schemaEntry.id, false)
+                                    }
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium">{schemaEntry.name}</p>
                                     <p className="text-xs text-muted-foreground">
-                                      {new Date(schemaEntry.updatedAt).toLocaleString()}
+                                      {objectClassCount} OC · {attributeCount} AT
                                     </p>
                                   </div>
-                                  <Badge variant="secondary" className="text-[10px]">
-                                    {objectClassCount} OC · {attributeCount} AT
-                                  </Badge>
-                                </div>
-                              </button>
-                            )
-                          )}
-                        </div>
-                      )}
+                                </label>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </PopoverContent>
                   </Popover>
-                  {schemaDetails && (
+                  {hasSchemaSelected && (
                     <InputGroupButton
                       type="button"
                       grouped={false}
@@ -269,9 +351,21 @@ export default function LdifBuilderPage() {
                       aria-label="Clear schema selection"
                     >
                       <XCircle size={16} />
-                      <span className="hidden sm:inline">Clear schema</span>
+                      <span className="hidden sm:inline">Clear schemas</span>
                     </InputGroupButton>
                   )}
+                  <InputGroupButton
+                    type="button"
+                    grouped={false}
+                    variant="outline"
+                    onClick={handleDownload}
+                    disabled={!ldifText}
+                    className="flex items-center gap-1.5"
+                    aria-label="Download LDIF"
+                  >
+                    <Download size={16} />
+                    <span className="hidden sm:inline">Download</span>
+                  </InputGroupButton>
                   <InputGroupButton
                     type="button"
                     grouped={false}
@@ -316,14 +410,13 @@ export default function LdifBuilderPage() {
                     'Custom'}
                 </Badge>
               )}
-              {schemaDetails ? (
+              {hasSchemaSelected ? (
                 <Badge variant="outline" className="bg-emerald-100 text-emerald-700">
-                  Validating with {schemaDetails.stored.name}
+                  Validating with {selectedSchemaNames.length} schema
+                  {selectedSchemaNames.length === 1 ? '' : 's'}
                 </Badge>
               ) : (
-                <span className="text-muted-foreground">
-                  Select a schema to enable required attribute checks.
-                </span>
+                <span className="text-muted-foreground">Select schemas to enable validation.</span>
               )}
             </div>
           </CardContent>
@@ -344,37 +437,98 @@ export default function LdifBuilderPage() {
         <QuickMetrics
           entryCount={ldifResult.entries.length}
           attributeValueCount={attributeLineCount}
-          schemaEnabled={!!schemaDetails}
+          schemaEnabled={hasSchemaSelected}
         />
 
         <ValidationResults
-          schemaName={schemaDetails?.stored.name ?? null}
+          schemaName={hasSchemaSelected ? selectedSchemaNames.join(' + ') : null}
           validation={validation}
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Entry Preview</CardTitle>
-            <CardDescription>LDIF as it will be exported (line folding preserved).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {ldifText.trim() ? (
-              <pre className="rounded-md bg-muted/60 p-4 text-xs text-muted-foreground whitespace-pre-wrap break-words">
-                {ldifText}
-              </pre>
-            ) : (
+        {/* Entry Details - replacing the redundant Entry Preview */}
+        {ldifResult.entries.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Parsed Entries</CardTitle>
+              <CardDescription>
+                {ldifResult.entries.length} entry{ldifResult.entries.length === 1 ? '' : 'ies'}{' '}
+                detected with {attributeLineCount} attribute value
+                {attributeLineCount === 1 ? '' : 's'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {ldifResult.entries.map((entry, index) => {
+                const objectClasses = entry.attributes['objectclass']?.values ?? []
+                const attrCount = Object.values(entry.attributes).reduce(
+                  (sum, attr) => sum + attr.values.length,
+                  0
+                )
+
+                return (
+                  <details
+                    key={`${entry.dn}-${index}`}
+                    className="rounded-lg border bg-muted/20"
+                    open={ldifResult.entries.length <= 3}
+                  >
+                    <summary className="cursor-pointer p-4 hover:bg-muted/40 transition">
+                      <div className="inline-flex items-center gap-3">
+                        <span className="font-mono text-sm font-medium">{entry.dn}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {attrCount} attr{attrCount === 1 ? '' : 's'}
+                        </Badge>
+                        {objectClasses.length > 0 && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {objectClasses[objectClasses.length - 1]}
+                          </Badge>
+                        )}
+                      </div>
+                    </summary>
+                    <div className="border-t p-4 space-y-2">
+                      <div className="grid gap-2 text-sm">
+                        {Object.values(entry.attributes).map((attr) => (
+                          <div key={attr.name} className="grid grid-cols-[160px_1fr] gap-2">
+                            <span className="font-medium text-muted-foreground truncate">
+                              {attr.name}
+                              {attr.values.length > 1 && (
+                                <span className="text-xs ml-1">({attr.values.length})</span>
+                              )}
+                            </span>
+                            <div className="space-y-1">
+                              {attr.values.map((value, i) => (
+                                <code
+                                  key={i}
+                                  className="block text-xs bg-muted/60 rounded px-2 py-1 break-all"
+                                >
+                                  {value}
+                                </code>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {ldifText.trim() && ldifResult.entries.length === 0 && (
+          <Card>
+            <CardContent className="py-8">
               <Empty className="border-dashed">
                 <EmptyMedia>
                   <FileCode2 className="h-6 w-6" />
                 </EmptyMedia>
-                <EmptyTitle>No LDIF yet</EmptyTitle>
+                <EmptyTitle>No valid entries found</EmptyTitle>
                 <EmptyDescription>
-                  Pick a template, upload an LDIF file, or paste content to get started.
+                  Check that your LDIF has valid dn: lines and is properly formatted.
                 </EmptyDescription>
               </Empty>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </PageContainer>
   )

@@ -12,7 +12,7 @@ test.describe('LDAP Schema Explorer', () => {
     await expect(
       page.locator('[data-slot="card-title"]:has-text("LDAP Schema Explorer")')
     ).toBeVisible()
-    await expect(page.locator('text=Drop output from ldapsearch')).toBeVisible()
+    await expect(page.locator('text=Visualize LDAP schema definitions')).toBeVisible()
   })
 
   test('should allow user to input schema definitions', async ({ page }) => {
@@ -25,9 +25,13 @@ test.describe('LDAP Schema Explorer', () => {
     await expect(schemaInput).toHaveValue(sampleSchema)
   })
 
-  test('should load example schema when clicked', async ({ page }) => {
-    const exampleButton = page.locator('button:has-text("Example")')
-    await exampleButton.click()
+  test('should load built-in schema when clicked', async ({ page }) => {
+    // Open the built-in schemas popover
+    const builtinButton = page.locator('button:has-text("Built-in")')
+    await builtinButton.click()
+
+    // Click on PingDirectory schema
+    await page.click('button:has-text("PingDirectory")')
 
     const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
     const value = await schemaInput.inputValue()
@@ -110,8 +114,9 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('text=OID 2.5.6.0').first()).toBeVisible()
-    await expect(page.locator('span.inline-flex:has-text("ABSTRACT")').first()).toBeVisible()
+    // OID is now displayed in a badge
+    await expect(page.locator('span.font-mono:has-text("2.5.6.0")').first()).toBeVisible()
+    await expect(page.locator('text=ABSTRACT').first()).toBeVisible()
   })
 
   test('should display required and optional attributes for object classes', async ({ page }) => {
@@ -122,13 +127,9 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
     await page.waitForTimeout(1000)
 
-    await expect(
-      page.locator('span.font-medium:has-text("Required attributes:")').first()
-    ).toBeVisible()
+    await expect(page.locator('span.font-medium:has-text("Required:")').first()).toBeVisible()
     await expect(page.locator('text=sn, cn').first()).toBeVisible()
-    await expect(
-      page.locator('span.font-medium:has-text("Optional attributes:")').first()
-    ).toBeVisible()
+    await expect(page.locator('span.font-medium:has-text("Optional:")').first()).toBeVisible()
     await expect(page.locator('text=userPassword, telephoneNumber').first()).toBeVisible()
   })
 
@@ -152,7 +153,7 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
     await page.waitForTimeout(1000)
 
-    const detailsElement = page.locator('details:has-text("Show raw definition")').first()
+    const detailsElement = page.locator('details:has-text("Raw definition")').first()
     await detailsElement.click()
 
     // Verify OID is visible within the expanded details section (in pre tag)
@@ -165,25 +166,38 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
   })
 
   test('should show saved schemas popover', async ({ page }) => {
-    const savedButton = page.locator('button:has-text("Saved schemas")')
+    const savedButton = page.locator('button:has-text("Saved")')
     await expect(savedButton).toBeVisible()
 
     await savedButton.click()
     await expect(page.locator('text=No saved schemas yet')).toBeVisible()
   })
 
-  test('should auto-save schema snapshots after delay', async ({ page }) => {
+  test('should save schema with custom name via save dialog', async ({ page }) => {
     const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
     await schemaInput.fill(`attributeTypes: ( 2.5.4.3 NAME 'cn' )
 objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
-    // Wait for debounce (800ms) plus processing
-    await page.waitForTimeout(2000)
+    // Wait for parsing
+    await page.waitForTimeout(500)
 
-    // Open saved schemas
-    await page.click('button:has-text("Saved schemas")')
+    // Click the save button (use aria-label to be specific)
+    await page.click('button[aria-label="Save schema"]')
 
-    // Should see the auto-saved schema name in the popover (schema name contains object class name)
+    // Wait for dialog to open - look for the dialog title specifically
+    await expect(page.getByRole('heading', { name: 'Save Schema' })).toBeVisible()
+
+    // Wait for input and check default value
+    const nameInput = page.locator('#schema-name')
+    await expect(nameInput).toBeVisible()
+    await expect(nameInput).toHaveValue('person')
+
+    // Confirm save by clicking the dialog's Save button
+    await page.getByRole('button', { name: 'Save Schema' }).click()
+
+    // Wait for dialog to close and then open saved schemas
+    await page.waitForTimeout(300)
+    await page.click('button:has-text("Saved")')
     await expect(page.locator('p.text-sm.font-medium:has-text("person")')).toBeVisible()
   })
 })

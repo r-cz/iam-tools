@@ -226,5 +226,60 @@ cn: John Doe, Jr.`
       expect(result.entries).toHaveLength(1)
       expect(result.entries[0].dn).toContain('John Doe\\, Jr.')
     })
+
+    it('should handle LDIF modification separator (-)', () => {
+      const ldif = `dn: cn=engineering,ou=groups,dc=example,dc=com
+changetype: modify
+replace: uniqueMember
+uniqueMember: uid=jdoe,ou=people,dc=example,dc=com
+uniqueMember: uid=adoe,ou=people,dc=example,dc=com
+-`
+
+      const result = parseLdif(ldif)
+
+      expect(result.errors).toHaveLength(0)
+      expect(result.entries).toHaveLength(1)
+      expect(result.entries[0].attributes['uniquemember'].values).toHaveLength(2)
+    })
+
+    it('should handle multiple modification operations with separators', () => {
+      const ldif = `dn: uid=jdoe,ou=people,dc=example,dc=com
+changetype: modify
+replace: mail
+mail: newemail@example.com
+-
+add: telephoneNumber
+telephoneNumber: +1-555-1234
+-
+delete: description
+-`
+
+      const result = parseLdif(ldif)
+
+      expect(result.errors).toHaveLength(0)
+      expect(result.entries).toHaveLength(1)
+
+      const entry = result.entries[0]
+      expect(entry.attributes['changetype'].values).toContain('modify')
+      expect(entry.attributes['mail'].values).toContain('newemail@example.com')
+      expect(entry.attributes['telephonenumber'].values).toContain('+1-555-1234')
+    })
+
+    it('should handle standalone dash without surrounding whitespace', () => {
+      const ldif = `dn: cn=test,dc=example,dc=com
+changetype: modify
+add: member
+member: uid=user1,ou=people,dc=example,dc=com
+-
+add: member
+member: uid=user2,ou=people,dc=example,dc=com
+-`
+
+      const result = parseLdif(ldif)
+
+      expect(result.errors).toHaveLength(0)
+      expect(result.entries).toHaveLength(1)
+      expect(result.entries[0].attributes['member'].values).toHaveLength(2)
+    })
   })
 })
