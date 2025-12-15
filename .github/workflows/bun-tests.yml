@@ -39,7 +39,7 @@ jobs:
 
       - name: Upload test coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-report
           path: coverage/
@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload e2e test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-test-results
           path: e2e/test-results/
