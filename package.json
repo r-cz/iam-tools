@@ -65,7 +65,7 @@
     "react-simple-code-editor": "^0.14.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "xmldsigjs": "^2.8.3",
