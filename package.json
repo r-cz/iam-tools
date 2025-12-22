@@ -68,7 +68,7 @@
     "tailwindcss": "^4.1.17",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
-    "xmldsigjs": "^2.8.3",
+    "xmldsigjs": "^2.8.5",
     "zod": "^4.1.13"
   },
   "devDependencies": {
