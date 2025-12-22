@@ -96,6 +96,6 @@
     "vite": "^7.2.6",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.15",
-    "wrangler": "^4.53.0"
+    "wrangler": "^4.56.0"
   }
 }
