@@ -34,9 +34,9 @@ jobs:
       - name: Install Playwright browsers
         run: bun run e2e:install
 
-       - name: Run e2e tests
-         run: bun run e2e
-         timeout-minutes: 10
+      - name: Run e2e tests
+        run: bun run e2e
+        timeout-minutes: 10
 
       - name: Upload test coverage
         if: always()
