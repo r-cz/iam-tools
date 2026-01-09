@@ -18,12 +18,8 @@ export type MetadataVerifyResult = ElementVerifyResult
 
 function ensureEngine() {
   const app: any = (xmldsig as any).Application
-  const CryptoEngine: any = (xmldsig as any).CryptoEngine
   if (!app?.crypto) {
-    app.setEngine(
-      'WebCrypto',
-      new CryptoEngine({ name: 'browser', crypto: crypto, subtle: crypto.subtle })
-    )
+    app.setEngine('WebCrypto')
   }
 }
 
