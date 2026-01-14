@@ -33,6 +33,15 @@ export interface PkceParams {
   state: string
 }
 
+export const OAUTH_PLAYGROUND_REDIRECT_STATE_KEY = 'oauth_playground_redirect_state'
+
+export type OAuthRedirectState = {
+  config: Omit<OAuthConfig, 'clientSecret'>
+  pkce: PkceParams
+  flowPath: string
+  createdAt: number
+}
+
 /**
  * Authorization response
  */

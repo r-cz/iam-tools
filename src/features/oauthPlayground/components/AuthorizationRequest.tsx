@@ -8,7 +8,12 @@ import {
   CardFooter,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { OAuthConfig, PkceParams } from '../utils/types'
+import {
+  OAuthConfig,
+  OAuthRedirectState,
+  OAUTH_PLAYGROUND_REDIRECT_STATE_KEY,
+  PkceParams,
+} from '../utils/types'
 import { CodeBlock } from '@/components/ui/code-block'
 import {
   Table,
@@ -41,6 +46,7 @@ export function AuthorizationRequest({
 
       // Check if it's our OAuth callback message
       if (event.data?.type === 'oauth_callback' && event.data?.code) {
+        sessionStorage.removeItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
         onAuthorizationComplete(event.data.code)
 
         // Close the popup if it's still open
@@ -94,14 +100,28 @@ export function AuthorizationRequest({
     buildAuthorizationUrl()
   }, [config, pkce])
 
+  const storeRedirectState = () => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const { clientSecret: _clientSecret, ...configForStorage } = config
+      const redirectState: OAuthRedirectState = {
+        config: configForStorage,
+        pkce,
+        flowPath: window.location.pathname,
+        createdAt: Date.now(),
+      }
+      sessionStorage.setItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY, JSON.stringify(redirectState))
+    } catch (error) {
+      if (import.meta?.env?.DEV) {
+        console.warn('Unable to persist OAuth redirect state:', error)
+      }
+    }
+  }
+
   // Launch the authorization request
   const launchAuthorization = () => {
-    // Save the configuration and PKCE data to localStorage for retrieval after redirect
-    localStorage.setItem('oauth_playground_config', JSON.stringify(config))
-    localStorage.setItem('oauth_playground_pkce', JSON.stringify(pkce))
-
-    // Store the current flow path to redirect back to the right flow page
-    localStorage.setItem('oauth_playground_flow_path', window.location.pathname)
+    storeRedirectState()
 
     // Open the authorization URL in a popup window
     const width = 600 // Reduced width

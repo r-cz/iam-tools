@@ -21,7 +21,7 @@ interface TokenExchangeProps {
   config: OAuthConfig
   pkce: PkceParams
   authorizationCode: string
-  onTokenExchangeComplete: (tokenResponse: TokenResponse) => void
+  onTokenExchangeComplete?: (tokenResponse: TokenResponse) => void
 }
 
 export function TokenExchange({
@@ -188,16 +188,15 @@ export function TokenExchange({
       }
 
       setTokenResponse(tokenData)
-      onTokenExchangeComplete(tokenData)
-      toast.success(
-        `Successfully exchanged code for tokens${config.demoMode ? ' (demo mode)' : ''}`
-      )
+      onTokenExchangeComplete?.(tokenData)
+
+      toast.success(`Successfully refreshed tokens${config.demoMode ? ' (demo mode)' : ''}`)
     } catch (error) {
       if (import.meta?.env?.DEV) {
-        console.error('Error exchanging code for tokens:', error)
+        console.error('Error refreshing tokens:', error)
       }
       toast.error(
-        `Failed to exchange code for tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to refresh tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
     } finally {
       setIsExchanging(false)
@@ -212,11 +211,6 @@ export function TokenExchange({
 
       if (!tokenEndpoint) {
         toast.error('Token endpoint is required')
-        return
-      }
-
-      if (!refreshToken) {
-        toast.error('Refresh token is required')
         return
       }
 
@@ -262,14 +256,14 @@ export function TokenExchange({
         access_token: data.access_token,
         token_type: data.token_type,
         expires_in: data.expires_in,
-        refresh_token: data.refresh_token || refreshToken,
+        refresh_token: data.refresh_token,
         id_token: data.id_token,
         scope: data.scope,
       }
 
       setRefreshResponse(tokenData)
-      setTokenResponse(tokenData)
-      onTokenExchangeComplete(tokenData)
+      onTokenExchangeComplete?.(tokenData)
+
       toast.success(`Successfully refreshed tokens${config.demoMode ? ' (demo mode)' : ''}`)
     } catch (error) {
       if (import.meta?.env?.DEV) {
