@@ -4,11 +4,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch' // Import Switch
-import { signToken } from '@/lib/jwt/sign-token' // Import signing function
-import { DEMO_JWKS } from '@/lib/jwt/demo-key' // Import demo JWKS for kid
+import { Textarea } from '@/components/ui/textarea'
 import { IssuerHistory, JsonDisplay, FormFieldInput } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { proxyFetch } from '@/lib/proxy-fetch'
+import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import { toast } from 'sonner'
 import {
   InputGroup,
@@ -48,6 +48,8 @@ export function ClientCredentialsFlow() {
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [scope, setScope] = useState('')
+  const [customClaims, setCustomClaims] = useState('')
+  const [customClaimsError, setCustomClaimsError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<TokenResponse | null>(null)
   const [isDemoMode, setIsDemoMode] = useState(false) // Add state for demo mode
@@ -56,7 +58,8 @@ export function ClientCredentialsFlow() {
   // Update values when demo mode changes
   React.useEffect(() => {
     if (isDemoMode) {
-      setTokenEndpoint(`${window.location.origin}/oauth-playground/demo/token`)
+      const demoIssuer = getIssuerBaseUrl()
+      setTokenEndpoint(`${demoIssuer}/token`)
       setClientId('demo-client-credentials-client')
       setClientSecret('demo-client-secret')
       setScope('api:read api:write')
@@ -105,41 +108,22 @@ export function ClientCredentialsFlow() {
     }
   }
 
-  const generateDemoAccessToken = async (): Promise<TokenResponse> => {
+  const validateClaims = () => {
+    if (!customClaims.trim()) {
+      setCustomClaimsError(null)
+      return undefined
+    }
+
     try {
-      const currentTime = Math.floor(Date.now() / 1000)
-      const demoClientId = clientId || 'demo-client-credentials-client'
-      const demoAudience = 'https://api.example.com/resource' // Example audience
-
-      const accessTokenPayload = {
-        iss: `${window.location.origin}/oauth-playground/demo`,
-        sub: demoClientId, // Subject is the client ID in CC flow
-        aud: demoAudience,
-        exp: currentTime + 3600, // Expires in 1 hour
-        iat: currentTime,
-        scope: scope || 'api:read api:write', // Default scope if none provided
-        client_id: demoClientId,
-        is_demo_token: true, // Mark as demo token
-        token_usage: 'access_token', // Indicate usage
+      const parsed = JSON.parse(customClaims)
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Claims JSON must be an object')
       }
-
-      // Sign the token using the demo key
-      const accessToken = await signToken(accessTokenPayload, { kid: DEMO_JWKS.keys[0].kid })
-
-      return {
-        access_token: accessToken,
-        token_type: 'Bearer',
-        expires_in: 3600,
-        scope: accessTokenPayload.scope,
-      }
-    } catch (error: any) {
-      if (import.meta?.env?.DEV) {
-        console.error('Error generating demo CC token:', error)
-      }
-      return {
-        error: 'token_generation_failed',
-        error_description: error.message || 'Failed to generate demo token',
-      }
+      setCustomClaimsError(null)
+      return customClaims.trim()
+    } catch {
+      setCustomClaimsError('Claims must be a valid JSON object.')
+      return null
     }
   }
 
@@ -148,38 +132,56 @@ export function ClientCredentialsFlow() {
     setLoading(true)
     setResult(null)
 
-    if (isDemoMode) {
-      // Generate demo token
-      const demoResult = await generateDemoAccessToken()
-      setResult(demoResult)
+    if (!tokenEndpoint) {
+      setResult({
+        error: 'missing_endpoint',
+        error_description: 'Token endpoint is required',
+      })
       setLoading(false)
-    } else {
-      // Perform real network request
-      try {
-        const params = new URLSearchParams()
-        params.append('grant_type', 'client_credentials')
-        params.append('client_id', clientId)
-        params.append('client_secret', clientSecret)
-        if (scope) params.append('scope', scope)
+      return
+    }
 
-        const res = await fetch(tokenEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params.toString(),
-        })
+    if (!clientId) {
+      setResult({
+        error: 'missing_client_id',
+        error_description: 'Client ID is required',
+      })
+      setLoading(false)
+      return
+    }
 
-        const data = await res.json()
-        setResult(data)
-      } catch (err: any) {
-        setResult({
-          error: 'network_error',
-          error_description: err.message || 'Network error',
-        })
-      } finally {
-        setLoading(false)
-      }
+    const claimsValue = validateClaims()
+    if (claimsValue === null) {
+      toast.error('Custom claims must be valid JSON')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const params = new URLSearchParams()
+      params.append('grant_type', 'client_credentials')
+      params.append('client_id', clientId)
+      if (clientSecret) params.append('client_secret', clientSecret)
+      if (scope) params.append('scope', scope)
+      if (claimsValue) params.append('claims', claimsValue)
+
+      const res = await proxyFetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      })
+
+      const data = await res.json()
+      setResult(data)
+    } catch (err: any) {
+      setResult({
+        error: 'network_error',
+        error_description: err.message || 'Network error',
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -272,7 +274,7 @@ export function ClientCredentialsFlow() {
               {/* Remove bottom margin from label */}
               Demo Mode
               <p className="text-xs text-muted-foreground font-normal">
-                Generate a signed demo token locally instead of calling the endpoint.
+                Use the built-in demo token endpoint to issue tokens.
               </p>
             </Label>
           </div>
@@ -304,7 +306,9 @@ export function ClientCredentialsFlow() {
                 onChange={(e) => setTokenEndpoint(e.target.value)}
                 required={!isDemoMode}
                 disabled={isDemoMode}
-                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/token'}
+                placeholder={
+                  isDemoMode ? 'Demo endpoint (auto-filled)' : 'https://example.com/oauth/token'
+                }
               />
               {tokenEndpoint && !isDemoMode && (
                 <InputGroupAddon align="block-end" className="w-full justify-end bg-transparent">
@@ -337,8 +341,7 @@ export function ClientCredentialsFlow() {
                 value={clientSecret}
                 onChange={(e) => setClientSecret(e.target.value)}
                 required={!isDemoMode}
-                disabled={isDemoMode}
-                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'Enter Client Secret'}
+                placeholder={isDemoMode ? 'Optional in demo mode' : 'Enter Client Secret'}
               />
 
               <FormFieldInput
@@ -348,12 +351,38 @@ export function ClientCredentialsFlow() {
                 onChange={(e) => setScope(e.target.value)}
                 placeholder="space-separated scopes (e.g., api:read)"
               />
+
+              <div className="grid gap-2">
+                <Label htmlFor="custom-claims" className="text-sm font-medium">
+                  Custom Claims (JSON)
+                </Label>
+                <Textarea
+                  id="custom-claims"
+                  value={customClaims}
+                  onChange={(e) => {
+                    setCustomClaims(e.target.value)
+                    if (!e.target.value.trim()) {
+                      setCustomClaimsError(null)
+                    }
+                  }}
+                  rows={4}
+                  placeholder='{"role":"service"}'
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Demo endpoints accept the OIDC <code className="font-mono">claims</code>
+                  parameter. External IdPs may ignore it.
+                </p>
+                {customClaimsError && (
+                  <p className="text-xs text-destructive">{customClaimsError}</p>
+                )}
+              </div>
             </FieldSet>
             <Button
               type="submit"
               disabled={loading || (!isDemoMode && (!tokenEndpoint || !clientId || !clientSecret))}
             >
-              {loading ? 'Requesting...' : isDemoMode ? 'Generate Demo Token' : 'Request Token'}
+              {loading ? 'Requesting...' : isDemoMode ? 'Request Demo Token' : 'Request Token'}
             </Button>
           </form>
           {result && (

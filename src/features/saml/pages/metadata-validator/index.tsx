@@ -243,6 +243,29 @@ function parseMetadata(xml: string): {
     if (idp && sso.length === 0) warnings.push('IDPSSODescriptor missing SingleSignOnService')
     if (keys.length === 0) warnings.push('No signing/encryption keys present')
 
+    const validUntil = entity?.getAttribute('validUntil') || undefined
+    if (validUntil) {
+      const parsedDate = new Date(validUntil)
+      if (Number.isNaN(parsedDate.getTime())) {
+        warnings.push('validUntil is not a valid date')
+      } else {
+        const msRemaining = parsedDate.getTime() - Date.now()
+        if (msRemaining <= 0) {
+          warnings.push('Metadata validUntil has expired')
+        } else if (msRemaining < 1000 * 60 * 60 * 24 * 30) {
+          warnings.push('Metadata validUntil expires within 30 days')
+        }
+      }
+    }
+
+    const signingKeys = keys.filter((key) => !key.use || key.use === 'signing')
+    if (signingKeys.length > 1) {
+      warnings.push('Multiple signing keys detected; ensure your SP/IdP supports key rollover')
+    }
+    if (keys.some((key) => !key.use)) {
+      warnings.push('KeyDescriptor entries without a use attribute should be reviewed')
+    }
+
     return { entityId, hasIdp: !!idp, hasSp: !!sp, sso, slo, keys, warnings }
   } catch {
     return {

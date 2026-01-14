@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronsUpDown,
   Github,
@@ -11,6 +12,7 @@ import {
   Monitor,
   Trash,
   Save,
+  Activity,
 } from 'lucide-react'
 
 import {
@@ -26,6 +28,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuShortcut,
 } from '@/components/ui/dropdown-menu'
 import {
   SidebarMenu,
@@ -45,6 +48,69 @@ export function NavSettings() {
   const { settings, updateSettings, resetSettings } = useSettings()
   const { clearTokens } = useTokenHistory()
   const { clearIssuers } = useIssuerHistory()
+  const appVersion = import.meta.env.APP_VERSION
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
+  const [serviceWorkerSupported, setServiceWorkerSupported] = useState(false)
+  const [perfMetrics, setPerfMetrics] = useState<{
+    ttfb?: number
+    domContentLoaded?: number
+    load?: number
+    fcp?: number
+  } | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const updateStatus = () => {
+      setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true)
+    }
+
+    updateStatus()
+    window.addEventListener('online', updateStatus)
+    window.addEventListener('offline', updateStatus)
+
+    return () => {
+      window.removeEventListener('online', updateStatus)
+      window.removeEventListener('offline', updateStatus)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return
+    setServiceWorkerSupported('serviceWorker' in navigator)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('performance' in window)) return
+
+    const navEntry = performance.getEntriesByType('navigation')[0] as
+      | PerformanceNavigationTiming
+      | undefined
+    const paintEntries = performance.getEntriesByType('paint') as PerformanceEntry[]
+    const fcpEntry = paintEntries.find((entry) => entry.name === 'first-contentful-paint')
+
+    setPerfMetrics({
+      ttfb: navEntry?.responseStart,
+      domContentLoaded: navEntry?.domContentLoadedEventEnd,
+      load: navEntry?.loadEventEnd,
+      fcp: fcpEntry?.startTime,
+    })
+  }, [])
+
+  const formatMs = (value?: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)} ms` : '—'
+
+  const performanceSummary = useMemo(
+    () => ({
+      ttfb: formatMs(perfMetrics?.ttfb),
+      domContentLoaded: formatMs(perfMetrics?.domContentLoaded),
+      load: formatMs(perfMetrics?.load),
+      fcp: formatMs(perfMetrics?.fcp),
+    }),
+    [perfMetrics]
+  )
 
   const handleClearAllHistory = () => {
     clearTokens()
@@ -166,6 +232,42 @@ export function NavSettings() {
               <span>Reset Settings</span>
             </DropdownMenuItem>
 
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                <span>Diagnostics</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>Connection</span>
+                  <DropdownMenuShortcut>{isOnline ? 'Online' : 'Offline'}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>Service Worker</span>
+                  <DropdownMenuShortcut>
+                    {serviceWorkerSupported ? 'Supported' : 'Unavailable'}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>FCP</span>
+                  <DropdownMenuShortcut>{performanceSummary.fcp}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>TTFB</span>
+                  <DropdownMenuShortcut>{performanceSummary.ttfb}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>DOM Ready</span>
+                  <DropdownMenuShortcut>{performanceSummary.domContentLoaded}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>Load</span>
+                  <DropdownMenuShortcut>{performanceSummary.load}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
             <DropdownMenuSeparator />
 
             <DropdownMenuLabel>Help</DropdownMenuLabel>
@@ -197,6 +299,12 @@ export function NavSettings() {
                 </a>
               </DropdownMenuItem>
             </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+              <span>Version</span>
+              <DropdownMenuShortcut>{appVersion}</DropdownMenuShortcut>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

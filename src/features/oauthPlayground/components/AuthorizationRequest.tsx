@@ -57,14 +57,11 @@ export function AuthorizationRequest({
   // Build the authorization URL
   useEffect(() => {
     const buildAuthorizationUrl = () => {
-      let baseUrl: string
+      const baseUrl = config.authEndpoint
 
-      if (config.demoMode) {
-        // In demo mode, use our custom demo auth page
-        baseUrl = `${window.location.origin}/oauth-playground/demo-auth`
-      } else {
-        // In real mode, use the configured auth endpoint
-        baseUrl = config.authEndpoint!
+      if (!baseUrl) {
+        setAuthUrl('')
+        return
       }
 
       // Construct the authorization URL

@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Clock, Globe, Mail, MapPin, User, UserRound } from 'lucide-react'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
+import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import {
   InputGroup,
   InputGroupAddon,
@@ -83,6 +84,11 @@ export function UserInfo() {
   useEffect(() => {
     const loadDemoToken = async () => {
       if (isDemoMode) {
+        const demoEndpoint = `${getIssuerBaseUrl()}/userinfo`
+        if (userInfoEndpoint !== demoEndpoint) {
+          setUserInfoEndpoint(demoEndpoint)
+        }
+
         if (!accessToken) {
           setIsLoadingDemoToken(true)
           try {
@@ -102,7 +108,7 @@ export function UserInfo() {
     }
 
     loadDemoToken()
-  }, [isDemoMode, accessToken])
+  }, [accessToken, isDemoMode, userInfoEndpoint])
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
@@ -145,106 +151,57 @@ export function UserInfo() {
     setAccessToken(tokenValue)
   }
 
-  const generateDemoUserInfo = (): UserInfoResponse => {
-    try {
-      // Create a realistic demo user info response
-      return {
-        sub: 'demo-user-123',
-        name: 'Demo User',
-        given_name: 'Demo',
-        family_name: 'User',
-        preferred_username: 'demouser',
-        email: 'demo@example.com',
-        email_verified: true,
-        picture:
-          'https://notion-avatar.app/api/svg/eyJmYWNlIjowLCJub3NlIjoxMCwibW91dGgiOjAsImV5ZXMiOjksImV5ZWJyb3dzIjoyLCJnbGFzc2VzIjowLCJoYWlyIjoxMCwiYWNjZXNzb3JpZXMiOjAsImRldGFpbHMiOjAsImJlYXJkIjoxLCJmbGlwIjowLCJjb2xvciI6InJnYmEoMjU1LCAwLCAwLCAwKSIsInNoYXBlIjoibm9uZSJ9',
-        locale: 'en-US',
-        updated_at: Math.floor(Date.now() / 1000) - 86400, // 1 day ago
-        zoneinfo: 'America/Los_Angeles',
-        address: {
-          formatted: '123 Demo St, Demo City, DC 12345, USA',
-          street_address: '123 Demo St',
-          locality: 'Demo City',
-          region: 'DC',
-          postal_code: '12345',
-          country: 'USA',
-        },
-        is_demo_response: true, // Mark as demo response
-      }
-    } catch (error: any) {
-      if (import.meta?.env?.DEV) {
-        console.error('Error generating demo userinfo:', error)
-      }
-      return {
-        error: 'userinfo_generation_failed',
-        error_description: error.message || 'Failed to generate demo user info',
-      }
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setResult(null)
 
-    if (isDemoMode) {
-      // Generate demo userinfo
-      const demoResult = generateDemoUserInfo()
-      setResult(demoResult)
+    if (!accessToken) {
+      setResult({
+        error: 'missing_token',
+        error_description: 'Access token is required',
+      })
+      setLoading(false)
+      return
+    }
 
-      // Add the token to history (only if provided in demo mode)
+    const endpoint = isDemoMode ? `${getIssuerBaseUrl()}/userinfo` : userInfoEndpoint
+
+    if (!endpoint) {
+      setResult({
+        error: 'missing_endpoint',
+        error_description: 'UserInfo endpoint is required',
+      })
+      setLoading(false)
+      return
+    }
+
+    try {
+      const res = await proxyFetch(endpoint, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(
+          errorData.error_description || errorData.error || `HTTP error ${res.status}`
+        )
+      }
+
+      const data = await res.json()
+      setResult(data)
+
       if (accessToken) {
         addToken(accessToken)
       }
-    } else {
-      // In non-demo mode, token is required
-      if (!accessToken) {
-        setResult({
-          error: 'missing_token',
-          error_description: 'Access token is required',
-        })
-        setLoading(false)
-        return
-      }
-      // Validate required fields for real request
-      if (!userInfoEndpoint) {
-        setResult({
-          error: 'missing_endpoint',
-          error_description: 'UserInfo endpoint is required',
-        })
-        setLoading(false)
-        return
-      }
-
-      // Perform real network request
-      try {
-        const res = await proxyFetch(userInfoEndpoint, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        })
-
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}))
-          throw new Error(
-            errorData.error_description || errorData.error || `HTTP error ${res.status}`
-          )
-        }
-
-        const data = await res.json()
-        setResult(data)
-
-        // Add the token to history if request was successful
-        if (accessToken) {
-          addToken(accessToken)
-        }
-      } catch (err: any) {
-        setResult({
-          error: 'request_failed',
-          error_description: err.message || 'Failed to fetch user info',
-        })
-      }
+    } catch (err: any) {
+      setResult({
+        error: 'request_failed',
+        error_description: err.message || 'Failed to fetch user info',
+      })
     }
 
     setLoading(false)
@@ -351,7 +308,7 @@ export function UserInfo() {
             <Label htmlFor="demo-mode-switch" className="mb-0">
               Demo Mode
               <p className="text-xs text-muted-foreground font-normal">
-                Generate a simulated UserInfo response locally instead of calling the endpoint.
+                Use the demo UserInfo endpoint to return simulated claims.
               </p>
               {isLoadingDemoToken && (
                 <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -388,7 +345,9 @@ export function UserInfo() {
                 onChange={(e) => setUserInfoEndpoint(e.target.value)}
                 required={!isDemoMode}
                 disabled={isDemoMode}
-                placeholder={isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/userinfo'}
+                placeholder={
+                  isDemoMode ? 'Demo endpoint (auto-filled)' : 'https://example.com/oauth/userinfo'
+                }
               />
               {userInfoEndpoint && !isDemoMode && (
                 <InputGroupAddon align="block-end" className="w-full justify-end bg-transparent">
@@ -439,7 +398,7 @@ export function UserInfo() {
             </InputGroup>
 
             <Button type="submit" disabled={loading}>
-              {loading ? 'Fetching...' : isDemoMode ? 'Generate Demo UserInfo' : 'Get UserInfo'}
+              {loading ? 'Fetching...' : isDemoMode ? 'Get Demo UserInfo' : 'Get UserInfo'}
             </Button>
           </form>
 

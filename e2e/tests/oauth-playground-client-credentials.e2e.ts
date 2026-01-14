@@ -26,11 +26,11 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await page.waitForTimeout(500)
 
     // Verify form fields are populated with demo values
-    const tokenUrlInput = page.locator('input').filter({ hasText: '' }).nth(0) // First input
-    const clientIdInput = page.locator('input').filter({ hasText: '' }).nth(1) // Second input
-    const clientSecretInput = page.locator('input[type="password"]') // Password input
+    const tokenUrlInput = page.locator('#token-endpoint')
+    const clientIdInput = page.locator('#client-id')
+    const clientSecretInput = page.locator('#client-secret')
 
-    await expect(tokenUrlInput).toHaveValue(/demo/)
+    await expect(tokenUrlInput).toHaveValue(/api\/token/)
     await expect(clientIdInput).toHaveValue(/demo/)
     await expect(clientSecretInput).toHaveValue(/demo/)
   })
@@ -41,11 +41,11 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Wait for demo mode to fully activate
     await page.waitForTimeout(1000)
 
-    // Generate Demo Token button should be enabled
-    const requestButton = await utils.getButtonByText('Generate Demo Token')
+    // Request Demo Token button should be enabled
+    const requestButton = await utils.getButtonByText('Request Demo Token')
     await expect(requestButton).toBeEnabled()
 
-    // Click Generate Demo Token
+    // Click Request Demo Token
     await requestButton.click()
 
     // Wait for result section to appear
@@ -70,10 +70,10 @@ test.describe('OAuth Playground - Client Credentials', () => {
     const requestButton = await utils.getButtonByText('Request Token')
     await expect(requestButton).toBeDisabled()
 
-    // Fill in required fields by targeting specific placeholders
-    await page.locator('input[placeholder*="example.com"]').fill('https://example.com/token')
-    await page.locator('input[placeholder="Enter Client ID"]').fill('test-client-id')
-    await page.locator('input[type="password"]').fill('test-client-secret')
+    // Fill in required fields by targeting stable selectors
+    await page.locator('#token-endpoint').fill('https://example.com/token')
+    await page.locator('#client-id').fill('test-client-id')
+    await page.locator('#client-secret').fill('test-client-secret')
 
     // Request button should now be enabled
     await expect(requestButton).toBeEnabled()
@@ -85,13 +85,13 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Wait for demo mode to fully activate
     await page.waitForTimeout(1000)
 
-    // Add custom scopes - find the scope input by looking for the input after "Scope (optional)" label
-    const scopeInput = page.locator('input').nth(3) // Fourth input is usually the scope
+    // Add custom scopes
+    const scopeInput = page.locator('#scope')
     await scopeInput.clear()
     await scopeInput.fill('read:users write:users admin')
 
     // Request token
-    await page.click('button:has-text("Generate Demo Token")')
+    await page.click('button:has-text("Request Demo Token")')
 
     // Wait for result to appear
     await page.waitForSelector('text=Result', { timeout: 5000 })
@@ -105,7 +105,7 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await page.click(selectors.oauthPlayground.demoModeSwitch)
     // Wait for demo mode to fully activate
     await page.waitForTimeout(1000)
-    await page.click('button:has-text("Generate Demo Token")')
+    await page.click('button:has-text("Request Demo Token")')
     await page.waitForSelector('text=Result', { timeout: 5000 })
 
     // The result is shown as JSON in a code block - look for copy functionality
@@ -125,8 +125,8 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Wait for demo mode to fully activate
     await page.waitForTimeout(1000)
 
-    // Click Generate Demo Token to trigger the request
-    await page.click('button:has-text("Generate Demo Token")')
+    // Click Request Demo Token to trigger the request
+    await page.click('button:has-text("Request Demo Token")')
 
     // Wait for result which includes request details
     await page.waitForSelector('text=Result', { timeout: 5000 })
@@ -141,12 +141,12 @@ test.describe('OAuth Playground - Client Credentials', () => {
     // Wait for demo mode to fully activate
     await page.waitForTimeout(1000)
 
-    // Verify form is populated by checking the second input (client ID)
-    const clientIdInput = page.locator('input').nth(1)
+    // Verify form is populated by checking the client ID input
+    const clientIdInput = page.locator('#client-id')
     await expect(clientIdInput).not.toHaveValue('')
 
     // Generate a token first
-    await page.click('button:has-text("Generate Demo Token")')
+    await page.click('button:has-text("Request Demo Token")')
     await page.waitForSelector('text=Result', { timeout: 5000 })
 
     // Click reset button if visible
@@ -168,12 +168,10 @@ test.describe('OAuth Playground - Client Credentials', () => {
       await page.waitForTimeout(500)
     }
 
-    // Fill in invalid endpoint using placeholder matching
-    await page
-      .locator('input[placeholder*="example.com"]')
-      .fill('https://invalid.example.com/token')
-    await page.locator('input[placeholder="Enter Client ID"]').fill('test-client')
-    await page.locator('input[type="password"]').fill('test-secret')
+    // Fill in invalid endpoint using stable selectors
+    await page.locator('#token-endpoint').fill('https://invalid.example.com/token')
+    await page.locator('#client-id').fill('test-client')
+    await page.locator('#client-secret').fill('test-secret')
 
     // Request token
     await page.click('button:has-text("Request Token")')

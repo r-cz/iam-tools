@@ -5,7 +5,6 @@ export enum OAuthFlowType {
   AUTH_CODE_PKCE = 'authorization_code_pkce',
   AUTH_CODE = 'authorization_code',
   CLIENT_CREDENTIALS = 'client_credentials',
-  IMPLICIT = 'implicit',
   PASSWORD = 'password', // Legacy, not recommended
 }
 
