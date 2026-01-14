@@ -51,9 +51,18 @@ function corsHeaders() {
 }
 
 function json(body: unknown, init?: ResponseInit) {
+  const headers = new Headers({ 'Content-Type': 'application/json', ...corsHeaders() })
+
+  if (init?.headers) {
+    const initHeaders = new Headers(init.headers)
+    initHeaders.forEach((value, key) => {
+      headers.set(key, value)
+    })
+  }
+
   return new Response(JSON.stringify(body, null, 2), {
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() },
     ...init,
+    headers,
   })
 }
 
@@ -119,12 +128,17 @@ async function handleCorsProxy(request: Request): Promise<Response> {
     })
 
     const resp = await fetch(forward)
-    const proxied = new Response(resp.body, resp)
-    proxied.headers.set('Access-Control-Allow-Origin', '*')
-    proxied.headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
-    proxied.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    proxied.headers.set('Vary', 'Origin')
-    return proxied
+    const headers = new Headers(resp.headers)
+    headers.set('Access-Control-Allow-Origin', '*')
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
+    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    headers.set('Vary', 'Origin')
+
+    return new Response(resp.body, {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers,
+    })
   } catch (e) {
     const message = (e as Error)?.message ?? 'Unknown error'
     return new Response(`Error proxying request: ${message}`, { status: 500 })

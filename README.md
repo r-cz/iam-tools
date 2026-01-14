@@ -275,6 +275,14 @@ Tools for working with SAML messages and metadata:
 
 See [SAML Suite Documentation](docs/feature-guides/saml-suite.md) for details.
 
+### LDAP Tools
+
+Explore and validate LDAP data sets:
+
+- Schema Explorer for RFC/vendor schema parsing and visualization
+- LDIF Builder & Viewer with schema-based validation and templates
+- Local-only storage for saved schema snapshots
+
 ## Deployment
 
 The application deploys as a Cloudflare Worker (serving both API routes and static assets). A typical deployment includes:
