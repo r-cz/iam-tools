@@ -98,9 +98,11 @@ In real IdP mode, the OAuth Playground:
 
 In demo mode, the OAuth Playground:
 
-1. Uses a simulated OAuth server for token issuance.
-2. Provides a simple login page with no actual authentication.
-3. Simulates the complete OAuth flow for educational purposes.
+1. Uses the built-in demo OAuth endpoints served by the worker.
+2. Issues signed tokens and optional refresh tokens (include `offline_access`).
+3. Accepts custom JSON claims to enrich demo tokens.
+
+When developing locally, run `bun run dev:all` so the worker endpoints are available.
 
 ## Security Considerations
 
@@ -111,15 +113,13 @@ In demo mode, the OAuth Playground:
   - Use HTTPS for all endpoints
   - Validate all tokens and state parameters
   - Implement proper PKCE for public clients
+  - Prefer OAuth 2.1 flows (implicit is not supported)
   - Follow the principle of least privilege for scopes
 
 ## Next Steps
 
 Future enhancements to the OAuth Playground include:
 
-- Support for additional OAuth flows (Implicit, etc.)
-- Custom claim configuration for demo mode
-- Support for confidential clients with client secret
-- Refresh token flow demonstration
-- OAuth 2.1 support
-- Extended introspection features (revocation, token metadata)
+- Revocation walkthroughs and token metadata explanations
+- Additional flow guides (device code, CIBA) if needed
+- More validation hints for audience/issuer scope mismatches

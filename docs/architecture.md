@@ -101,5 +101,5 @@ Both cache implementations support:
 
 - **State Management**: As the application grows, consider introducing more structured state management
 - **Enhanced Caching**: Expand caching to other resources like user info endpoints
-- **Offline Support**: Evaluate Progressive Web App (PWA) capabilities for offline functionality
-- **Performance Monitoring**: Add performance tracking for core features
+- **Offline Support**: Basic diagnostics are in place; expand to offline-first workflows
+- **Performance Monitoring**: Baseline metrics are surfaced; expand to richer Web Vitals reporting

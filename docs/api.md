@@ -159,10 +159,16 @@ Errors are returned as JSON with a consistent format:
 
 These endpoints currently do not implement rate limiting. However, Cloudflare provides rate limiting capabilities that can be configured in the Cloudflare dashboard if needed.
 
-## Future API Enhancements
+## Demo OAuth/OIDC Endpoints
 
-Planned API enhancements include:
+IAM Tools also ships a demo OAuth/OIDC provider for local testing and the OAuth Playground demo mode:
 
-1. Token generation endpoint for creating signed JWTs with custom claims
-2. OIDC discovery endpoint for simulating an OIDC provider
-3. OAuth 2.0 endpoints for simulating an authorization server
+- `GET /api/.well-known/openid-configuration` (discovery)
+- `GET /api/auth` (authorization code redirect)
+- `POST /api/token` (authorization_code, refresh_token, client_credentials)
+- `POST /api/token/generate` (direct token generation with custom claims)
+- `GET /api/userinfo` (Bearer token required)
+- `POST /api/introspect` (RFC 7662-style response)
+- `POST /api/revoke` (always returns 200)
+
+The demo token endpoints accept an optional `claims` JSON object; reserved standard claims are ignored.

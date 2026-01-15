@@ -24,7 +24,7 @@ Path: /saml/response-decoder
 Notes:
 
 - Verification uses xmldsigjs + WebCrypto in the browser. Provide the correct signing certificate used by the IdP.
-- This validates XML-DSig cryptographically. Functional validation (audiences, time window, recipients, InResponseTo, etc.) is not enforced yet.
+- The Validation tab highlights audience, time window, recipient, and InResponseTo checks for quick functional review.
 
 ## Request Builder
 
@@ -43,7 +43,7 @@ Path: /saml/request-builder
 Redirect Signing:
 
 - Toggle “Sign Redirect” to sign the query per SAML Redirect binding spec.
-- SigAlg: RSA-SHA256.
+- SigAlg: RSA-SHA256 or ECDSA-SHA256 (P-256).
 - Private key: paste PKCS#8 PEM (-----BEGIN PRIVATE KEY----- ...).
 - Generates a “Signed Redirect URL” with SigAlg and Signature appended.
 
@@ -60,6 +60,7 @@ Path: /saml/metadata-validator
   - entityID, presence of IDPSSODescriptor/SPSSODescriptor
   - SingleSignOnService / SingleLogoutService endpoints
   - KeyDescriptor certificates
+- Additional checks include metadata expiry and key rollover warnings.
 - Verification:
   - Paste the metadata signing certificate (PEM or base64) and click Verify to validate the XML-DSig on EntityDescriptor.
 
@@ -83,6 +84,5 @@ Path: /saml/sp-metadata
 
 ## Roadmap
 
-- ECDSA (P-256) support for Redirect signing
-- Functional response validation (audience/time/recipient/InResponseTo)
-- Richer metadata checks (expiry, multiple keys, key rollover guidance)
+- Configurable validation inputs (expected audience/recipient/InResponseTo)
+- Expanded metadata linting for SP/IdP role combinations

@@ -76,7 +76,7 @@ export function LaunchTab({
                       onChange={(e) => onSigAlgChange(e.target.value as RedirectSigAlg)}
                     >
                       <option value="rsa-sha256">RSA-SHA256</option>
-                      {/* Future: ecdsa-sha256 */}
+                      <option value="ecdsa-sha256">ECDSA-SHA256 (P-256)</option>
                     </select>
                   </div>
                 </div>

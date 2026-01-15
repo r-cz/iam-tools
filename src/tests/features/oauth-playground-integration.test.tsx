@@ -17,7 +17,6 @@ describe('OAuth Playground Core Functionality', () => {
       OAuthFlowType.AUTH_CODE_PKCE,
       OAuthFlowType.CLIENT_CREDENTIALS,
       OAuthFlowType.AUTH_CODE,
-      OAuthFlowType.IMPLICIT,
       OAuthFlowType.PASSWORD,
     ]
 
@@ -35,7 +34,6 @@ describe('OAuth Playground Core Functionality', () => {
 
     // These values should exist even if not fully implemented yet
     expect(OAuthFlowType.AUTH_CODE).toBe('authorization_code')
-    expect(OAuthFlowType.IMPLICIT).toBe('implicit')
     expect(OAuthFlowType.PASSWORD).toBe('password')
   })
 

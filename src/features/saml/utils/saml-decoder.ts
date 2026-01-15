@@ -44,6 +44,21 @@ export interface SamlAssertion {
   hasSignature: boolean
 }
 
+export type SamlValidationStatus = 'pass' | 'warning' | 'fail'
+
+export interface SamlValidationCheck {
+  id: string
+  label: string
+  status: SamlValidationStatus
+  message: string
+}
+
+export interface SamlValidationResult {
+  overall: SamlValidationStatus
+  responseChecks: SamlValidationCheck[]
+  assertionChecks: Array<{ id: string; checks: SamlValidationCheck[] }>
+}
+
 export function decodeSamlResponse(base64Input: string): DecodedSamlResponse {
   // Remove any whitespace
   const cleanInput = base64Input.replace(/\s/g, '')
@@ -250,4 +265,229 @@ function findElements(parent: Element, localName: string): Element[] {
   return allElements.filter(
     (el) => el.localName === localName || el.nodeName.endsWith(`:${localName}`)
   )
+}
+
+export function validateSamlResponse(response: DecodedSamlResponse): SamlValidationResult {
+  const responseChecks: SamlValidationCheck[] = []
+  const assertionChecks: Array<{ id: string; checks: SamlValidationCheck[] }> = []
+  const now = Date.now()
+  const skewMs = 60 * 1000
+
+  const pushCheck = (
+    target: SamlValidationCheck[],
+    id: string,
+    label: string,
+    status: SamlValidationStatus,
+    message: string
+  ) => {
+    target.push({ id, label, status, message })
+  }
+
+  pushCheck(
+    responseChecks,
+    'status',
+    'Status',
+    response.status === 'Success' ? 'pass' : 'fail',
+    response.status === 'Success' ? 'Response status is Success' : `Status is ${response.status}`
+  )
+
+  pushCheck(
+    responseChecks,
+    'destination',
+    'Destination',
+    response.destination ? 'pass' : 'warning',
+    response.destination ? 'Destination is present' : 'Missing Destination in Response'
+  )
+
+  pushCheck(
+    responseChecks,
+    'in-response-to',
+    'InResponseTo',
+    response.inResponseTo ? 'pass' : 'warning',
+    response.inResponseTo
+      ? 'InResponseTo is present'
+      : 'Missing InResponseTo (unsolicited responses may omit this)'
+  )
+
+  response.assertions.forEach((assertion, index) => {
+    const checks: SamlValidationCheck[] = []
+    const assertionId = assertion.id || `assertion-${index + 1}`
+
+    const audiences = assertion.conditions?.audiences?.filter(Boolean) ?? []
+    pushCheck(
+      checks,
+      'audience',
+      'Audience',
+      audiences.length > 0 ? 'pass' : 'warning',
+      audiences.length > 0
+        ? `Audience(s) present (${audiences.length})`
+        : 'No AudienceRestriction/Audience found'
+    )
+
+    const notBeforeRaw = assertion.conditions?.notBefore
+    if (notBeforeRaw) {
+      const notBefore = new Date(notBeforeRaw)
+      if (Number.isNaN(notBefore.getTime())) {
+        pushCheck(checks, 'not-before', 'NotBefore', 'warning', 'NotBefore is not a valid date')
+      } else if (now + skewMs < notBefore.getTime()) {
+        pushCheck(checks, 'not-before', 'NotBefore', 'fail', 'Assertion is not yet valid')
+      } else {
+        pushCheck(checks, 'not-before', 'NotBefore', 'pass', 'NotBefore satisfied')
+      }
+    } else {
+      pushCheck(checks, 'not-before', 'NotBefore', 'warning', 'No NotBefore value found')
+    }
+
+    const notOnOrAfterRaw = assertion.conditions?.notOnOrAfter
+    if (notOnOrAfterRaw) {
+      const notOnOrAfter = new Date(notOnOrAfterRaw)
+      if (Number.isNaN(notOnOrAfter.getTime())) {
+        pushCheck(
+          checks,
+          'not-on-or-after',
+          'NotOnOrAfter',
+          'warning',
+          'NotOnOrAfter is not a valid date'
+        )
+      } else if (now - skewMs >= notOnOrAfter.getTime()) {
+        pushCheck(checks, 'not-on-or-after', 'NotOnOrAfter', 'fail', 'Assertion has expired')
+      } else {
+        pushCheck(checks, 'not-on-or-after', 'NotOnOrAfter', 'pass', 'NotOnOrAfter satisfied')
+      }
+    } else {
+      pushCheck(checks, 'not-on-or-after', 'NotOnOrAfter', 'warning', 'No NotOnOrAfter value found')
+    }
+
+    const confirmations = assertion.subject?.confirmations ?? []
+    if (confirmations.length === 0) {
+      pushCheck(
+        checks,
+        'subject-confirmation',
+        'SubjectConfirmation',
+        'warning',
+        'No SubjectConfirmation data found'
+      )
+    } else {
+      const recipients = confirmations.map((c) => c.recipient).filter(Boolean) as string[]
+      if (!response.destination) {
+        pushCheck(
+          checks,
+          'recipient',
+          'Recipient',
+          'warning',
+          'Cannot validate Recipient without Response Destination'
+        )
+      } else if (recipients.length === 0) {
+        pushCheck(
+          checks,
+          'recipient',
+          'Recipient',
+          'warning',
+          'No Recipient values found in SubjectConfirmationData'
+        )
+      } else if (recipients.some((r) => r !== response.destination)) {
+        pushCheck(
+          checks,
+          'recipient',
+          'Recipient',
+          'warning',
+          'Recipient does not match Response Destination'
+        )
+      } else {
+        pushCheck(checks, 'recipient', 'Recipient', 'pass', 'Recipient matches Destination')
+      }
+
+      const inResponseToValues = confirmations
+        .map((c) => c.inResponseTo)
+        .filter(Boolean) as string[]
+      if (!response.inResponseTo) {
+        pushCheck(
+          checks,
+          'confirmation-in-response-to',
+          'InResponseTo',
+          'warning',
+          'Response InResponseTo missing; unable to compare'
+        )
+      } else if (inResponseToValues.length === 0) {
+        pushCheck(
+          checks,
+          'confirmation-in-response-to',
+          'InResponseTo',
+          'warning',
+          'No InResponseTo values found in SubjectConfirmationData'
+        )
+      } else if (inResponseToValues.some((value) => value !== response.inResponseTo)) {
+        pushCheck(
+          checks,
+          'confirmation-in-response-to',
+          'InResponseTo',
+          'warning',
+          'SubjectConfirmation InResponseTo does not match Response'
+        )
+      } else {
+        pushCheck(
+          checks,
+          'confirmation-in-response-to',
+          'InResponseTo',
+          'pass',
+          'SubjectConfirmation InResponseTo matches Response'
+        )
+      }
+
+      const confirmationNotOnOrAfter = confirmations
+        .map((c) => c.notOnOrAfter)
+        .filter(Boolean) as string[]
+      if (confirmationNotOnOrAfter.length === 0) {
+        pushCheck(
+          checks,
+          'confirmation-expiry',
+          'Confirmation Expiry',
+          'warning',
+          'No SubjectConfirmationData NotOnOrAfter value found'
+        )
+      } else {
+        const parsed = confirmationNotOnOrAfter.map((value) => new Date(value))
+        if (parsed.some((date) => Number.isNaN(date.getTime()))) {
+          pushCheck(
+            checks,
+            'confirmation-expiry',
+            'Confirmation Expiry',
+            'warning',
+            'Invalid NotOnOrAfter value in SubjectConfirmationData'
+          )
+        } else if (parsed.some((date) => now - skewMs >= date.getTime())) {
+          pushCheck(
+            checks,
+            'confirmation-expiry',
+            'Confirmation Expiry',
+            'fail',
+            'SubjectConfirmationData has expired'
+          )
+        } else {
+          pushCheck(
+            checks,
+            'confirmation-expiry',
+            'Confirmation Expiry',
+            'pass',
+            'SubjectConfirmationData is within validity window'
+          )
+        }
+      }
+    }
+
+    assertionChecks.push({ id: assertionId, checks })
+  })
+
+  const allChecks = [...responseChecks, ...assertionChecks.flatMap((entry) => entry.checks)]
+  const overall: SamlValidationStatus = allChecks.some((check) => check.status === 'fail')
+    ? 'fail'
+    : allChecks.some((check) => check.status === 'warning')
+      ? 'warning'
+      : 'pass'
+
+  return {
+    overall,
+    responseChecks,
+    assertionChecks,
+  }
 }

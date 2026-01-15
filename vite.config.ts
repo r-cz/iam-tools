@@ -2,6 +2,7 @@
 
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { readFileSync } from 'fs'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -11,8 +12,13 @@ import { VitePWA } from 'vite-plugin-pwa' // <-- Make sure this is uncommented
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    'import.meta.env.APP_VERSION': JSON.stringify(packageJson.version),
+  },
   plugins: [
     react(),
     tailwindcss(),

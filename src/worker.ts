@@ -2,6 +2,7 @@
 // Serves API routes and static assets (dist/) with SPA fallback
 
 import { DEMO_JWKS } from './lib/jwt/demo-key'
+import { signToken } from './lib/jwt/sign-token'
 import { CSP_INLINE_SCRIPT_SHA256 } from './csp-hashes'
 
 type AssetsBinding = { fetch: (request: Request) => Promise<Response> }
@@ -13,9 +14,10 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
     const { pathname } = url
+    const normalizedPath = pathname.replace(/\/+$/, '')
 
     // CORS preflight for API
-    if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) {
+    if (request.method === 'OPTIONS' && normalizedPath.startsWith('/api')) {
       return new Response(null, {
         status: 204,
         headers: corsHeaders(),
@@ -23,15 +25,33 @@ export default {
     }
 
     // API routes
-    if (pathname.startsWith('/api/')) {
+    if (normalizedPath.startsWith('/api')) {
       if (pathname.startsWith('/api/cors-proxy/')) {
         return handleCorsProxy(request)
       }
-      if (pathname === '/api/.well-known/openid-configuration') {
+      if (normalizedPath === '/api/.well-known/openid-configuration') {
         return handleOpenIdConfiguration(request)
       }
-      if (pathname === '/api/jwks' || pathname === '/api/jwks/') {
+      if (normalizedPath === '/api/jwks') {
         return json(DEMO_JWKS)
+      }
+      if (normalizedPath === '/api/auth') {
+        return handleAuthorization(request)
+      }
+      if (normalizedPath === '/api/token') {
+        return handleToken(request)
+      }
+      if (normalizedPath === '/api/token/generate') {
+        return handleTokenGeneration(request)
+      }
+      if (normalizedPath === '/api/userinfo') {
+        return handleUserInfo(request)
+      }
+      if (normalizedPath === '/api/introspect') {
+        return handleIntrospection(request)
+      }
+      if (normalizedPath === '/api/revoke') {
+        return handleTokenRevocation(request)
       }
     }
 
@@ -44,7 +64,7 @@ export default {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS, POST',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   }
@@ -76,19 +96,16 @@ async function handleOpenIdConfiguration(request: Request): Promise<Response> {
     authorization_endpoint: `${issuer}/auth`,
     token_endpoint: `${issuer}/token`,
     userinfo_endpoint: `${issuer}/userinfo`,
-    response_types_supported: [
-      'code',
-      'token',
-      'id_token',
-      'code token',
-      'code id_token',
-      'token id_token',
-      'code token id_token',
-    ],
+    introspection_endpoint: `${issuer}/introspect`,
+    revocation_endpoint: `${issuer}/revoke`,
+    response_types_supported: ['code'],
+    response_modes_supported: ['query'],
+    grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
+    code_challenge_methods_supported: ['S256'],
     subject_types_supported: ['public'],
     id_token_signing_alg_values_supported: ['RS256'],
-    scopes_supported: ['openid', 'profile', 'email', 'api'],
-    token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+    scopes_supported: ['openid', 'profile', 'email', 'offline_access', 'api'],
+    token_endpoint_auth_methods_supported: ['none', 'client_secret_basic', 'client_secret_post'],
     claims_supported: [
       'sub',
       'name',
@@ -99,9 +116,654 @@ async function handleOpenIdConfiguration(request: Request): Promise<Response> {
       'email_verified',
       'locale',
       'updated_at',
+      'roles',
     ],
+    claims_parameter_supported: true,
   }
   return json(configuration, { headers: { 'Cache-Control': 'public, max-age=86400' } })
+}
+
+const ACCESS_TOKEN_TTL = 60 * 60
+const AUTH_CODE_TTL = 5 * 60
+const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30
+const DEFAULT_OPENID_SCOPE = 'openid profile email'
+const DEFAULT_API_SCOPE = 'api'
+
+type AuthCodePayload = {
+  client_id: string
+  redirect_uri: string
+  scope?: string
+  code_challenge?: string
+  code_challenge_method?: string
+  nonce?: string
+  sub: string
+  issued_at: number
+  exp: number
+}
+
+type RefreshTokenPayload = {
+  client_id: string
+  sub: string
+  scope?: string
+  issued_at: number
+  exp: number
+}
+
+async function handleAuthorization(request: Request): Promise<Response> {
+  if (request.method !== 'GET') {
+    return oauthError('invalid_request', 'Authorization endpoint only supports GET', 405)
+  }
+
+  const url = new URL(request.url)
+  const params = url.searchParams
+  const responseType = params.get('response_type')
+  const clientId = params.get('client_id')
+  const redirectUri = params.get('redirect_uri')
+  const state = params.get('state')
+  const scope = params.get('scope')?.trim() || DEFAULT_OPENID_SCOPE
+  const codeChallenge = params.get('code_challenge') || undefined
+  const codeChallengeMethod = params.get('code_challenge_method') || undefined
+  const nonce = params.get('nonce') || undefined
+
+  if (!clientId || !redirectUri) {
+    return buildAuthorizationError({
+      redirectUri,
+      state,
+      error: 'invalid_request',
+      description: 'client_id and redirect_uri are required',
+    })
+  }
+
+  try {
+    new URL(redirectUri)
+  } catch {
+    return buildAuthorizationError({
+      redirectUri: null,
+      state,
+      error: 'invalid_request',
+      description: 'redirect_uri is invalid',
+    })
+  }
+
+  if (responseType !== 'code') {
+    return buildAuthorizationError({
+      redirectUri,
+      state,
+      error: 'unsupported_response_type',
+      description: 'Only response_type=code is supported',
+    })
+  }
+
+  if (codeChallengeMethod && codeChallengeMethod !== 'S256') {
+    return buildAuthorizationError({
+      redirectUri,
+      state,
+      error: 'invalid_request',
+      description: 'Only code_challenge_method=S256 is supported',
+    })
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  const payload: AuthCodePayload = {
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope,
+    code_challenge: codeChallenge,
+    code_challenge_method: codeChallengeMethod,
+    nonce,
+    sub: 'demo-user',
+    issued_at: now,
+    exp: now + AUTH_CODE_TTL,
+  }
+
+  const code = encodeAuthCode(payload)
+  const redirect = new URL(redirectUri)
+  redirect.searchParams.set('code', code)
+  if (state) {
+    redirect.searchParams.set('state', state)
+  }
+
+  return Response.redirect(redirect.toString(), 302)
+}
+
+async function handleToken(request: Request): Promise<Response> {
+  if (request.method !== 'POST') {
+    return oauthError('invalid_request', 'Token endpoint only supports POST', 405)
+  }
+
+  const params = await parseRequestBody(request)
+  const grantType = getString(params, 'grant_type')
+  if (!grantType) {
+    return oauthError('invalid_request', 'grant_type is required')
+  }
+
+  const { clientId } = parseClientCredentials(params, request.headers)
+  if (!clientId) {
+    return oauthError('invalid_client', 'client_id is required')
+  }
+
+  const issuer = getIssuer(request)
+  const customClaims = sanitizeCustomClaims(parseCustomClaims(params.claims))
+
+  if (grantType === 'authorization_code') {
+    const code = getString(params, 'code')
+    const redirectUri = getString(params, 'redirect_uri')
+    const codeVerifier = getString(params, 'code_verifier')
+
+    if (!code || !redirectUri) {
+      return oauthError('invalid_request', 'code and redirect_uri are required')
+    }
+
+    const authCode = decodeAuthCode(code)
+    if (!authCode) {
+      return oauthError('invalid_grant', 'Authorization code is invalid')
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    if (authCode.exp && authCode.exp < now) {
+      return oauthError('invalid_grant', 'Authorization code has expired')
+    }
+
+    if (authCode.client_id !== clientId) {
+      return oauthError('invalid_grant', 'Authorization code was issued to a different client')
+    }
+
+    if (authCode.redirect_uri !== redirectUri) {
+      return oauthError('invalid_grant', 'redirect_uri mismatch')
+    }
+
+    if (authCode.code_challenge) {
+      if (!codeVerifier) {
+        return oauthError(
+          'invalid_request',
+          'code_verifier is required for this authorization code'
+        )
+      }
+      const expected = await computeCodeChallenge(codeVerifier)
+      if (expected !== authCode.code_challenge) {
+        return oauthError('invalid_grant', 'code_verifier is invalid')
+      }
+    }
+
+    const resolvedScope = normalizeScope(
+      getString(params, 'scope') || authCode.scope || DEFAULT_OPENID_SCOPE
+    )
+    const scopeList = splitScopes(resolvedScope)
+    const tokenResponse = await issueTokenResponse({
+      issuer,
+      clientId,
+      subject: authCode.sub,
+      scope: resolvedScope,
+      includeIdToken: scopeList.includes('openid'),
+      includeRefreshToken: scopeList.includes('offline_access'),
+      nonce: authCode.nonce,
+      customClaims,
+    })
+
+    return oauthJson(tokenResponse)
+  }
+
+  if (grantType === 'refresh_token') {
+    const refreshToken = getString(params, 'refresh_token')
+    if (!refreshToken) {
+      return oauthError('invalid_request', 'refresh_token is required')
+    }
+
+    const refreshPayload = decodeRefreshToken(refreshToken)
+    if (!refreshPayload) {
+      return oauthError('invalid_grant', 'refresh_token is invalid')
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    if (refreshPayload.exp && refreshPayload.exp < now) {
+      return oauthError('invalid_grant', 'refresh_token has expired')
+    }
+
+    if (refreshPayload.client_id !== clientId) {
+      return oauthError('invalid_grant', 'refresh_token was issued to a different client')
+    }
+
+    const resolvedScope = normalizeScope(
+      getString(params, 'scope') || refreshPayload.scope || DEFAULT_OPENID_SCOPE
+    )
+    const scopeList = splitScopes(resolvedScope)
+    const tokenResponse = await issueTokenResponse({
+      issuer,
+      clientId,
+      subject: refreshPayload.sub,
+      scope: resolvedScope,
+      includeIdToken: scopeList.includes('openid'),
+      includeRefreshToken: scopeList.includes('offline_access'),
+      customClaims,
+    })
+
+    return oauthJson(tokenResponse)
+  }
+
+  if (grantType === 'client_credentials') {
+    const resolvedScope = normalizeScope(getString(params, 'scope') || DEFAULT_API_SCOPE)
+    const tokenResponse = await issueTokenResponse({
+      issuer,
+      clientId,
+      subject: clientId,
+      scope: resolvedScope,
+      includeIdToken: false,
+      includeRefreshToken: false,
+      customClaims,
+    })
+
+    return oauthJson(tokenResponse)
+  }
+
+  return oauthError('unsupported_grant_type', `Unsupported grant_type: ${grantType}`)
+}
+
+async function handleTokenGeneration(request: Request): Promise<Response> {
+  if (request.method !== 'POST') {
+    return oauthError('invalid_request', 'Token generation endpoint only supports POST', 405)
+  }
+
+  const params = await parseRequestBody(request)
+  const subject = getString(params, 'subject') || 'demo-user'
+  const audience = getString(params, 'audience') || getString(params, 'client_id') || 'iam-tools'
+  const scope = normalizeScope(getString(params, 'scope') || DEFAULT_OPENID_SCOPE)
+  const expiresIn = Number(getString(params, 'expires_in'))
+  const ttl = Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : ACCESS_TOKEN_TTL
+  const issuer = getIssuer(request)
+  const customClaims = sanitizeCustomClaims(parseCustomClaims(params.claims))
+  const now = Math.floor(Date.now() / 1000)
+
+  const payload = {
+    iss: issuer,
+    sub: subject,
+    aud: audience,
+    iat: now,
+    exp: now + ttl,
+    scope,
+    ...customClaims,
+  }
+
+  const token = await signToken(payload)
+  return oauthJson({
+    access_token: token,
+    token_type: 'Bearer',
+    expires_in: ttl,
+    scope,
+  })
+}
+
+async function handleUserInfo(request: Request): Promise<Response> {
+  if (request.method !== 'GET') {
+    return oauthError('invalid_request', 'UserInfo endpoint only supports GET', 405)
+  }
+
+  const token = extractBearerToken(request.headers)
+  if (!token) {
+    return oauthError('invalid_token', 'Missing bearer token', 401)
+  }
+
+  const payload = decodeJwtPayload(token)
+  if (!payload) {
+    return oauthError('invalid_token', 'Token is not a valid JWT', 401)
+  }
+
+  if (!isTokenActive(payload)) {
+    return oauthError('invalid_token', 'Token has expired', 401)
+  }
+
+  return oauthJson(buildUserInfoResponse(payload))
+}
+
+async function handleIntrospection(request: Request): Promise<Response> {
+  if (request.method !== 'POST') {
+    return oauthError('invalid_request', 'Introspection endpoint only supports POST', 405)
+  }
+
+  const params = await parseRequestBody(request)
+  const token = getString(params, 'token')
+  if (!token) {
+    return oauthError('invalid_request', 'token is required')
+  }
+
+  const jwtPayload = decodeJwtPayload(token)
+  const refreshPayload = jwtPayload ? null : decodeRefreshToken(token)
+  const payload = (jwtPayload || refreshPayload) as Record<string, unknown>
+
+  if (!payload) {
+    return oauthJson({ active: false })
+  }
+
+  const active = isTokenActive(payload)
+
+  return oauthJson({
+    active,
+    scope: typeof payload.scope === 'string' ? payload.scope : undefined,
+    client_id: typeof payload.client_id === 'string' ? payload.client_id : undefined,
+    username: typeof payload.sub === 'string' ? payload.sub : undefined,
+    token_type: jwtPayload ? 'Bearer' : 'refresh_token',
+    exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+    iat: typeof payload.iat === 'number' ? payload.iat : undefined,
+    nbf: typeof payload.nbf === 'number' ? payload.nbf : undefined,
+    sub: typeof payload.sub === 'string' ? payload.sub : undefined,
+    aud: payload.aud,
+    iss: typeof payload.iss === 'string' ? payload.iss : undefined,
+    jti: typeof payload.jti === 'string' ? payload.jti : undefined,
+  })
+}
+
+async function handleTokenRevocation(request: Request): Promise<Response> {
+  if (request.method !== 'POST') {
+    return oauthError('invalid_request', 'Revocation endpoint only supports POST', 405)
+  }
+
+  return new Response(null, { status: 200, headers: corsHeaders() })
+}
+
+function buildAuthorizationError(opts: {
+  redirectUri: string | null | undefined
+  state?: string | null
+  error: string
+  description: string
+}): Response {
+  if (opts.redirectUri) {
+    try {
+      const redirect = new URL(opts.redirectUri)
+      redirect.searchParams.set('error', opts.error)
+      redirect.searchParams.set('error_description', opts.description)
+      if (opts.state) {
+        redirect.searchParams.set('state', opts.state)
+      }
+      return Response.redirect(redirect.toString(), 302)
+    } catch {
+      // fall through to JSON error
+    }
+  }
+
+  return oauthError(opts.error, opts.description)
+}
+
+function oauthJson(body: Record<string, unknown>, init?: ResponseInit): Response {
+  return json(body, {
+    ...init,
+    headers: {
+      'Cache-Control': 'no-store',
+      Pragma: 'no-cache',
+      ...(init?.headers ?? {}),
+    },
+  })
+}
+
+function oauthError(code: string, description: string, status = 400): Response {
+  return oauthJson(
+    {
+      error: code,
+      error_description: description,
+    },
+    { status }
+  )
+}
+
+async function issueTokenResponse(opts: {
+  issuer: string
+  clientId: string
+  subject: string
+  scope: string
+  includeIdToken: boolean
+  includeRefreshToken: boolean
+  nonce?: string
+  customClaims?: Record<string, unknown>
+}): Promise<Record<string, unknown>> {
+  const now = Math.floor(Date.now() / 1000)
+  const claims = sanitizeCustomClaims(opts.customClaims)
+
+  const accessTokenPayload = {
+    iss: opts.issuer,
+    sub: opts.subject,
+    aud: opts.clientId,
+    iat: now,
+    exp: now + ACCESS_TOKEN_TTL,
+    scope: opts.scope,
+    client_id: opts.clientId,
+    token_use: 'access_token',
+    ...claims,
+  }
+
+  const accessToken = await signToken(accessTokenPayload)
+  const response: Record<string, unknown> = {
+    access_token: accessToken,
+    token_type: 'Bearer',
+    expires_in: ACCESS_TOKEN_TTL,
+    scope: opts.scope,
+  }
+
+  if (opts.includeIdToken) {
+    const idTokenPayload = {
+      iss: opts.issuer,
+      sub: opts.subject,
+      aud: opts.clientId,
+      iat: now,
+      exp: now + ACCESS_TOKEN_TTL,
+      auth_time: now,
+      ...(opts.nonce ? { nonce: opts.nonce } : {}),
+      ...claims,
+    }
+    response.id_token = await signToken(idTokenPayload)
+  }
+
+  if (opts.includeRefreshToken) {
+    response.refresh_token = encodeRefreshToken({
+      client_id: opts.clientId,
+      sub: opts.subject,
+      scope: opts.scope,
+      issued_at: now,
+      exp: now + REFRESH_TOKEN_TTL,
+    })
+  }
+
+  return response
+}
+
+function normalizeScope(scope: string): string {
+  const cleaned = scope
+    .split(/\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (cleaned.length === 0) {
+    return DEFAULT_OPENID_SCOPE
+  }
+  return cleaned.join(' ')
+}
+
+function splitScopes(scope: string): string[] {
+  return scope.split(/\s+/).filter(Boolean)
+}
+
+function encodeAuthCode(payload: AuthCodePayload): string {
+  return encodeJson(payload)
+}
+
+function decodeAuthCode(value: string): AuthCodePayload | null {
+  return decodeJson<AuthCodePayload>(value)
+}
+
+function encodeRefreshToken(payload: RefreshTokenPayload): string {
+  return `rt_${encodeJson(payload)}`
+}
+
+function decodeRefreshToken(token: string): RefreshTokenPayload | null {
+  const raw = token.startsWith('rt_') ? token.slice(3) : token
+  return decodeJson<RefreshTokenPayload>(raw)
+}
+
+function extractBearerToken(headers: Headers): string | null {
+  const authHeader = headers.get('Authorization') || headers.get('authorization')
+  if (!authHeader) return null
+  const [scheme, credentials] = authHeader.split(' ')
+  if (!scheme || scheme.toLowerCase() !== 'bearer' || !credentials) return null
+  return credentials.trim()
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split('.')
+  if (parts.length < 2) return null
+  return decodeJson<Record<string, unknown>>(parts[1])
+}
+
+function isTokenActive(payload: Record<string, unknown>): boolean {
+  const exp = typeof payload.exp === 'number' ? payload.exp : undefined
+  if (!exp) return true
+  const now = Math.floor(Date.now() / 1000)
+  return exp > now
+}
+
+const RESERVED_CLAIMS = new Set([
+  'iss',
+  'sub',
+  'aud',
+  'exp',
+  'iat',
+  'nbf',
+  'jti',
+  'nonce',
+  'scope',
+  'client_id',
+  'token_use',
+  'auth_time',
+])
+
+const USERINFO_EXCLUDED_CLAIMS = new Set([
+  'iss',
+  'aud',
+  'exp',
+  'iat',
+  'nbf',
+  'jti',
+  'client_id',
+  'token_use',
+  'scope',
+])
+
+function buildUserInfoResponse(payload: Record<string, unknown>): Record<string, unknown> {
+  const response: Record<string, unknown> = {
+    sub: typeof payload.sub === 'string' ? payload.sub : 'demo-user',
+  }
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (USERINFO_EXCLUDED_CLAIMS.has(key)) continue
+    if (value === undefined || value === null) continue
+    response[key] = value
+  }
+
+  return response
+}
+
+function parseCustomClaims(input: unknown): Record<string, unknown> {
+  if (!input) return {}
+  if (typeof input === 'string') {
+    try {
+      const parsed = JSON.parse(input)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>
+      }
+    } catch {
+      return {}
+    }
+  }
+  if (typeof input === 'object' && !Array.isArray(input)) {
+    return input as Record<string, unknown>
+  }
+  return {}
+}
+
+function sanitizeCustomClaims(input?: Record<string, unknown>): Record<string, unknown> {
+  if (!input) return {}
+  return Object.fromEntries(Object.entries(input).filter(([key]) => !RESERVED_CLAIMS.has(key)))
+}
+
+function parseClientCredentials(
+  params: Record<string, unknown>,
+  headers: Headers
+): {
+  clientId?: string
+  clientSecret?: string
+} {
+  const basic = parseBasicAuth(headers)
+  const clientId = getString(params, 'client_id') || basic.clientId
+  const clientSecret = getString(params, 'client_secret') || basic.clientSecret
+  return { clientId, clientSecret }
+}
+
+function parseBasicAuth(headers: Headers): { clientId?: string; clientSecret?: string } {
+  const authHeader = headers.get('Authorization') || headers.get('authorization')
+  if (!authHeader || !authHeader.toLowerCase().startsWith('basic ')) return {}
+  const encoded = authHeader.slice(6).trim()
+  try {
+    const decoded = atob(encoded)
+    const [clientId, clientSecret] = decoded.split(':')
+    return { clientId, clientSecret }
+  } catch {
+    return {}
+  }
+}
+
+async function parseRequestBody(request: Request): Promise<Record<string, unknown>> {
+  const contentType = request.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    const parsed = await request.json().catch(() => ({}))
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+    return {}
+  }
+
+  const text = await request.text()
+  if (!text) return {}
+  return Object.fromEntries(new URLSearchParams(text).entries())
+}
+
+function getString(params: Record<string, unknown>, key: string): string | undefined {
+  const value = params[key]
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return undefined
+}
+
+function getIssuer(request: Request): string {
+  const url = new URL(request.url)
+  return `${url.protocol}//${url.host}/api`
+}
+
+function encodeJson(value: unknown): string {
+  const json = JSON.stringify(value)
+  return base64UrlEncode(new TextEncoder().encode(json))
+}
+
+function decodeJson<T>(value: string): T | null {
+  try {
+    const raw = base64UrlDecode(value)
+    const json = new TextDecoder().decode(raw)
+    return JSON.parse(json) as T
+  } catch {
+    return null
+  }
+}
+
+function base64UrlEncode(data: Uint8Array): string {
+  const encoded = btoa(String.fromCharCode(...data))
+  return encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+function base64UrlDecode(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+  const binary = atob(padded)
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0))
+}
+
+async function computeCodeChallenge(verifier: string): Promise<string> {
+  const data = new TextEncoder().encode(verifier)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return base64UrlEncode(new Uint8Array(digest))
 }
 
 async function handleCorsProxy(request: Request): Promise<Response> {

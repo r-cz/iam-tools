@@ -7,9 +7,8 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { useAppState } from '@/lib/state'
 import { CheckCircle, XCircle } from 'lucide-react'
-import { signToken } from '@/lib/jwt/sign-token'
-import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import { proxyFetch } from '@/lib/proxy-fetch'
+import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
 import { toast } from 'sonner'
 import {
@@ -76,6 +75,11 @@ export function TokenIntrospection() {
   useEffect(() => {
     const loadDemoToken = async () => {
       if (isDemoMode) {
+        const demoEndpoint = `${getIssuerBaseUrl()}/introspect`
+        if (introspectionEndpoint !== demoEndpoint) {
+          setIntrospectionEndpoint(demoEndpoint)
+        }
+
         if (!token) {
           setIsLoadingDemoToken(true)
           try {
@@ -99,72 +103,7 @@ export function TokenIntrospection() {
     }
 
     loadDemoToken()
-  }, [clientId, isDemoMode, token])
-
-  // Generate a sample introspection response for demo mode
-  const generateDemoIntrospectionResponse = async (): Promise<IntrospectionResponse> => {
-    try {
-      // Create a demo token if none provided
-      let tokenToIntrospect = token
-
-      if (!tokenToIntrospect) {
-        // Generate a sample token
-        const currentTime = Math.floor(Date.now() / 1000)
-        const demoClientId = clientId || 'demo-client'
-
-        const tokenPayload = {
-          iss: `${window.location.origin}/oauth-playground/demo`,
-          sub: 'demo-user-123',
-          aud: 'https://api.example.com/resource',
-          exp: currentTime + 3600, // Expires in 1 hour
-          iat: currentTime - 300, // Issued 5 minutes ago
-          nbf: currentTime - 300, // Not valid before 5 minutes ago
-          scope: 'openid profile email api:read',
-          client_id: demoClientId,
-          jti: `demo-${Math.random().toString(36).substring(2, 15)}`,
-          is_demo_token: true,
-        }
-
-        tokenToIntrospect = await signToken(tokenPayload, { kid: DEMO_JWKS.keys[0].kid })
-        setToken(tokenToIntrospect)
-      }
-
-      // Extract token parts
-      const parts = tokenToIntrospect.split('.')
-      if (parts.length !== 3) {
-        throw new Error('Invalid JWT format')
-      }
-
-      // Parse the payload
-      const payload = JSON.parse(atob(parts[1]))
-      const currentTime = Math.floor(Date.now() / 1000)
-
-      // Generate introspection response based on the token
-      return {
-        active: payload.exp ? payload.exp > currentTime : true,
-        scope: payload.scope || 'openid profile',
-        client_id: payload.client_id || clientId || 'demo-client',
-        token_type: 'Bearer',
-        exp: payload.exp,
-        iat: payload.iat,
-        nbf: payload.nbf,
-        sub: payload.sub,
-        aud: payload.aud,
-        iss: payload.iss,
-        jti: payload.jti,
-        username: payload.sub,
-      }
-    } catch (error: any) {
-      if (import.meta?.env?.DEV) {
-        console.error('Error generating demo introspection response:', error)
-      }
-      return {
-        active: false,
-        error: 'invalid_token',
-        error_description: error.message || 'Failed to introspect token',
-      }
-    }
-  }
+  }, [clientId, introspectionEndpoint, isDemoMode, token])
 
   // Handle token selection from history
   const handleSelectToken = (tokenValue: string) => {
@@ -221,65 +160,50 @@ export function TokenIntrospection() {
       return
     }
 
-    if (isDemoMode) {
-      // Generate demo response
-      const demoResult = await generateDemoIntrospectionResponse()
-      setResult(demoResult)
+    const endpoint = isDemoMode ? `${getIssuerBaseUrl()}/introspect` : introspectionEndpoint
 
-      // Add token to history if it's valid
-      if (token && demoResult.active !== false) {
+    if (!endpoint) {
+      setResult({
+        active: false,
+        error: 'missing_endpoint',
+        error_description: 'Introspection endpoint is required',
+      })
+      setLoading(false)
+      return
+    }
+
+    try {
+      const params = new URLSearchParams()
+      params.append('token', token)
+
+      if (clientId) params.append('client_id', clientId)
+      if (clientSecret) params.append('client_secret', clientSecret)
+
+      const res = await proxyFetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...(clientId && clientSecret
+            ? {
+                Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+              }
+            : {}),
+        },
+        body: params.toString(),
+      })
+
+      const data = await res.json()
+      setResult(data)
+
+      if (token && data.active !== false) {
         addToken(token)
       }
-    } else {
-      // Validate required fields for real request
-      if (!introspectionEndpoint) {
-        setResult({
-          active: false,
-          error: 'missing_endpoint',
-          error_description: 'Introspection endpoint is required',
-        })
-        setLoading(false)
-        return
-      }
-
-      // Perform real network request
-      try {
-        // Create form data for introspection request
-        const params = new URLSearchParams()
-        params.append('token', token)
-
-        // Add client credentials if provided
-        if (clientId) params.append('client_id', clientId)
-        if (clientSecret) params.append('client_secret', clientSecret)
-
-        // Make the introspection request
-        const res = await fetch(introspectionEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            ...(clientId && clientSecret
-              ? {
-                  Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
-                }
-              : {}),
-          },
-          body: params.toString(),
-        })
-
-        const data = await res.json()
-        setResult(data)
-
-        // Add token to history if it's valid
-        if (token && data.active !== false) {
-          addToken(token)
-        }
-      } catch (err: any) {
-        setResult({
-          active: false,
-          error: 'network_error',
-          error_description: err.message || 'Network error',
-        })
-      }
+    } catch (err: any) {
+      setResult({
+        active: false,
+        error: 'network_error',
+        error_description: err.message || 'Network error',
+      })
     }
 
     setLoading(false)
@@ -401,7 +325,7 @@ export function TokenIntrospection() {
             <Label htmlFor="demo-mode-switch" className="mb-0">
               Demo Mode
               <p className="text-xs text-muted-foreground font-normal">
-                Generate a simulated introspection response locally without making network requests.
+                Use the demo introspection endpoint for simulated responses.
               </p>
               {isLoadingDemoToken && (
                 <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -439,7 +363,9 @@ export function TokenIntrospection() {
                 required={!isDemoMode}
                 disabled={isDemoMode}
                 placeholder={
-                  isDemoMode ? 'N/A (Demo Mode)' : 'https://example.com/oauth/introspect'
+                  isDemoMode
+                    ? 'Demo endpoint (auto-filled)'
+                    : 'https://example.com/oauth/introspect'
                 }
               />
             </InputGroup>
@@ -514,7 +440,7 @@ export function TokenIntrospection() {
               {loading
                 ? 'Processing...'
                 : isDemoMode
-                  ? 'Generate Demo Response'
+                  ? 'Introspect Demo Token'
                   : 'Introspect Token'}
             </Button>
           </form>

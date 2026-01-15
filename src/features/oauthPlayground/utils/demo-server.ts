@@ -2,10 +2,10 @@
  * Simple Demo Server Utility
  *
  * This utility provides endpoint URLs for the demo OAuth flow.
- * Rather than attempting to run a real server in the browser,
- * it simply redirects to our demo auth page which simulates
- * the OAuth flow for demonstration purposes.
+ * It maps to the local demo OAuth endpoints served by the worker.
  */
+
+import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 
 class DemoOAuthServer {
   private static instance: DemoOAuthServer
@@ -15,7 +15,7 @@ class DemoOAuthServer {
    * Private constructor to prevent direct instantiation
    */
   private constructor() {
-    this.baseUrl = `${window.location.origin}/oauth-playground/demo-auth`
+    this.baseUrl = getIssuerBaseUrl()
   }
 
   /**
@@ -55,36 +55,35 @@ class DemoOAuthServer {
    * Get the authorization endpoint URL
    */
   getAuthorizationEndpoint(): string {
-    return this.baseUrl
+    return `${this.baseUrl}/auth`
   }
 
   /**
    * Get the token endpoint URL
-   * In demo mode, we'll handle token issuance in the front-end
    */
   getTokenEndpoint(): string {
-    return `${window.location.origin}/oauth-playground/token`
+    return `${this.baseUrl}/token`
   }
 
   /**
    * Get the JWKS endpoint URL
    */
   getJwksEndpoint(): string {
-    return `${window.location.origin}/oauth-playground/jwks`
+    return `${this.baseUrl}/jwks`
   }
 
   /**
    * Get the userinfo endpoint URL
    */
   getUserInfoEndpoint(): string {
-    return `${window.location.origin}/oauth-playground/userinfo`
+    return `${this.baseUrl}/userinfo`
   }
 
   /**
    * Get the discovery endpoint URL
    */
   getDiscoveryEndpoint(): string {
-    return `${window.location.origin}/oauth-playground/.well-known/openid-configuration`
+    return `${this.baseUrl}/.well-known/openid-configuration`
   }
 }
 

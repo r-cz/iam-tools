@@ -1,11 +1,31 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { OAuthConfig, PkceParams, TokenResponse } from '../utils/types'
+import {
+  OAuthConfig,
+  OAuthRedirectState,
+  OAUTH_PLAYGROUND_REDIRECT_STATE_KEY,
+  PkceParams,
+} from '../utils/types'
 import ConfigurationForm from './ConfigurationForm'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import AuthorizationRequest from './AuthorizationRequest'
 import TokenExchange from './TokenExchange'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+const readRedirectState = (): OAuthRedirectState | null => {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const stored = sessionStorage.getItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
+    return stored ? (JSON.parse(stored) as OAuthRedirectState) : null
+  } catch {
+    return null
+  }
+}
+
+const clearRedirectState = () => {
+  if (typeof window === 'undefined') return
+  sessionStorage.removeItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
+}
 
 export function AuthCodeWithPkceFlow() {
   const location = useLocation()
@@ -13,76 +33,21 @@ export function AuthCodeWithPkceFlow() {
   const [config, setConfig] = useState<OAuthConfig | null>(null)
   const [pkce, setPkce] = useState<PkceParams | null>(null)
   const [authCode, setAuthCode] = useState<string | null>(null)
-  const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null)
 
-  // Persistent storage for flow state
-  const [storedState, setStoredState] = useLocalStorage<{
-    config?: OAuthConfig
-    pkce?: PkceParams
-    authCode?: string
-    tokenResponse?: TokenResponse
-    activeTab?: string
-  }>('oauth_playground_state', {})
-
-  // Flag to track if initial load is complete
-  const initialLoadComplete = useRef(false)
-  const lastPersistedState = useRef<string>('')
-
-  // Initialize from location state (returning from callback) or stored state
+  // Initialize from location state (returning from callback)
   useEffect(() => {
-    // Only run this effect once
-    if (initialLoadComplete.current) return
+    if (!location.state?.code) return
 
-    // Check if we have a code from the location state
-    if (location.state?.code) {
-      setAuthCode(location.state.code)
+    setAuthCode(location.state.code)
 
-      // Load saved config and PKCE from localStorage
-      const savedConfig = localStorage.getItem('oauth_playground_config')
-      const savedPkce = localStorage.getItem('oauth_playground_pkce')
-
-      if (savedConfig && savedPkce) {
-        setConfig(JSON.parse(savedConfig))
-        setPkce(JSON.parse(savedPkce))
-        setActiveTab('token')
-      }
-    } else {
-      // Load from persistent storage if available
-      if (storedState.config) setConfig(storedState.config)
-      if (storedState.pkce) setPkce(storedState.pkce)
-      if (storedState.authCode) setAuthCode(storedState.authCode)
-      if (storedState.tokenResponse) setTokenResponse(storedState.tokenResponse)
-      if (storedState.activeTab) setActiveTab(storedState.activeTab)
+    const redirectState = readRedirectState()
+    if (redirectState) {
+      setConfig(redirectState.config)
+      setPkce(redirectState.pkce)
+      setActiveTab('token')
+      clearRedirectState()
     }
-
-    // Mark initial load as complete
-    initialLoadComplete.current = true
-    // Only depend on location.state, not on storedState
-  }, [location.state, storedState])
-
-  // Sync the persisted state whenever flow state changes after initial load
-  const persistedState = useMemo(
-    () => ({
-      config: config || undefined,
-      pkce: pkce || undefined,
-      authCode: authCode || undefined,
-      tokenResponse: tokenResponse || undefined,
-      activeTab,
-    }),
-    [activeTab, authCode, config, pkce, tokenResponse]
-  )
-
-  useEffect(() => {
-    if (!initialLoadComplete.current) return
-
-    const serializedState = JSON.stringify(persistedState)
-    if (serializedState === lastPersistedState.current) {
-      return
-    }
-
-    lastPersistedState.current = serializedState
-    setStoredState(persistedState)
-  }, [persistedState, setStoredState])
+  }, [location.state])
 
   // Handle configuration completion
   const handleConfigComplete = (newConfig: OAuthConfig, newPkce: PkceParams) => {
@@ -95,11 +60,6 @@ export function AuthCodeWithPkceFlow() {
   const handleAuthorizationComplete = (code: string) => {
     setAuthCode(code)
     setActiveTab('token')
-  }
-
-  // Handle token exchange completion
-  const handleTokenExchangeComplete = (response: TokenResponse) => {
-    setTokenResponse(response)
   }
 
   // Determine which tabs should be enabled
@@ -139,12 +99,7 @@ export function AuthCodeWithPkceFlow() {
 
       <TabsContent value="token">
         {config && pkce && authCode && (
-          <TokenExchange
-            config={config}
-            pkce={pkce}
-            authorizationCode={authCode}
-            onTokenExchangeComplete={handleTokenExchangeComplete}
-          />
+          <TokenExchange config={config} pkce={pkce} authorizationCode={authCode} />
         )}
       </TabsContent>
     </Tabs>

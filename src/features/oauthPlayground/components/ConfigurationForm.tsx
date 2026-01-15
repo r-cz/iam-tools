@@ -9,6 +9,7 @@ import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
+import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import { toast } from 'sonner'
 import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
@@ -25,6 +26,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
   const [tokenEndpoint, setTokenEndpoint] = useState<string>('')
   const [jwksEndpoint, setJwksEndpoint] = useState<string>('')
   const [clientId, setClientId] = useState<string>('')
+  const [clientSecret, setClientSecret] = useState<string>('')
   const [redirectUri] = useState<string>(`${window.location.origin}/oauth-playground/callback`) // Removed setRedirectUri
   const [scopes, setScopes] = useState<string>('openid profile email')
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false)
@@ -133,13 +135,19 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       return
     }
 
+    const demoIssuer = getIssuerBaseUrl()
+    const demoAuthEndpoint = `${demoIssuer}/auth`
+    const demoTokenEndpoint = `${demoIssuer}/token`
+    const demoJwksEndpoint = `${demoIssuer}/jwks`
+
     const config: OAuthConfig = {
       // Removed flowType property
-      issuerUrl: isDemoMode ? undefined : issuerUrl,
-      authEndpoint: isDemoMode ? undefined : authEndpoint,
-      tokenEndpoint: isDemoMode ? undefined : tokenEndpoint,
-      jwksEndpoint: isDemoMode ? undefined : jwksEndpoint,
+      issuerUrl: isDemoMode ? demoIssuer : issuerUrl,
+      authEndpoint: isDemoMode ? demoAuthEndpoint : authEndpoint,
+      tokenEndpoint: isDemoMode ? demoTokenEndpoint : tokenEndpoint,
+      jwksEndpoint: isDemoMode ? demoJwksEndpoint : jwksEndpoint,
       clientId: finalClientId,
+      clientSecret: clientSecret || undefined,
       redirectUri,
       scopes: scopes.split(' ').filter(Boolean),
       demoMode: isDemoMode,
@@ -307,6 +315,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
 
           {/* Common Configuration */}
           <FormFieldInput
+            id="oauth-client-id"
             label="Client ID"
             placeholder={isDemoMode ? 'demo-client' : 'Your client ID'}
             value={clientId}
@@ -316,6 +325,18 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                 ? 'Any value is accepted in demo mode'
                 : 'The client ID registered with your Identity Provider'
             }
+          />
+
+          <FormFieldInput
+            id="oauth-client-secret"
+            label="Client Secret (Optional)"
+            type="password"
+            placeholder={
+              isDemoMode ? 'Optional in demo mode' : 'Client secret for confidential clients'
+            }
+            value={clientSecret}
+            onChange={(e) => setClientSecret(e.target.value)}
+            description="Optional for confidential clients. Leave blank for public clients using PKCE."
           />
 
           <FormFieldInput
@@ -334,7 +355,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
             placeholder="openid profile email"
             value={scopes}
             onChange={(e) => setScopes(e.target.value)}
-            description="Space-separated OAuth scopes"
+            description="Space-separated OAuth scopes (include offline_access for refresh tokens)"
           />
 
           {/* PKCE Parameters */}

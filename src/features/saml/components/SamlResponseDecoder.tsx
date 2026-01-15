@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { decodeSamlResponse, type DecodedSamlResponse } from '../utils/saml-decoder'
+import {
+  decodeSamlResponse,
+  validateSamlResponse,
+  type DecodedSamlResponse,
+} from '../utils/saml-decoder'
 import { ResponseDisplay } from './ResponseDisplay'
 import { AssertionDisplay } from './AssertionDisplay'
 import { SignatureDisplay } from './SignatureDisplay'
@@ -25,11 +29,84 @@ import {
 } from '@/components/ui/input-group'
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
+const formatSamlInstant = (date: Date) => date.toISOString().replace(/\.\d{3}Z$/, 'Z')
+
+const buildExampleResponse = () => {
+  const now = Date.now()
+  const issueInstant = formatSamlInstant(new Date(now))
+  const notBefore = formatSamlInstant(new Date(now - 60_000))
+  const notOnOrAfter = formatSamlInstant(new Date(now + 5 * 60_000))
+  const authnInstant = formatSamlInstant(new Date(now - 30_000))
+
+  const responseId = '_demo-response'
+  const assertionId = '_demo-assertion'
+  const inResponseTo = '_demo-request'
+  const destination = 'https://example.com/saml/acs'
+  const issuer = 'https://idp.example.com'
+  const audience = 'https://example.com'
+  const sessionIndex = '_demo-session'
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="${responseId}" Version="2.0" IssueInstant="${issueInstant}" Destination="${destination}" InResponseTo="${inResponseTo}">
+  <saml:Issuer>${issuer}</saml:Issuer>
+  <samlp:Status>
+    <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success" />
+  </samlp:Status>
+  <saml:Assertion ID="${assertionId}" Version="2.0" IssueInstant="${issueInstant}">
+    <saml:Issuer>${issuer}</saml:Issuer>
+    <saml:Subject>
+      <saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient">_demo-user</saml:NameID>
+      <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+        <saml:SubjectConfirmationData NotOnOrAfter="${notOnOrAfter}" Recipient="${destination}" InResponseTo="${inResponseTo}" />
+      </saml:SubjectConfirmation>
+    </saml:Subject>
+    <saml:Conditions NotBefore="${notBefore}" NotOnOrAfter="${notOnOrAfter}">
+      <saml:AudienceRestriction>
+        <saml:Audience>${audience}</saml:Audience>
+      </saml:AudienceRestriction>
+    </saml:Conditions>
+    <saml:AuthnStatement AuthnInstant="${authnInstant}" SessionIndex="${sessionIndex}">
+      <saml:AuthnContext>
+        <saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:Password</saml:AuthnContextClassRef>
+      </saml:AuthnContext>
+    </saml:AuthnStatement>
+    <saml:AttributeStatement>
+      <saml:Attribute Name="email">
+        <saml:AttributeValue>demo.user@example.com</saml:AttributeValue>
+      </saml:Attribute>
+      <saml:Attribute Name="name">
+        <saml:AttributeValue>Demo User</saml:AttributeValue>
+      </saml:Attribute>
+    </saml:AttributeStatement>
+  </saml:Assertion>
+</samlp:Response>`
+
+  return btoa(xml)
+}
+
 export function SamlResponseDecoder() {
   const [input, setInput] = useState('')
   const [decodedResponse, setDecodedResponse] = useState<DecodedSamlResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('response')
+
+  const validation = useMemo(
+    () => (decodedResponse ? validateSamlResponse(decodedResponse) : null),
+    [decodedResponse]
+  )
+
+  const statusClassName = (status: 'pass' | 'warning' | 'fail') => {
+    switch (status) {
+      case 'pass':
+        return 'bg-green-500/20 text-green-700'
+      case 'warning':
+        return 'bg-amber-500/20 text-amber-700'
+      case 'fail':
+        return 'bg-red-500/20 text-red-700'
+      default:
+        return 'bg-muted text-muted-foreground'
+    }
+  }
 
   const handleDecode = () => {
     try {
@@ -50,10 +127,7 @@ export function SamlResponseDecoder() {
   }
 
   const handleExample = () => {
-    // A simple example SAML Response (base64 encoded)
-    const exampleResponse =
-      'PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6cHJvdG9jb2wiIHhtbG5zOnNhbWw9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDphc3NlcnRpb24iIElEPSJfOGU4ZGM1ZjY5YTk4Y2M0YzFmZjM0MjdlNWNlMzQ2MDZmZDY3MmY5MWU2IiBWZXJzaW9uPSIyLjAiIElzc3VlSW5zdGFudD0iMjAyNC0wMS0xNVQxMDozMDowMFoiIERlc3RpbmF0aW9uPSJodHRwczovL2V4YW1wbGUuY29tL3NhbWwvYWNzIiBJblJlc3BvbnNlVG89Il9hYmNkZWYxMjM0NTYiPjxzYW1sOklzc3Vlcj5odHRwczovL2lkcC5leGFtcGxlLmNvbTwvc2FtbDpJc3N1ZXI+PHNhbWxwOlN0YXR1cz48c2FtbHA6U3RhdHVzQ29kZSBWYWx1ZT0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOnN0YXR1czpTdWNjZXNzIi8+PC9zYW1scDpTdGF0dXM+PHNhbWw6QXNzZXJ0aW9uIHhtbG5zOnNhbWw9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDphc3NlcnRpb24iIElEPSJfZDcxYTNhOGU5ZmNjNDVjOWQ5MjQ4ZGY5NGZhNGI4NTFhNTcxMjA2OGY4IiBWZXJzaW9uPSIyLjAiIElzc3VlSW5zdGFudD0iMjAyNC0wMS0xNVQxMDozMDowMFoiPjxzYW1sOklzc3Vlcj5odHRwczovL2lkcC5leGFtcGxlLmNvbTwvc2FtbDpJc3N1ZXI+PHNhbWw6U3ViamVjdD48c2FtbDpOYW1lSUQgU1BOYW1lUXVhbGlmaWVyPSJodHRwczovL2V4YW1wbGUuY29tIiBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OnRyYW5zaWVudCI+X2NlM2QyOTQ4YjRjZjIwMTQ2ZGVlMGEwZTNlNjgwNmRmYmM5NGNmYWRkZjc8L3NhbWw6TmFtZUlEPjxzYW1sOlN1YmplY3RDb25maXJtYXRpb24gTWV0aG9kPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6Y206YmVhcmVyIj48c2FtbDpTdWJqZWN0Q29uZmlybWF0aW9uRGF0YSBOb3RPbk9yQWZ0ZXI9IjIwMjQtMDEtMTVUMTA6MzU6MDBaIiBSZWNpcGllbnQ9Imh0dHBzOi8vZXhhbXBsZS5jb20vc2FtbC9hY3MiIEluUmVzcG9uc2VUbz0iX2FiY2RlZjEyMzQ1NiIvPjwvc2FtbDpTdWJqZWN0Q29uZmlybWF0aW9uPjwvc2FtbDpTdWJqZWN0PjxzYW1sOkNvbmRpdGlvbnMgTm90QmVmb3JlPSIyMDI0LTAxLTE1VDEwOjI1OjAwWiIgTm90T25PckFmdGVyPSIyMDI0LTAxLTE1VDEwOjM1OjAwWiI+PHNhbWw6QXVkaWVuY2VSZXN0cmljdGlvbj48c2FtbDpBdWRpZW5jZT5odHRwczovL2V4YW1wbGUuY29tPC9zYW1sOkF1ZGllbmNlPjwvc2FtbDpBdWRpZW5jZVJlc3RyaWN0aW9uPjwvc2FtbDpDb25kaXRpb25zPjxzYW1sOkF1dGhuU3RhdGVtZW50IEF1dGhuSW5zdGFudD0iMjAyNC0wMS0xNVQxMDoyOTowMFoiIFNlc3Npb25JbmRleD0iXzQ5ZjUyYjJkNTI5YjRhODNiMGY4YjI5NmIxNzIwYjM2Ij48c2FtbDpBdXRobkNvbnRleHQ+PHNhbWw6QXV0aG5Db250ZXh0Q2xhc3NSZWY+dXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmFjOmNsYXNzZXM6UGFzc3dvcmQ8L3NhbWw6QXV0aG5Db250ZXh0Q2xhc3NSZWY+PC9zYW1sOkF1dGhuQ29udGV4dD48L3NhbWw6QXV0aG5TdGF0ZW1lbnQ+PHNhbWw6QXR0cmlidXRlU3RhdGVtZW50PjxzYW1sOkF0dHJpYnV0ZSBOYW1lPSJlbWFpbCIgTmFtZUZvcm1hdD0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmF0dHJuYW1lLWZvcm1hdDpiYXNpYyI+PHNhbWw6QXR0cmlidXRlVmFsdWU+am9obi5kb2VAZXhhbXBsZS5jb208L3NhbWw6QXR0cmlidXRlVmFsdWU+PC9zYW1sOkF0dHJpYnV0ZT48c2FtbDpBdHRyaWJ1dGUgTmFtZT0iZmlyc3ROYW1lIiBOYW1lRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6YXR0cm5hbWUtZm9ybWF0OmJhc2ljIj48c2FtbDpBdHRyaWJ1dGVWYWx1ZT5Kb2huPC9zYW1sOkF0dHJpYnV0ZVZhbHVlPjwvc2FtbDpBdHRyaWJ1dGU+PHNhbWw6QXR0cmlidXRlIE5hbWU9Imxhc3ROYW1lIiBOYW1lRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6YXR0cm5hbWUtZm9ybWF0OmJhc2ljIj48c2FtbDpBdHRyaWJ1dGVWYWx1ZT5Eb2U8L3NhbWw6QXR0cmlidXRlVmFsdWU+PC9zYW1sOkF0dHJpYnV0ZT48L3NhbWw6QXR0cmlidXRlU3RhdGVtZW50Pjwvc2FtbDpBc3NlcnRpb24+PC9zYW1scDpSZXNwb25zZT4='
-    setInput(exampleResponse)
+    setInput(buildExampleResponse())
   }
 
   return (
@@ -158,10 +232,11 @@ export function SamlResponseDecoder() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="response">Response</TabsTrigger>
                 <TabsTrigger value="assertion">Assertion</TabsTrigger>
                 <TabsTrigger value="signature">Signature</TabsTrigger>
+                <TabsTrigger value="validation">Validation</TabsTrigger>
               </TabsList>
 
               <TabsContent value="response" className="mt-4">
@@ -174,6 +249,65 @@ export function SamlResponseDecoder() {
 
               <TabsContent value="signature" className="mt-4">
                 <SignatureDisplay response={decodedResponse} />
+              </TabsContent>
+
+              <TabsContent value="validation" className="mt-4">
+                {validation ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium">Overall</div>
+                      <Badge variant="outline" className={statusClassName(validation.overall)}>
+                        {validation.overall.toUpperCase()}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Response Checks</div>
+                      <div className="space-y-2">
+                        {validation.responseChecks.map((check) => (
+                          <div
+                            key={check.id}
+                            className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3"
+                          >
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">{check.label}</div>
+                              <div className="text-xs text-muted-foreground">{check.message}</div>
+                            </div>
+                            <Badge variant="outline" className={statusClassName(check.status)}>
+                              {check.status.toUpperCase()}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {validation.assertionChecks.map((assertion, index) => (
+                      <div key={assertion.id} className="space-y-2">
+                        <div className="text-sm font-medium">Assertion #{index + 1}</div>
+                        <div className="space-y-2">
+                          {assertion.checks.map((check) => (
+                            <div
+                              key={`${assertion.id}-${check.id}`}
+                              className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3"
+                            >
+                              <div className="space-y-1">
+                                <div className="text-sm font-medium">{check.label}</div>
+                                <div className="text-xs text-muted-foreground">{check.message}</div>
+                              </div>
+                              <Badge variant="outline" className={statusClassName(check.status)}>
+                                {check.status.toUpperCase()}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Decode a response to view validation checks.
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>

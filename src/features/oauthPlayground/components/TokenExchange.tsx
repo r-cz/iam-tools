@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signToken } from '@/lib/jwt/sign-token'
-import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import {
   Card,
   CardContent,
@@ -16,12 +14,14 @@ import { OAuthConfig, PkceParams, TokenResponse } from '../utils/types'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { toast } from 'sonner'
 import { JsonDisplay } from '@/components/common'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface TokenExchangeProps {
   config: OAuthConfig
   pkce: PkceParams
   authorizationCode: string
-  onTokenExchangeComplete: (tokenResponse: TokenResponse) => void
+  onTokenExchangeComplete?: (tokenResponse: TokenResponse) => void
 }
 
 export function TokenExchange({
@@ -32,8 +32,14 @@ export function TokenExchange({
 }: TokenExchangeProps) {
   const navigate = useNavigate()
   const [isExchanging, setIsExchanging] = useState<boolean>(false)
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null)
   const [tokenRequestPayload, setTokenRequestPayload] = useState<string>('')
+  const [customClaims, setCustomClaims] = useState<string>('')
+  const [customClaimsError, setCustomClaimsError] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState<string>('')
+  const [refreshResponse, setRefreshResponse] = useState<TokenResponse | null>(null)
+  const [refreshRequestPayload, setRefreshRequestPayload] = useState<string>('')
 
   // Create token request payload
   useEffect(() => {
@@ -45,123 +51,229 @@ export function TokenExchange({
       code_verifier: pkce.codeVerifier,
     })
 
+    if (config.clientSecret) {
+      payload.append('client_secret', config.clientSecret)
+    }
+
+    if (config.scopes?.length) {
+      payload.append('scope', config.scopes.join(' '))
+    }
+
+    if (customClaims.trim()) {
+      payload.append('claims', customClaims.trim())
+    }
+
     setTokenRequestPayload(payload.toString())
-  }, [authorizationCode, config.clientId, config.redirectUri, pkce.codeVerifier])
+  }, [
+    authorizationCode,
+    config.clientId,
+    config.clientSecret,
+    config.redirectUri,
+    config.scopes,
+    customClaims,
+    pkce.codeVerifier,
+  ])
+
+  useEffect(() => {
+    if (tokenResponse?.refresh_token) {
+      setRefreshToken(tokenResponse.refresh_token)
+    }
+  }, [tokenResponse?.refresh_token])
+
+  useEffect(() => {
+    if (!refreshToken) {
+      setRefreshRequestPayload('')
+      return
+    }
+
+    const payload = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: config.clientId,
+    })
+
+    if (config.clientSecret) {
+      payload.append('client_secret', config.clientSecret)
+    }
+
+    if (config.scopes?.length) {
+      payload.append('scope', config.scopes.join(' '))
+    }
+
+    if (customClaims.trim()) {
+      payload.append('claims', customClaims.trim())
+    }
+
+    setRefreshRequestPayload(payload.toString())
+  }, [refreshToken, config.clientId, config.clientSecret, config.scopes, customClaims])
+
+  const validateClaims = () => {
+    if (!customClaims.trim()) {
+      setCustomClaimsError(null)
+      return undefined
+    }
+
+    try {
+      const parsed = JSON.parse(customClaims)
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Claims JSON must be an object')
+      }
+      setCustomClaimsError(null)
+      return customClaims.trim()
+    } catch {
+      setCustomClaimsError('Claims must be a valid JSON object.')
+      return null
+    }
+  }
 
   const exchangeToken = async () => {
     setIsExchanging(true)
+    setRefreshResponse(null)
 
     try {
-      if (config.demoMode) {
-        // In demo mode, generate tokens locally instead of making a server request
-        const demoTokenResponse = await generateDemoTokens(authorizationCode, config.clientId)
-        setTokenResponse(demoTokenResponse)
-        onTokenExchangeComplete(demoTokenResponse)
-        toast.success('Successfully exchanged code for tokens (demo mode)')
-      } else {
-        // Real mode - use the token endpoint from the config
-        const tokenEndpoint = config.tokenEndpoint!
+      const tokenEndpoint = config.tokenEndpoint
 
-        // Create token request payload
-        const payload = new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: authorizationCode,
-          redirect_uri: config.redirectUri,
-          client_id: config.clientId,
-          code_verifier: pkce.codeVerifier,
-        })
-
-        // Make the token request
-        const response = await proxyFetch(tokenEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: payload,
-        })
-
-        const data = await response.json()
-
-        if (data.error) {
-          throw new Error(data.error_description || data.error)
-        }
-
-        // Process token response
-        const tokenData: TokenResponse = {
-          access_token: data.access_token,
-          token_type: data.token_type,
-          expires_in: data.expires_in,
-          refresh_token: data.refresh_token,
-          id_token: data.id_token,
-          scope: data.scope,
-        }
-
-        setTokenResponse(tokenData)
-        onTokenExchangeComplete(tokenData)
-        toast.success('Successfully exchanged code for tokens')
+      if (!tokenEndpoint) {
+        toast.error('Token endpoint is required')
+        return
       }
+
+      const claimsValue = validateClaims()
+      if (claimsValue === null) {
+        toast.error('Custom claims must be valid JSON')
+        return
+      }
+
+      const payload = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: authorizationCode,
+        redirect_uri: config.redirectUri,
+        client_id: config.clientId,
+        code_verifier: pkce.codeVerifier,
+      })
+
+      if (config.clientSecret) {
+        payload.append('client_secret', config.clientSecret)
+      }
+
+      if (config.scopes?.length) {
+        payload.append('scope', config.scopes.join(' '))
+      }
+
+      if (claimsValue) {
+        payload.append('claims', claimsValue)
+      }
+
+      const response = await proxyFetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: payload,
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error_description || data.error)
+      }
+
+      const tokenData: TokenResponse = {
+        access_token: data.access_token,
+        token_type: data.token_type,
+        expires_in: data.expires_in,
+        refresh_token: data.refresh_token,
+        id_token: data.id_token,
+        scope: data.scope,
+      }
+
+      setTokenResponse(tokenData)
+      onTokenExchangeComplete?.(tokenData)
+
+      toast.success(`Successfully refreshed tokens${config.demoMode ? ' (demo mode)' : ''}`)
     } catch (error) {
       if (import.meta?.env?.DEV) {
-        console.error('Error exchanging code for tokens:', error)
+        console.error('Error refreshing tokens:', error)
       }
       toast.error(
-        `Failed to exchange code for tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to refresh tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
     } finally {
       setIsExchanging(false)
     }
   }
 
-  // Generate demo tokens for the demo mode
-  const generateDemoTokens = async (code: string, clientId: string): Promise<TokenResponse> => {
+  const refreshTokens = async () => {
+    setIsRefreshing(true)
+
     try {
-      const currentTime = Math.floor(Date.now() / 1000)
+      const tokenEndpoint = config.tokenEndpoint
 
-      // Create a JWT payload for access token
-      const accessTokenPayload = {
-        iss: `${window.location.origin}/oauth-playground`,
-        sub: 'demo-user',
-        aud: clientId,
-        exp: currentTime + 3600, // Expires in 1 hour
-        iat: currentTime,
-        name: 'Demo User',
-        email: 'demo@example.com',
-        preferred_username: 'demouser',
-        scope: 'openid profile email',
-        is_demo_token: true, // Mark as demo token for verification
+      if (!tokenEndpoint) {
+        toast.error('Token endpoint is required')
+        return
       }
 
-      // Create a JWT payload for ID token
-      const idTokenPayload = {
-        ...accessTokenPayload,
-        auth_time: currentTime,
-        nonce: code.substring(0, 8), // Use part of the code as a nonce
+      const claimsValue = validateClaims()
+      if (claimsValue === null) {
+        toast.error('Custom claims must be valid JSON')
+        return
       }
 
-      // Use our token signing utility to create properly signed tokens
-      const accessToken = await signToken(accessTokenPayload)
-      const idToken = await signToken(idTokenPayload)
-
-      // Generate a random refresh token
-      const refreshToken = `refresh-token-${Math.random().toString(36).substring(2)}`
-
-      if (import.meta?.env?.DEV) {
-        console.log('Generated properly signed demo tokens with kid:', DEMO_JWKS.keys[0].kid)
-      }
-
-      return {
-        access_token: accessToken,
-        id_token: idToken,
+      const payload = new URLSearchParams({
+        grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        token_type: 'Bearer',
-        expires_in: 3600,
-        scope: 'openid profile email',
+        client_id: config.clientId,
+      })
+
+      if (config.clientSecret) {
+        payload.append('client_secret', config.clientSecret)
       }
+
+      if (config.scopes?.length) {
+        payload.append('scope', config.scopes.join(' '))
+      }
+
+      if (claimsValue) {
+        payload.append('claims', claimsValue)
+      }
+
+      const response = await proxyFetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: payload,
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error_description || data.error)
+      }
+
+      const tokenData: TokenResponse = {
+        access_token: data.access_token,
+        token_type: data.token_type,
+        expires_in: data.expires_in,
+        refresh_token: data.refresh_token,
+        id_token: data.id_token,
+        scope: data.scope,
+      }
+
+      setRefreshResponse(tokenData)
+      onTokenExchangeComplete?.(tokenData)
+
+      toast.success(`Successfully refreshed tokens${config.demoMode ? ' (demo mode)' : ''}`)
     } catch (error) {
       if (import.meta?.env?.DEV) {
-        console.error('Error generating demo tokens:', error)
+        console.error('Error refreshing tokens:', error)
       }
-      throw new Error('Failed to generate demo tokens')
+      toast.error(
+        `Failed to refresh tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -171,7 +283,7 @@ export function TokenExchange({
         <CardTitle>Token Exchange</CardTitle>
         <CardDescription>
           Exchange the authorization code for access and ID tokens using the PKCE code verifier.
-          {config.demoMode && ' Demo mode: tokens will be generated locally.'}
+          {config.demoMode && ' Demo mode: tokens are issued by the demo OAuth server.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -184,8 +296,7 @@ export function TokenExchange({
           <h3 className="text-sm font-medium">Token Request</h3>
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              <strong>Endpoint:</strong>{' '}
-              {config.demoMode ? 'Demo Token Endpoint (Simulated)' : config.tokenEndpoint}
+              <strong>Endpoint:</strong> {config.tokenEndpoint || 'Not configured'}
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Method:</strong> POST
@@ -196,6 +307,30 @@ export function TokenExchange({
             <div className="font-mono text-xs bg-muted p-3 rounded-md overflow-x-auto">
               {tokenRequestPayload}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="custom-claims" className="text-sm font-medium">
+              Custom Claims (JSON)
+            </Label>
+            <Textarea
+              id="custom-claims"
+              value={customClaims}
+              onChange={(e) => {
+                setCustomClaims(e.target.value)
+                if (!e.target.value.trim()) {
+                  setCustomClaimsError(null)
+                }
+              }}
+              rows={4}
+              placeholder='{"role":"admin","tier":"gold"}'
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Demo endpoints accept the OIDC <code className="font-mono">claims</code> parameter.
+              External IdPs may ignore it.
+            </p>
+            {customClaimsError && <p className="text-xs text-destructive">{customClaimsError}</p>}
           </div>
         </div>
 
@@ -260,6 +395,48 @@ export function TokenExchange({
               <JsonDisplay data={tokenResponse} containerClassName="relative" />
             </TabsContent>
           </Tabs>
+        )}
+
+        {tokenResponse?.refresh_token && (
+          <div className="space-y-4 border-t border-border/60 pt-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">Refresh Token Flow</h3>
+              <p className="text-xs text-muted-foreground">
+                Use the refresh token to request updated access tokens.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="refresh-token" className="text-sm font-medium">
+                Refresh Token
+              </Label>
+              <Textarea
+                id="refresh-token"
+                value={refreshToken}
+                onChange={(e) => setRefreshToken(e.target.value)}
+                rows={3}
+                className="font-mono text-xs"
+              />
+            </div>
+            {refreshRequestPayload && (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Refresh Request</strong>
+                </p>
+                <div className="font-mono text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                  {refreshRequestPayload}
+                </div>
+              </div>
+            )}
+            <Button onClick={refreshTokens} disabled={isRefreshing || !refreshToken}>
+              {isRefreshing ? 'Refreshing...' : 'Refresh Tokens'}
+            </Button>
+            {refreshResponse && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Refresh Response</div>
+                <JsonDisplay data={refreshResponse} containerClassName="relative" />
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
       <CardFooter>

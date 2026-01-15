@@ -5,7 +5,6 @@ export enum OAuthFlowType {
   AUTH_CODE_PKCE = 'authorization_code_pkce',
   AUTH_CODE = 'authorization_code',
   CLIENT_CREDENTIALS = 'client_credentials',
-  IMPLICIT = 'implicit',
   PASSWORD = 'password', // Legacy, not recommended
 }
 
@@ -32,6 +31,15 @@ export interface PkceParams {
   codeVerifier: string
   codeChallenge: string
   state: string
+}
+
+export const OAUTH_PLAYGROUND_REDIRECT_STATE_KEY = 'oauth_playground_redirect_state'
+
+export type OAuthRedirectState = {
+  config: Omit<OAuthConfig, 'clientSecret'>
+  pkce: PkceParams
+  flowPath: string
+  createdAt: number
 }
 
 /**
