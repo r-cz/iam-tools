@@ -102,7 +102,7 @@
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.17",
-    "wrangler": "^4.59.1"
+    "wrangler": "^4.59.2"
   },
   "release": {
     "branches": [
