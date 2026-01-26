@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { IssuerHistory, JsonDisplay, FormFieldInput } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { proxyFetch } from '@/lib/proxy-fetch'
-import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { generateSignedToken, getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import { toast } from 'sonner'
 import {
   InputGroup,
@@ -127,6 +127,17 @@ export function ClientCredentialsFlow() {
     }
   }
 
+  const buildDemoTokenFallback = async (): Promise<TokenResponse> => {
+    const normalizedScope = scope.trim() || 'api'
+    const accessToken = await generateSignedToken({ scope: normalizedScope })
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 60 * 60,
+      scope: normalizedScope,
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -176,6 +187,20 @@ export function ClientCredentialsFlow() {
       const data = await res.json()
       setResult(data)
     } catch (err: any) {
+      if (isDemoMode) {
+        try {
+          const fallback = await buildDemoTokenFallback()
+          setResult(fallback)
+          return
+        } catch (fallbackError: any) {
+          setResult({
+            error: 'network_error',
+            error_description: fallbackError?.message || 'Network error',
+          })
+          return
+        }
+      }
+
       setResult({
         error: 'network_error',
         error_description: err.message || 'Network error',

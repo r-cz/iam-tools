@@ -44,30 +44,16 @@ const targetUrl = `https://example.com/api/resource?param1=value1&param2=value2`
 const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`
 ```
 
-#### With Different HTTP Methods
+#### Method Support
 
-The proxy supports all HTTP methods (GET, POST, PUT, DELETE, etc.):
-
-```javascript
-// For a POST request
-const targetUrl = `https://example.com/api/resource`
-const proxyUrl = `/api/cors-proxy/${encodeURIComponent(targetUrl)}`
-
-const response = await fetch(proxyUrl, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ key: 'value' }),
-})
-```
+The proxy only allows `GET` and `HEAD` requests. Other methods return `405`.
 
 ### Implementation Details
 
 The CORS proxy is implemented in `src/worker.ts`. It:
 
 1. Extracts the target URL from the request path
-2. Forwards the original request (including headers and body) to the target URL
+2. Forwards a filtered GET/HEAD request to the target URL
 3. Receives the response from the target
 4. Adds appropriate CORS headers to allow the frontend to access the response
 5. Returns the modified response to the frontend
@@ -81,7 +67,10 @@ To prevent abuse, the proxy applies strict allow-listing and method limits:
   - JWKS/certs-style paths such as `/jwks`, `/jwk`, `/keys`, `/oauth2/v1/certs`, or `.json` files that include `jwk` in the name
 - Allowed methods: `GET` and `HEAD` only
 - Request header filtering: strips Cloudflare-provided headers and sensitive hop-by-hop headers (`host`, `origin`, `referer`)
-- CORS: sets permissive `Access-Control-Allow-*` headers on proxy responses for the frontend to consume
+- CORS allowlist: if `CORS_ALLOWED_ORIGINS` is set, only those origins are echoed back; disallowed origins receive `403`
+- Local development: requests from `localhost` or `127.0.0.1` are always allowed
+- CORS: sets `Access-Control-Allow-*` headers on proxy responses for the frontend to consume
+- Rate limiting: 60 requests/min per client IP (in-worker, per instance)
 
 ## JWKS Endpoint
 
@@ -157,7 +146,12 @@ Errors are returned as JSON with a consistent format:
 
 ## Rate Limiting
 
-These endpoints currently do not implement rate limiting. However, Cloudflare provides rate limiting capabilities that can be configured in the Cloudflare dashboard if needed.
+Rate limiting is enforced in-worker (per instance):
+
+- CORS proxy: 60 requests/min per client IP
+- Demo OAuth/OIDC endpoints: 120 requests/min per client IP
+
+When exceeded, the API responds with `429` and a `Retry-After` header. Local development on `localhost` is not rate limited. For global enforcement across regions, consider Cloudflare's rate limiting products.
 
 ## Demo OAuth/OIDC Endpoints
 

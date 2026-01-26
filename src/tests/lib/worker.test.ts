@@ -13,7 +13,7 @@ const fetchSpy = async (request: Request | string) => {
   })
 }
 
-const createEnv = () => ({
+const createEnv = (overrides: { CORS_ALLOWED_ORIGINS?: string } = {}) => ({
   ASSETS: {
     fetch: async () =>
       new Response('<html>ok</html>', {
@@ -21,6 +21,7 @@ const createEnv = () => ({
         headers: { 'Content-Type': 'text/html' },
       }),
   },
+  ...overrides,
 })
 
 const buildRequest = (path: string, init?: RequestInit) =>
@@ -68,6 +69,26 @@ describe('worker api', () => {
     expect(Array.isArray(data.keys)).toBe(true)
   })
 
+  test('echoes allowed origin when allowlist is set', async () => {
+    const allowedOrigin = 'https://allowed.example'
+    const response = await worker.fetch(
+      buildRequest('/api/jwks', { headers: { Origin: allowedOrigin } }),
+      createEnv({ CORS_ALLOWED_ORIGINS: `${allowedOrigin},https://other.example` })
+    )
+
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(allowedOrigin)
+  })
+
+  test('rejects disallowed origin when allowlist is set', async () => {
+    const response = await worker.fetch(
+      buildRequest('/api/jwks', { headers: { Origin: 'https://blocked.example' } }),
+      createEnv({ CORS_ALLOWED_ORIGINS: 'https://allowed.example' })
+    )
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
+  })
+
   test('rejects cors proxy with empty target', async () => {
     const response = await worker.fetch(buildRequest('/api/cors-proxy/'), createEnv())
 
@@ -97,6 +118,27 @@ describe('worker api', () => {
 
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET')
+  })
+
+  test('rate limits cors proxy requests', async () => {
+    const targetUrl = 'https://issuer.example.com/.well-known/openid-configuration'
+    const headers = { 'CF-Connecting-IP': '203.0.113.10' }
+    let response: Response | undefined
+
+    for (let i = 0; i < 60; i += 1) {
+      response = await worker.fetch(
+        buildRequest(`/api/cors-proxy/${encodeURIComponent(targetUrl)}`, { headers }),
+        createEnv()
+      )
+    }
+
+    response = await worker.fetch(
+      buildRequest(`/api/cors-proxy/${encodeURIComponent(targetUrl)}`, { headers }),
+      createEnv()
+    )
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBeTruthy()
   })
 
   test('adds security headers to assets', async () => {

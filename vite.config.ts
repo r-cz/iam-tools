@@ -13,11 +13,13 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
+const appVersion =
+  (process.env.APP_VERSION && process.env.APP_VERSION.trim()) || packageJson.version
 
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    'import.meta.env.APP_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.APP_VERSION': JSON.stringify(appVersion),
   },
   plugins: [
     react(),

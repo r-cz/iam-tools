@@ -80,7 +80,7 @@ See [file-structure.md](./file-structure.md) for a more detailed breakdown.
 
 This project doesn't require any environment variables for basic development. However, if you're deploying your own instance, you may want to configure:
 
-- `CORS_ALLOWED_ORIGINS` - Customize CORS allowed origins for the API endpoints
+- `CORS_ALLOWED_ORIGINS` - Comma-separated allowlist for API origins (disallowed origins receive `403`)
 
 ## Working with Features
 
