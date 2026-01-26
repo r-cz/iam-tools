@@ -7,6 +7,7 @@ import { ThemeProvider } from './components/theme'
 import { AppStateProvider } from './lib/state'
 import { Layout } from './components/layout'
 import { Toaster } from './components/ui/sonner'
+import { DiagnosticsListener } from './components/common/DiagnosticsListener'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { PageLoading } from './components/common/PageLoading'
 
@@ -35,6 +36,7 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider defaultTheme="system" storageKey="iam-tools-theme">
       <AppStateProvider>
         <BrowserRouter>
+          <DiagnosticsListener />
           <Toaster position="bottom-right" closeButton richColors />
           <ErrorBoundary>
             <Suspense fallback={<PageLoading />}>

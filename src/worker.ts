@@ -8,7 +8,15 @@ import { CSP_INLINE_SCRIPT_SHA256 } from './csp-hashes'
 type AssetsBinding = { fetch: (request: Request) => Promise<Response> }
 interface Env {
   ASSETS: AssetsBinding
+  CORS_ALLOWED_ORIGINS?: string
 }
+
+type RateLimitBucket = { count: number; resetAt: number }
+type RateLimitConfig = { max: number; windowMs: number }
+
+const rateLimitBuckets = new Map<string, RateLimitBucket>()
+const CORS_PROXY_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 60_000 }
+const DEMO_RATE_LIMIT: RateLimitConfig = { max: 120, windowMs: 60_000 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -18,40 +26,53 @@ export default {
 
     // CORS preflight for API
     if (request.method === 'OPTIONS' && normalizedPath.startsWith('/api')) {
+      const corsBlock = enforceCorsAllowed(request, env)
+      if (corsBlock) return corsBlock
       return new Response(null, {
         status: 204,
-        headers: corsHeaders(),
+        headers: corsHeaders(request, env),
       })
     }
 
     // API routes
     if (normalizedPath.startsWith('/api')) {
+      const corsBlock = enforceCorsAllowed(request, env)
+      if (corsBlock) return corsBlock
+
       if (pathname.startsWith('/api/cors-proxy/')) {
-        return handleCorsProxy(request)
+        const rateLimited = enforceRateLimit(request, env, 'cors-proxy', CORS_PROXY_RATE_LIMIT)
+        if (rateLimited) return rateLimited
+        return handleCorsProxy(request, env)
       }
+
+      if (isDemoEndpoint(normalizedPath)) {
+        const rateLimited = enforceRateLimit(request, env, 'demo', DEMO_RATE_LIMIT)
+        if (rateLimited) return rateLimited
+      }
+
       if (normalizedPath === '/api/.well-known/openid-configuration') {
-        return handleOpenIdConfiguration(request)
+        return handleOpenIdConfiguration(request, env)
       }
       if (normalizedPath === '/api/jwks') {
-        return json(DEMO_JWKS)
+        return json(DEMO_JWKS, undefined, request, env)
       }
       if (normalizedPath === '/api/auth') {
-        return handleAuthorization(request)
+        return handleAuthorization(request, env)
       }
       if (normalizedPath === '/api/token') {
-        return handleToken(request)
+        return handleToken(request, env)
       }
       if (normalizedPath === '/api/token/generate') {
-        return handleTokenGeneration(request)
+        return handleTokenGeneration(request, env)
       }
       if (normalizedPath === '/api/userinfo') {
-        return handleUserInfo(request)
+        return handleUserInfo(request, env)
       }
       if (normalizedPath === '/api/introspect') {
-        return handleIntrospection(request)
+        return handleIntrospection(request, env)
       }
       if (normalizedPath === '/api/revoke') {
-        return handleTokenRevocation(request)
+        return handleTokenRevocation(request, env)
       }
     }
 
@@ -61,17 +82,70 @@ export default {
   },
 }
 
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
+function parseAllowedOrigins(env?: Env): string[] {
+  const raw = env?.CORS_ALLOWED_ORIGINS
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+}
+
+function resolveCorsOrigin(request?: Request, env?: Env): string | null {
+  const allowedOrigins = parseAllowedOrigins(env)
+  const originHeader = request?.headers.get('Origin')
+
+  if (request && originHeader && isLocalRequest(request)) {
+    return originHeader
+  }
+
+  if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
+    return '*'
+  }
+
+  if (!originHeader) return null
+
+  return allowedOrigins.includes(originHeader) ? originHeader : null
+}
+
+function enforceCorsAllowed(request: Request, env: Env): Response | null {
+  const allowedOrigins = parseAllowedOrigins(env)
+  if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) return null
+  if (isLocalRequest(request)) return null
+  const origin = request.headers.get('Origin')
+  if (!origin) return null
+  if (allowedOrigins.includes(origin)) return null
+
+  return new Response('Origin not allowed', {
+    status: 403,
+    headers: corsHeaders(request, env),
+  })
+}
+
+function corsHeaders(request?: Request, env?: Env) {
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS, POST',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   }
+
+  const origin = resolveCorsOrigin(request, env)
+  if (origin) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+
+  if (request?.headers.get('Origin')) {
+    headers['Vary'] = 'Origin'
+  }
+
+  return headers
 }
 
-function json(body: unknown, init?: ResponseInit) {
-  const headers = new Headers({ 'Content-Type': 'application/json', ...corsHeaders() })
+function json(body: unknown, init?: ResponseInit, request?: Request, env?: Env) {
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    ...corsHeaders(request, env),
+  })
 
   if (init?.headers) {
     const initHeaders = new Headers(init.headers)
@@ -86,7 +160,81 @@ function json(body: unknown, init?: ResponseInit) {
   })
 }
 
-async function handleOpenIdConfiguration(request: Request): Promise<Response> {
+const demoEndpoints = new Set([
+  '/api/.well-known/openid-configuration',
+  '/api/jwks',
+  '/api/auth',
+  '/api/token',
+  '/api/token/generate',
+  '/api/userinfo',
+  '/api/introspect',
+  '/api/revoke',
+])
+
+function isDemoEndpoint(pathname: string): boolean {
+  return demoEndpoints.has(pathname)
+}
+
+function getClientId(request: Request): string {
+  const cfConnectingIp =
+    request.headers.get('CF-Connecting-IP') || request.headers.get('cf-connecting-ip')
+  if (cfConnectingIp) return cfConnectingIp
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  if (forwardedFor) return forwardedFor.split(',')[0]?.trim() || 'unknown'
+  return 'unknown'
+}
+
+function isLocalHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1'
+}
+
+function isLocalRequest(request: Request): boolean {
+  const url = new URL(request.url)
+  if (isLocalHost(url.hostname)) return true
+
+  const origin = request.headers.get('Origin')
+  if (!origin) return false
+
+  try {
+    const originHost = new URL(origin).hostname
+    return isLocalHost(originHost)
+  } catch {
+    return false
+  }
+}
+
+function enforceRateLimit(
+  request: Request,
+  env: Env,
+  bucket: string,
+  config: RateLimitConfig
+): Response | null {
+  if (isLocalRequest(request)) return null
+
+  const clientId = getClientId(request)
+  const key = `${bucket}:${clientId}`
+  const now = Date.now()
+  const current = rateLimitBuckets.get(key)
+
+  if (!current || now > current.resetAt) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + config.windowMs })
+    return null
+  }
+
+  if (current.count >= config.max) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAt - now) / 1000))
+    const headers = new Headers({
+      ...corsHeaders(request, env),
+      'Retry-After': String(retryAfterSeconds),
+    })
+    return new Response('Too many requests', { status: 429, headers })
+  }
+
+  current.count += 1
+  return null
+}
+
+async function handleOpenIdConfiguration(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const baseUrl = `${url.protocol}//${url.host}`
   const issuer = `${baseUrl}/api`
@@ -120,7 +268,12 @@ async function handleOpenIdConfiguration(request: Request): Promise<Response> {
     ],
     claims_parameter_supported: true,
   }
-  return json(configuration, { headers: { 'Cache-Control': 'public, max-age=86400' } })
+  return json(
+    configuration,
+    { headers: { 'Cache-Control': 'public, max-age=86400' } },
+    request,
+    env
+  )
 }
 
 const ACCESS_TOKEN_TTL = 60 * 60
@@ -149,9 +302,15 @@ type RefreshTokenPayload = {
   exp: number
 }
 
-async function handleAuthorization(request: Request): Promise<Response> {
+async function handleAuthorization(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'GET') {
-    return oauthError('invalid_request', 'Authorization endpoint only supports GET', 405)
+    return oauthError(
+      'invalid_request',
+      'Authorization endpoint only supports GET',
+      request,
+      env,
+      405
+    )
   }
 
   const url = new URL(request.url)
@@ -166,41 +325,57 @@ async function handleAuthorization(request: Request): Promise<Response> {
   const nonce = params.get('nonce') || undefined
 
   if (!clientId || !redirectUri) {
-    return buildAuthorizationError({
-      redirectUri,
-      state,
-      error: 'invalid_request',
-      description: 'client_id and redirect_uri are required',
-    })
+    return buildAuthorizationError(
+      {
+        redirectUri,
+        state,
+        error: 'invalid_request',
+        description: 'client_id and redirect_uri are required',
+      },
+      request,
+      env
+    )
   }
 
   try {
     new URL(redirectUri)
   } catch {
-    return buildAuthorizationError({
-      redirectUri: null,
-      state,
-      error: 'invalid_request',
-      description: 'redirect_uri is invalid',
-    })
+    return buildAuthorizationError(
+      {
+        redirectUri: null,
+        state,
+        error: 'invalid_request',
+        description: 'redirect_uri is invalid',
+      },
+      request,
+      env
+    )
   }
 
   if (responseType !== 'code') {
-    return buildAuthorizationError({
-      redirectUri,
-      state,
-      error: 'unsupported_response_type',
-      description: 'Only response_type=code is supported',
-    })
+    return buildAuthorizationError(
+      {
+        redirectUri,
+        state,
+        error: 'unsupported_response_type',
+        description: 'Only response_type=code is supported',
+      },
+      request,
+      env
+    )
   }
 
   if (codeChallengeMethod && codeChallengeMethod !== 'S256') {
-    return buildAuthorizationError({
-      redirectUri,
-      state,
-      error: 'invalid_request',
-      description: 'Only code_challenge_method=S256 is supported',
-    })
+    return buildAuthorizationError(
+      {
+        redirectUri,
+        state,
+        error: 'invalid_request',
+        description: 'Only code_challenge_method=S256 is supported',
+      },
+      request,
+      env
+    )
   }
 
   const now = Math.floor(Date.now() / 1000)
@@ -226,20 +401,20 @@ async function handleAuthorization(request: Request): Promise<Response> {
   return Response.redirect(redirect.toString(), 302)
 }
 
-async function handleToken(request: Request): Promise<Response> {
+async function handleToken(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
-    return oauthError('invalid_request', 'Token endpoint only supports POST', 405)
+    return oauthError('invalid_request', 'Token endpoint only supports POST', request, env, 405)
   }
 
   const params = await parseRequestBody(request)
   const grantType = getString(params, 'grant_type')
   if (!grantType) {
-    return oauthError('invalid_request', 'grant_type is required')
+    return oauthError('invalid_request', 'grant_type is required', request, env)
   }
 
   const { clientId } = parseClientCredentials(params, request.headers)
   if (!clientId) {
-    return oauthError('invalid_client', 'client_id is required')
+    return oauthError('invalid_client', 'client_id is required', request, env)
   }
 
   const issuer = getIssuer(request)
@@ -251,37 +426,44 @@ async function handleToken(request: Request): Promise<Response> {
     const codeVerifier = getString(params, 'code_verifier')
 
     if (!code || !redirectUri) {
-      return oauthError('invalid_request', 'code and redirect_uri are required')
+      return oauthError('invalid_request', 'code and redirect_uri are required', request, env)
     }
 
     const authCode = decodeAuthCode(code)
     if (!authCode) {
-      return oauthError('invalid_grant', 'Authorization code is invalid')
+      return oauthError('invalid_grant', 'Authorization code is invalid', request, env)
     }
 
     const now = Math.floor(Date.now() / 1000)
     if (authCode.exp && authCode.exp < now) {
-      return oauthError('invalid_grant', 'Authorization code has expired')
+      return oauthError('invalid_grant', 'Authorization code has expired', request, env)
     }
 
     if (authCode.client_id !== clientId) {
-      return oauthError('invalid_grant', 'Authorization code was issued to a different client')
+      return oauthError(
+        'invalid_grant',
+        'Authorization code was issued to a different client',
+        request,
+        env
+      )
     }
 
     if (authCode.redirect_uri !== redirectUri) {
-      return oauthError('invalid_grant', 'redirect_uri mismatch')
+      return oauthError('invalid_grant', 'redirect_uri mismatch', request, env)
     }
 
     if (authCode.code_challenge) {
       if (!codeVerifier) {
         return oauthError(
           'invalid_request',
-          'code_verifier is required for this authorization code'
+          'code_verifier is required for this authorization code',
+          request,
+          env
         )
       }
       const expected = await computeCodeChallenge(codeVerifier)
       if (expected !== authCode.code_challenge) {
-        return oauthError('invalid_grant', 'code_verifier is invalid')
+        return oauthError('invalid_grant', 'code_verifier is invalid', request, env)
       }
     }
 
@@ -300,27 +482,32 @@ async function handleToken(request: Request): Promise<Response> {
       customClaims,
     })
 
-    return oauthJson(tokenResponse)
+    return oauthJson(tokenResponse, undefined, request, env)
   }
 
   if (grantType === 'refresh_token') {
     const refreshToken = getString(params, 'refresh_token')
     if (!refreshToken) {
-      return oauthError('invalid_request', 'refresh_token is required')
+      return oauthError('invalid_request', 'refresh_token is required', request, env)
     }
 
     const refreshPayload = decodeRefreshToken(refreshToken)
     if (!refreshPayload) {
-      return oauthError('invalid_grant', 'refresh_token is invalid')
+      return oauthError('invalid_grant', 'refresh_token is invalid', request, env)
     }
 
     const now = Math.floor(Date.now() / 1000)
     if (refreshPayload.exp && refreshPayload.exp < now) {
-      return oauthError('invalid_grant', 'refresh_token has expired')
+      return oauthError('invalid_grant', 'refresh_token has expired', request, env)
     }
 
     if (refreshPayload.client_id !== clientId) {
-      return oauthError('invalid_grant', 'refresh_token was issued to a different client')
+      return oauthError(
+        'invalid_grant',
+        'refresh_token was issued to a different client',
+        request,
+        env
+      )
     }
 
     const resolvedScope = normalizeScope(
@@ -337,7 +524,7 @@ async function handleToken(request: Request): Promise<Response> {
       customClaims,
     })
 
-    return oauthJson(tokenResponse)
+    return oauthJson(tokenResponse, undefined, request, env)
   }
 
   if (grantType === 'client_credentials') {
@@ -352,15 +539,21 @@ async function handleToken(request: Request): Promise<Response> {
       customClaims,
     })
 
-    return oauthJson(tokenResponse)
+    return oauthJson(tokenResponse, undefined, request, env)
   }
 
-  return oauthError('unsupported_grant_type', `Unsupported grant_type: ${grantType}`)
+  return oauthError('unsupported_grant_type', `Unsupported grant_type: ${grantType}`, request, env)
 }
 
-async function handleTokenGeneration(request: Request): Promise<Response> {
+async function handleTokenGeneration(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
-    return oauthError('invalid_request', 'Token generation endpoint only supports POST', 405)
+    return oauthError(
+      'invalid_request',
+      'Token generation endpoint only supports POST',
+      request,
+      env,
+      405
+    )
   }
 
   const params = await parseRequestBody(request)
@@ -384,45 +577,56 @@ async function handleTokenGeneration(request: Request): Promise<Response> {
   }
 
   const token = await signToken(payload)
-  return oauthJson({
-    access_token: token,
-    token_type: 'Bearer',
-    expires_in: ttl,
-    scope,
-  })
+  return oauthJson(
+    {
+      access_token: token,
+      token_type: 'Bearer',
+      expires_in: ttl,
+      scope,
+    },
+    undefined,
+    request,
+    env
+  )
 }
 
-async function handleUserInfo(request: Request): Promise<Response> {
+async function handleUserInfo(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'GET') {
-    return oauthError('invalid_request', 'UserInfo endpoint only supports GET', 405)
+    return oauthError('invalid_request', 'UserInfo endpoint only supports GET', request, env, 405)
   }
 
   const token = extractBearerToken(request.headers)
   if (!token) {
-    return oauthError('invalid_token', 'Missing bearer token', 401)
+    return oauthError('invalid_token', 'Missing bearer token', request, env, 401)
   }
 
   const payload = decodeJwtPayload(token)
   if (!payload) {
-    return oauthError('invalid_token', 'Token is not a valid JWT', 401)
+    return oauthError('invalid_token', 'Token is not a valid JWT', request, env, 401)
   }
 
   if (!isTokenActive(payload)) {
-    return oauthError('invalid_token', 'Token has expired', 401)
+    return oauthError('invalid_token', 'Token has expired', request, env, 401)
   }
 
-  return oauthJson(buildUserInfoResponse(payload))
+  return oauthJson(buildUserInfoResponse(payload), undefined, request, env)
 }
 
-async function handleIntrospection(request: Request): Promise<Response> {
+async function handleIntrospection(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
-    return oauthError('invalid_request', 'Introspection endpoint only supports POST', 405)
+    return oauthError(
+      'invalid_request',
+      'Introspection endpoint only supports POST',
+      request,
+      env,
+      405
+    )
   }
 
   const params = await parseRequestBody(request)
   const token = getString(params, 'token')
   if (!token) {
-    return oauthError('invalid_request', 'token is required')
+    return oauthError('invalid_request', 'token is required', request, env)
   }
 
   const jwtPayload = decodeJwtPayload(token)
@@ -430,41 +634,56 @@ async function handleIntrospection(request: Request): Promise<Response> {
   const payload = (jwtPayload || refreshPayload) as Record<string, unknown>
 
   if (!payload) {
-    return oauthJson({ active: false })
+    return oauthJson({ active: false }, undefined, request, env)
   }
 
   const active = isTokenActive(payload)
 
-  return oauthJson({
-    active,
-    scope: typeof payload.scope === 'string' ? payload.scope : undefined,
-    client_id: typeof payload.client_id === 'string' ? payload.client_id : undefined,
-    username: typeof payload.sub === 'string' ? payload.sub : undefined,
-    token_type: jwtPayload ? 'Bearer' : 'refresh_token',
-    exp: typeof payload.exp === 'number' ? payload.exp : undefined,
-    iat: typeof payload.iat === 'number' ? payload.iat : undefined,
-    nbf: typeof payload.nbf === 'number' ? payload.nbf : undefined,
-    sub: typeof payload.sub === 'string' ? payload.sub : undefined,
-    aud: payload.aud,
-    iss: typeof payload.iss === 'string' ? payload.iss : undefined,
-    jti: typeof payload.jti === 'string' ? payload.jti : undefined,
-  })
+  return oauthJson(
+    {
+      active,
+      scope: typeof payload.scope === 'string' ? payload.scope : undefined,
+      client_id: typeof payload.client_id === 'string' ? payload.client_id : undefined,
+      username: typeof payload.sub === 'string' ? payload.sub : undefined,
+      token_type: jwtPayload ? 'Bearer' : 'refresh_token',
+      exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+      iat: typeof payload.iat === 'number' ? payload.iat : undefined,
+      nbf: typeof payload.nbf === 'number' ? payload.nbf : undefined,
+      sub: typeof payload.sub === 'string' ? payload.sub : undefined,
+      aud: payload.aud,
+      iss: typeof payload.iss === 'string' ? payload.iss : undefined,
+      jti: typeof payload.jti === 'string' ? payload.jti : undefined,
+    },
+    undefined,
+    request,
+    env
+  )
 }
 
-async function handleTokenRevocation(request: Request): Promise<Response> {
+async function handleTokenRevocation(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
-    return oauthError('invalid_request', 'Revocation endpoint only supports POST', 405)
+    return oauthError(
+      'invalid_request',
+      'Revocation endpoint only supports POST',
+      request,
+      env,
+      405
+    )
   }
 
-  return new Response(null, { status: 200, headers: corsHeaders() })
+  return new Response(null, { status: 200, headers: corsHeaders(request, env) })
 }
 
-function buildAuthorizationError(opts: {
-  redirectUri: string | null | undefined
-  state?: string | null
-  error: string
-  description: string
-}): Response {
+function buildAuthorizationError(
+  opts: {
+    redirectUri: string | null | undefined
+    state?: string | null
+    error: string
+    description: string
+  },
+  request: Request,
+  env: Env
+): Response {
   if (opts.redirectUri) {
     try {
       const redirect = new URL(opts.redirectUri)
@@ -479,27 +698,45 @@ function buildAuthorizationError(opts: {
     }
   }
 
-  return oauthError(opts.error, opts.description)
+  return oauthError(opts.error, opts.description, request, env)
 }
 
-function oauthJson(body: Record<string, unknown>, init?: ResponseInit): Response {
-  return json(body, {
-    ...init,
-    headers: {
-      'Cache-Control': 'no-store',
-      Pragma: 'no-cache',
-      ...(init?.headers ?? {}),
+function oauthJson(
+  body: Record<string, unknown>,
+  init: ResponseInit | undefined,
+  request: Request,
+  env: Env
+): Response {
+  return json(
+    body,
+    {
+      ...init,
+      headers: {
+        'Cache-Control': 'no-store',
+        Pragma: 'no-cache',
+        ...(init?.headers ?? {}),
+      },
     },
-  })
+    request,
+    env
+  )
 }
 
-function oauthError(code: string, description: string, status = 400): Response {
+function oauthError(
+  code: string,
+  description: string,
+  request: Request,
+  env: Env,
+  status = 400
+): Response {
   return oauthJson(
     {
       error: code,
       error_description: description,
     },
-    { status }
+    { status },
+    request,
+    env
   )
 }
 
@@ -766,10 +1003,12 @@ async function computeCodeChallenge(verifier: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(digest))
 }
 
-async function handleCorsProxy(request: Request): Promise<Response> {
+async function handleCorsProxy(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const rest = url.pathname.replace('/api/cors-proxy/', '')
-  if (!rest) return new Response('No URL provided', { status: 400 })
+  if (!rest) {
+    return new Response('No URL provided', { status: 400, headers: corsHeaders(request, env) })
+  }
 
   try {
     const targetUrl = decodeURIComponent(rest)
@@ -778,10 +1017,13 @@ async function handleCorsProxy(request: Request): Promise<Response> {
 
     // Only allow well-known/JWKS-like endpoints; restrict to safe methods
     if (!isAllowedEndpoint(targetUrl)) {
-      return new Response('This endpoint is not allowed', { status: 403 })
+      return new Response('This endpoint is not allowed', {
+        status: 403,
+        headers: corsHeaders(request, env),
+      })
     }
     if (!['GET', 'HEAD'].includes(request.method)) {
-      return new Response('Method not allowed', { status: 405 })
+      return new Response('Method not allowed', { status: 405, headers: corsHeaders(request, env) })
     }
 
     const forward = new Request(targetUrl, {
@@ -791,10 +1033,11 @@ async function handleCorsProxy(request: Request): Promise<Response> {
 
     const resp = await fetch(forward)
     const headers = new Headers(resp.headers)
-    headers.set('Access-Control-Allow-Origin', '*')
+    const proxyCorsHeaders = corsHeaders(request, env)
+    for (const [key, value] of Object.entries(proxyCorsHeaders)) {
+      headers.set(key, value)
+    }
     headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
-    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    headers.set('Vary', 'Origin')
 
     return new Response(resp.body, {
       status: resp.status,
@@ -803,7 +1046,10 @@ async function handleCorsProxy(request: Request): Promise<Response> {
     })
   } catch (e) {
     const message = (e as Error)?.message ?? 'Unknown error'
-    return new Response(`Error proxying request: ${message}`, { status: 500 })
+    return new Response(`Error proxying request: ${message}`, {
+      status: 500,
+      headers: corsHeaders(request, env),
+    })
   }
 }
 

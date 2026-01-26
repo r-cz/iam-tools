@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { recordErrorBoundary } from '@/lib/diagnostics/client-diagnostics'
+
 type Props = { children: React.ReactNode }
 type State = { hasError: boolean; error?: Error }
 
@@ -14,6 +16,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    recordErrorBoundary()
     if (import.meta?.env?.DEV) {
       console.error('ErrorBoundary caught error:', error, info)
     }

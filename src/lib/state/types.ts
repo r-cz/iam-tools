@@ -29,7 +29,6 @@ export interface UserSettings {
   tokenDisplayFormat: 'decoded' | 'encoded'
   enableDetailedValidation: boolean
   defaultTab: string
-  theme?: 'dark' | 'light' | 'system'
 }
 
 // App state
@@ -48,6 +47,5 @@ export const initialAppState: AppState = {
     tokenDisplayFormat: 'decoded',
     enableDetailedValidation: true,
     defaultTab: 'payload',
-    theme: 'system',
   },
 }

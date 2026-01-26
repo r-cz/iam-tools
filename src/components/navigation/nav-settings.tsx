@@ -40,6 +40,7 @@ import { useTheme } from '@/components/theme'
 import { useSettings, useTokenHistory, useIssuerHistory } from '@/lib/state'
 import { oidcConfigCache } from '@/lib/cache/oidc-config-cache'
 import { jwksCache } from '@/lib/cache/jwks-cache'
+import { getDiagnosticsSnapshot, subscribeDiagnostics } from '@/lib/diagnostics/client-diagnostics'
 import { toast } from 'sonner'
 
 export function NavSettings() {
@@ -58,7 +59,10 @@ export function NavSettings() {
     domContentLoaded?: number
     load?: number
     fcp?: number
+    lcp?: number
+    cls?: number
   } | null>(null)
+  const [diagnostics, setDiagnostics] = useState(() => getDiagnosticsSnapshot())
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -91,16 +95,65 @@ export function NavSettings() {
     const paintEntries = performance.getEntriesByType('paint') as PerformanceEntry[]
     const fcpEntry = paintEntries.find((entry) => entry.name === 'first-contentful-paint')
 
-    setPerfMetrics({
+    setPerfMetrics((current) => ({
+      ...(current ?? {}),
       ttfb: navEntry?.responseStart,
       domContentLoaded: navEntry?.domContentLoadedEventEnd,
       load: navEntry?.loadEventEnd,
       fcp: fcpEntry?.startTime,
-    })
+    }))
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return
+
+    let clsValue = 0
+    const lcpObserver = new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries()
+      const lastEntry = entries[entries.length - 1]
+      if (!lastEntry) return
+      setPerfMetrics((current) => ({
+        ...(current ?? {}),
+        lcp: lastEntry.startTime,
+      }))
+    })
+
+    const clsObserver = new PerformanceObserver((entryList) => {
+      for (const entry of entryList.getEntries()) {
+        const shift = entry as PerformanceEntry & { value?: number; hadRecentInput?: boolean }
+        if (!shift.value || shift.hadRecentInput) continue
+        clsValue += shift.value
+      }
+      setPerfMetrics((current) => ({
+        ...(current ?? {}),
+        cls: clsValue,
+      }))
+    })
+
+    try {
+      lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
+    } catch {
+      lcpObserver.disconnect()
+    }
+
+    try {
+      clsObserver.observe({ type: 'layout-shift', buffered: true })
+    } catch {
+      clsObserver.disconnect()
+    }
+
+    return () => {
+      lcpObserver.disconnect()
+      clsObserver.disconnect()
+    }
+  }, [])
+
+  useEffect(() => subscribeDiagnostics(setDiagnostics), [])
 
   const formatMs = (value?: number) =>
     typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)} ms` : '—'
+  const formatScore = (value?: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? value.toFixed(3) : '—'
 
   const performanceSummary = useMemo(
     () => ({
@@ -108,6 +161,8 @@ export function NavSettings() {
       domContentLoaded: formatMs(perfMetrics?.domContentLoaded),
       load: formatMs(perfMetrics?.load),
       fcp: formatMs(perfMetrics?.fcp),
+      lcp: formatMs(perfMetrics?.lcp),
+      cls: formatScore(perfMetrics?.cls),
     }),
     [perfMetrics]
   )
@@ -254,6 +309,14 @@ export function NavSettings() {
                   <DropdownMenuShortcut>{performanceSummary.fcp}</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>LCP</span>
+                  <DropdownMenuShortcut>{performanceSummary.lcp}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>CLS</span>
+                  <DropdownMenuShortcut>{performanceSummary.cls}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
                   <span>TTFB</span>
                   <DropdownMenuShortcut>{performanceSummary.ttfb}</DropdownMenuShortcut>
                 </DropdownMenuItem>
@@ -264,6 +327,19 @@ export function NavSettings() {
                 <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
                   <span>Load</span>
                   <DropdownMenuShortcut>{performanceSummary.load}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>Error Boundary</span>
+                  <DropdownMenuShortcut>{diagnostics.errorBoundaryCount}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>Window Errors</span>
+                  <DropdownMenuShortcut>{diagnostics.windowErrorCount}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-default data-[disabled]:opacity-100">
+                  <span>Unhandled Rejections</span>
+                  <DropdownMenuShortcut>{diagnostics.unhandledRejectionCount}</DropdownMenuShortcut>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>

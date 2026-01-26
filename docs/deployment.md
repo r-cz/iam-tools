@@ -22,7 +22,7 @@ You can deploy using Wrangler directly or via GitHub Actions:
 No special environment variables are required for basic deployment. However, you may configure the following if needed:
 
 - **NODE_ENV**: Set to `production` for production builds
-- **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins for CORS
+- **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins for CORS (disallowed origins receive `403`)
 
 ### Custom Domains
 
@@ -126,7 +126,8 @@ The deployment includes several security measures:
 2. HTTP security headers set by the Worker in `src/worker.ts` (see `withSecurityHeaders`)
 3. API request validation in function handlers
 4. Strict allow-listing for the CORS proxy (well-known/JWKS endpoints, `GET/HEAD` only)
-5. Regular security updates through GitHub dependency management
+5. In-worker rate limiting on `/api/cors-proxy` and demo OAuth endpoints (`429` with `Retry-After`)
+6. Regular security updates through GitHub dependency management
 
 ## Performance Optimizations
 
