@@ -23,6 +23,7 @@ No special environment variables are required for basic deployment. However, you
 
 - **NODE_ENV**: Set to `production` for production builds
 - **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins for CORS (disallowed origins receive `403`)
+- **APP_VERSION**: Release version string embedded in the frontend (defaults to package.json version)
 
 ### Custom Domains
 
