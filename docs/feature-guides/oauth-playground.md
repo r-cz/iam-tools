@@ -13,6 +13,7 @@ The OAuth Playground is a feature that allows users to test and explore OAuth 2.
 - PKCE code generation and verification
 - Integration with the Token Inspector for examining received tokens
 - Token introspection (RFC 7662) with demo mode support
+- OIDC endpoint preflight checks on all OAuth pages (Auth Code, Client Credentials, Introspection, UserInfo)
 
 ## How to Use
 
@@ -70,6 +71,7 @@ The Token Introspection feature allows you to inspect and validate access tokens
    - **Demo Mode**: Enable demo mode to use a simulated Identity Provider.
    - Configure client ID, redirect URI, and scopes.
    - View and manage PKCE parameters (code verifier, code challenge).
+   - Run **Endpoint Preflight** to validate discovery and endpoint reachability before executing a flow.
 
 3. **Authorization**:
    - View the constructed authorization request URL.
@@ -93,6 +95,19 @@ In real IdP mode, the OAuth Playground:
 4. Receives the authorization code via the callback endpoint.
 5. Exchanges the code for tokens using your IdP's token endpoint.
 6. Displays and allows inspection of the received tokens.
+
+### Endpoint Preflight Workflow
+
+Endpoint preflight is available on all OAuth pages and runs a safe set of checks:
+
+1. Normalize issuer URL and resolve `/.well-known/openid-configuration`.
+2. Validate that key endpoints are published by discovery.
+3. Probe endpoint reachability with non-destructive requests.
+4. Return per-endpoint status:
+   - `pass`: endpoint is reachable/behaving as expected.
+   - `warn`: endpoint reachable but with caveats (auth enforcement, CORS/network limits, probe-method mismatch).
+   - `fail`: endpoint missing, malformed, or clearly unavailable.
+5. Review the inline summary or copy the JSON report for troubleshooting.
 
 ### Demo Mode
 

@@ -1,83 +1,67 @@
-// src/lib/jwt/sign-token.ts
 import { SignJWT } from 'jose'
-import { DEMO_PRIVATE_KEY } from './demo-key' // Uses your new key
+import { DEMO_PRIVATE_KEY } from './demo-key'
 
 /**
  * Signs a JWT token with the demo private key.
- * Now simplified after debugging.
- *
- * @param payload The payload to include in the token
- * @param header Optional additional header parameters
- * @returns A properly signed JWT string
  */
 export async function signToken(
-  payload: Record<string, any>,
-  header: Record<string, any> = {}
+  payload: Record<string, unknown>,
+  header: Record<string, unknown> = {}
 ): Promise<string> {
   let privateKey: CryptoKey
+
   try {
-    // 1. Import the private key
-    if (import.meta?.env?.DEV) console.log('[signToken] Importing private key...')
     privateKey = await importPrivateKey(DEMO_PRIVATE_KEY)
-    if (import.meta?.env?.DEV) console.log('[signToken] Private key imported successfully.')
-  } catch (importError: any) {
-    console.error('[signToken] Error importing private key:', importError)
-    throw new Error(`Failed to import private key: ${importError.message || importError}`)
+  } catch (error) {
+    if (import.meta?.env?.DEV) {
+      console.error('[signToken] Failed to import private key:', error)
+    }
+
+    throw new Error('Failed to import private key', { cause: error })
   }
 
   try {
-    // 2. Prepare the JWT with headers using jose
-    if (import.meta?.env?.DEV) console.log('[signToken] Preparing JWT for signing with jose...')
     let jwt = new SignJWT(payload).setProtectedHeader({
-      alg: 'RS256', // Algorithm defined in your key
+      alg: 'RS256',
       typ: 'JWT',
-      kid: DEMO_PRIVATE_KEY.kid, // *** Use the Key ID from your key file ***
+      kid: DEMO_PRIVATE_KEY.kid,
       ...header,
     })
 
-    // Add standard timestamps if not provided in payload
-    if (!payload.iat) jwt = jwt.setIssuedAt()
-    if (!payload.exp) jwt = jwt.setExpirationTime('1h') // Default 1 hour expiry
+    if (payload.iat == null) {
+      jwt = jwt.setIssuedAt()
+    }
 
-    // 3. Sign the JWT using jose and the imported key
-    if (import.meta?.env?.DEV) console.log('[signToken] Attempting to sign JWT with jose...')
-    const signedToken = await jwt.sign(privateKey)
-    if (import.meta?.env?.DEV) console.log('[signToken] JWT signed successfully with jose.')
-    return signedToken
-  } catch (joseSignError: any) {
-    console.error('[signToken] Error during jose JWT signing:', joseSignError)
-    if (joseSignError.message)
-      console.error('[signToken] Jose Sign Error Message:', joseSignError.message)
-    // Re-throw for higher-level components to catch
-    throw joseSignError
+    if (payload.exp == null) {
+      jwt = jwt.setExpirationTime('1h')
+    }
+
+    return await jwt.sign(privateKey)
+  } catch (error) {
+    if (import.meta?.env?.DEV) {
+      console.error('[signToken] Failed to sign JWT:', error)
+    }
+
+    throw new Error('Failed to sign JWT token', { cause: error })
   }
 }
 
 /**
  * Imports a JWK as a CryptoKey for signing using Web Crypto API.
  */
-async function importPrivateKey(jwk: any): Promise<CryptoKey> {
-  try {
-    // Check if necessary APIs exist
-    if (!crypto?.subtle?.importKey) {
-      throw new Error('crypto.subtle.importKey is not available.')
-    }
-
-    // Import the key using corrected parameters
-    const key = await crypto.subtle.importKey(
-      'jwk',
-      jwk,
-      {
-        name: 'RSASSA-PKCS1-v1_5', // Algorithm name
-        hash: { name: 'SHA-256' }, // Hash function for the algorithm
-      },
-      false, // Exportable flag (false for private keys usually)
-      ['sign'] // Key usage - we want to sign with it
-    )
-    console.log('[importPrivateKey] crypto.subtle.importKey succeeded.')
-    return key
-  } catch (error: any) {
-    console.error('[importPrivateKey] Error during crypto.subtle.importKey:', error)
-    throw error // Re-throw to be caught by signToken
+async function importPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
+  if (!crypto?.subtle?.importKey) {
+    throw new Error('crypto.subtle.importKey is not available')
   }
+
+  return await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: { name: 'SHA-256' },
+    },
+    false,
+    ['sign']
+  )
 }

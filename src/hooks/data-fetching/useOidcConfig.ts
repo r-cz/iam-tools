@@ -1,7 +1,10 @@
 import { useCallback, useRef, useState } from 'react'
-import { proxyFetch } from '@/lib/proxy-fetch'
 import { oidcConfigCache } from '@/lib/cache/oidc-config-cache'
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types' // Assuming types exist here
+import {
+  fetchOidcDiscoveryConfiguration,
+  normalizeIssuerUrl,
+} from '@/features/oauthPlayground/utils/oidc-preflight'
 
 /**
  * Hook to fetch OIDC configuration from an issuer URL.
@@ -15,7 +18,7 @@ export function useOidcConfig(): UseOidcConfigResult {
   const requestIdRef = useRef(0)
 
   const fetchConfig = useCallback(async (issuerUrl: string) => {
-    if (!issuerUrl) {
+    if (!issuerUrl || issuerUrl.trim().length === 0) {
       setCurrentIssuer(null)
       setData(null)
       setError(null)
@@ -23,27 +26,27 @@ export function useOidcConfig(): UseOidcConfigResult {
       return
     }
 
-    setCurrentIssuer(issuerUrl)
-
-    // Construct the well-known URL
-    let wellKnownUrl = ''
+    let normalizedIssuerUrl: string
     try {
-      const url = new URL(issuerUrl)
-      // Ensure trailing slash for correct joining
-      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`
-      wellKnownUrl = new URL(`${basePath}.well-known/openid-configuration`, url.origin).toString()
-    } catch {
-      setError(new Error('Invalid Issuer URL format.'))
+      normalizedIssuerUrl = normalizeIssuerUrl(issuerUrl)
+    } catch (error) {
+      setError(
+        new Error('Invalid Issuer URL format.', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      )
       setData(null)
       setIsLoading(false)
       return
     }
 
+    setCurrentIssuer(normalizedIssuerUrl)
+
     // Check cache first
-    const cachedConfig = oidcConfigCache.get(issuerUrl)
+    const cachedConfig = oidcConfigCache.get(normalizedIssuerUrl)
     if (cachedConfig) {
       if (import.meta?.env?.DEV) {
-        console.log('Using cached OIDC configuration for:', issuerUrl)
+        console.log('Using cached OIDC configuration for:', normalizedIssuerUrl)
       }
       setData(cachedConfig)
       setError(null)
@@ -58,25 +61,13 @@ export function useOidcConfig(): UseOidcConfigResult {
     const requestId = ++requestIdRef.current
 
     try {
-      const response = await proxyFetch(wellKnownUrl)
-
-      if (!response.ok) {
-        let errorMsg = `Failed to fetch OIDC configuration: ${response.status} ${response.statusText}`
-        try {
-          const errorBody = await response.json()
-          errorMsg += ` - ${JSON.stringify(errorBody)}`
-        } catch {
-          /* Ignore if response body is not JSON */
-        }
-        throw new Error(errorMsg)
-      }
-
-      const configData: OidcConfiguration = await response.json()
+      const { config } = await fetchOidcDiscoveryConfiguration(normalizedIssuerUrl)
+      const configData = config as OidcConfiguration
 
       // Store in cache for future use
-      oidcConfigCache.set(issuerUrl, configData)
+      oidcConfigCache.set(normalizedIssuerUrl, configData)
       if (import.meta?.env?.DEV) {
-        console.log('Cached OIDC configuration for:', issuerUrl)
+        console.log('Cached OIDC configuration for:', normalizedIssuerUrl)
       }
 
       if (requestIdRef.current === requestId) {

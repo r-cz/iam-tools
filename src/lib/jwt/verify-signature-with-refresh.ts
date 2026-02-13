@@ -23,7 +23,7 @@ export async function verifySignatureWithRefresh(
 ): Promise<VerifyResult> {
   try {
     if (import.meta?.env?.DEV) {
-      console.log('Starting signature verification with token:', token.substring(0, 20) + '...')
+      console.log('Starting signature verification')
     }
 
     if (!initialJwks?.keys?.length) {
@@ -36,7 +36,12 @@ export async function verifySignatureWithRefresh(
     // Extract the JWK that matches the token's kid (key ID)
     const tokenHeader = JSON.parse(atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')))
 
-    if (import.meta?.env?.DEV) console.log('Token header:', tokenHeader)
+    if (import.meta?.env?.DEV) {
+      console.log('Token header parsed', {
+        kid: tokenHeader?.kid,
+        alg: tokenHeader?.alg,
+      })
+    }
 
     // Check if the token has a key ID
     if (!tokenHeader.kid) {
@@ -58,7 +63,9 @@ export async function verifySignatureWithRefresh(
       }
 
       try {
-        if (import.meta?.env?.DEV) console.log('Found matching key:', matchingKey)
+        if (import.meta?.env?.DEV) {
+          console.log('Found matching key for token header', { kid: matchingKey?.kid })
+        }
         await jwtVerify(token, await importKey(matchingKey, tokenHeader.alg))
         if (import.meta?.env?.DEV) console.log('Verification successful')
         return { valid: true }

@@ -15,6 +15,25 @@ test.describe('OAuth Playground - Auth Code with PKCE', () => {
     await expect(page.locator('text=OAuth Authorization Code Flow')).toBeVisible()
   })
 
+  test('should run endpoint preflight and continue auth flow', async ({ page }) => {
+    const issuerInput = page.locator('#issuer-url-discovery')
+    await issuerInput.fill('http://localhost:8788/api')
+
+    await page.click('button:has-text("Run Preflight")')
+    await expect(page.locator('text=OIDC Endpoint Preflight')).toBeVisible()
+    await expect(page.locator('text=Raw Report JSON')).toBeVisible()
+
+    const tokenEndpointInput = page.locator('input[placeholder="https://example.com/token"]')
+    await expect(tokenEndpointInput).toHaveValue(/\/api\/token$/)
+
+    const clientIdInput = page.locator(selectors.oauthPlayground.clientIdInput)
+    await clientIdInput.fill('test-client')
+    await page.click('button:has-text("Continue to Authorization")')
+
+    const step2Tab = page.locator('[role="tab"]:has-text("2. AuthZ")')
+    await expect(step2Tab).toHaveAttribute('aria-selected', 'true')
+  })
+
   test('should toggle demo mode', async ({ page }) => {
     // Find demo mode switch
     const demoSwitch = page.locator(selectors.oauthPlayground.demoModeSwitch)

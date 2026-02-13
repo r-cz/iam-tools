@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { useAppState } from '@/lib/state'
+import { useAppState, useIssuerHistory } from '@/lib/state'
 import { CheckCircle, XCircle } from 'lucide-react'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
@@ -35,6 +35,11 @@ import {
   ItemTitle,
 } from '@/components/ui/item'
 import { cn } from '@/lib/utils'
+import EndpointPreflightPanel from './EndpointPreflightPanel'
+import {
+  extractDiscoveredEndpoints,
+  fetchOidcDiscoveryConfiguration,
+} from '../utils/oidc-preflight'
 
 interface IntrospectionResponse {
   active: boolean
@@ -57,8 +62,10 @@ interface IntrospectionResponse {
 export function TokenIntrospection() {
   const navigate = useNavigate()
   const { addToken } = useAppState()
+  const { addIssuer } = useIssuerHistory()
 
   // Endpoint state
+  const [issuerUrl, setIssuerUrl] = useState('')
   const [introspectionEndpoint, setIntrospectionEndpoint] = useState('')
   const [token, setToken] = useState('')
   const [clientId, setClientId] = useState('')
@@ -112,30 +119,19 @@ export function TokenIntrospection() {
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
+    setIssuerUrl(issuerUrl)
     setConfigLoading(true)
 
     try {
-      // Construct the well-known URL
-      const url = new URL(issuerUrl)
-      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`
-      const wellKnownUrl = new URL(
-        `${basePath}.well-known/openid-configuration`,
-        url.origin
-      ).toString()
+      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(issuerUrl)
+      const endpoints = extractDiscoveredEndpoints(config)
+      setIssuerUrl(normalizedIssuerUrl)
 
-      // Fetch OIDC configuration to get introspection endpoint
-      const response = await proxyFetch(wellKnownUrl)
-
-      if (response.ok) {
-        const config = await response.json()
-        if (config.introspection_endpoint) {
-          setIntrospectionEndpoint(config.introspection_endpoint)
-        } else {
-          // Show error if no introspection endpoint is available
-          toast.error('This issuer does not have an introspection endpoint configured')
-        }
+      if (endpoints.introspectionEndpoint) {
+        setIntrospectionEndpoint(endpoints.introspectionEndpoint)
+        addIssuer(normalizedIssuerUrl)
       } else {
-        toast.error('Failed to fetch OIDC configuration')
+        toast.error('This issuer does not have an introspection endpoint configured')
       }
     } catch (error) {
       toast.error('Error fetching OIDC configuration: ' + (error as Error).message)
@@ -369,6 +365,24 @@ export function TokenIntrospection() {
                 }
               />
             </InputGroup>
+
+            {!isDemoMode && (
+              <EndpointPreflightPanel
+                issuerUrl={issuerUrl}
+                onIssuerUrlChange={setIssuerUrl}
+                requiredEndpoints={['introspection_endpoint']}
+                onConfigResolved={(config, normalizedIssuerUrl) => {
+                  const endpoints = extractDiscoveredEndpoints(config)
+                  setIssuerUrl(normalizedIssuerUrl)
+                  if (endpoints.introspectionEndpoint) {
+                    setIntrospectionEndpoint(endpoints.introspectionEndpoint)
+                    addIssuer(normalizedIssuerUrl)
+                  }
+                }}
+                title="Introspection Endpoint Preflight"
+                description="Validate discovery and endpoint reachability before introspection."
+              />
+            )}
 
             {/* Token Input with History */}
             <InputGroup className="flex-wrap">

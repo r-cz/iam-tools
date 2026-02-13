@@ -30,6 +30,11 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@/components/ui/item'
+import EndpointPreflightPanel from './EndpointPreflightPanel'
+import {
+  extractDiscoveredEndpoints,
+  fetchOidcDiscoveryConfiguration,
+} from '../utils/oidc-preflight'
 
 interface UserInfoResponse {
   sub?: string
@@ -70,6 +75,7 @@ export function UserInfo() {
   const { addToken } = useAppState()
 
   // Form state
+  const [issuerUrl, setIssuerUrl] = useState('')
   const [userInfoEndpoint, setUserInfoEndpoint] = useState('')
   const [accessToken, setAccessToken] = useState('')
 
@@ -112,32 +118,19 @@ export function UserInfo() {
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
+    setIssuerUrl(issuerUrl)
     setConfigLoading(true)
 
     try {
-      // Construct the well-known URL
-      const url = new URL(issuerUrl)
-      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`
-      const wellKnownUrl = new URL(
-        `${basePath}.well-known/openid-configuration`,
-        url.origin
-      ).toString()
+      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(issuerUrl)
+      const endpoints = extractDiscoveredEndpoints(config)
+      setIssuerUrl(normalizedIssuerUrl)
 
-      // Fetch OIDC configuration to get userinfo endpoint
-      const response = await proxyFetch(wellKnownUrl)
-
-      if (response.ok) {
-        const config = await response.json()
-        if (config.userinfo_endpoint) {
-          setUserInfoEndpoint(config.userinfo_endpoint)
-          // Add issuer to history
-          addIssuer(issuerUrl)
-        } else {
-          // Show error if no userinfo endpoint is available
-          toast.error('This issuer does not have a userinfo endpoint configured')
-        }
+      if (endpoints.userInfoEndpoint) {
+        setUserInfoEndpoint(endpoints.userInfoEndpoint)
+        addIssuer(normalizedIssuerUrl)
       } else {
-        toast.error('Failed to fetch OIDC configuration')
+        toast.error('This issuer does not have a userinfo endpoint configured')
       }
     } catch (error) {
       toast.error('Error fetching OIDC configuration: ' + (error as Error).message)
@@ -357,6 +350,24 @@ export function UserInfo() {
                 </InputGroupAddon>
               )}
             </InputGroup>
+
+            {!isDemoMode && (
+              <EndpointPreflightPanel
+                issuerUrl={issuerUrl}
+                onIssuerUrlChange={setIssuerUrl}
+                requiredEndpoints={['userinfo_endpoint']}
+                onConfigResolved={(config, normalizedIssuerUrl) => {
+                  const endpoints = extractDiscoveredEndpoints(config)
+                  setIssuerUrl(normalizedIssuerUrl)
+                  if (endpoints.userInfoEndpoint) {
+                    setUserInfoEndpoint(endpoints.userInfoEndpoint)
+                    addIssuer(normalizedIssuerUrl)
+                  }
+                }}
+                title="UserInfo Endpoint Preflight"
+                description="Check discovery and UserInfo endpoint behavior before querying claims."
+              />
+            )}
 
             {/* Access Token Input with History */}
             <InputGroup className="flex-wrap">

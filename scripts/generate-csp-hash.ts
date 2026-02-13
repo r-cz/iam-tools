@@ -20,16 +20,15 @@ async function main() {
     matches.push(m[1])
   }
 
-  let scriptContent = ''
   if (matches.length === 0) {
     await writeFile(outPath, `export const CSP_INLINE_SCRIPT_SHA256 = ''\n`)
     console.warn('[generate-csp-hash] No inline <script> found in index.html; wrote empty hash')
     return
-  } else if (matches.length === 1) {
-    scriptContent = matches[0]
-  } else {
-    scriptContent = matches.find((s) => s.includes('iam-tools-theme')) || matches[0]
   }
+  const scriptContent =
+    matches.length === 1
+      ? matches[0]
+      : matches.find((s) => s.includes('iam-tools-theme')) || matches[0]
 
   const hashBase64 = createHash('sha256').update(scriptContent, 'utf8').digest('base64')
   const value = `sha256-${hashBase64}`

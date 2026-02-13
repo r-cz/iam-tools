@@ -166,3 +166,12 @@ IAM Tools also ships a demo OAuth/OIDC provider for local testing and the OAuth 
 - `POST /api/revoke` (always returns 200)
 
 The demo token endpoints accept an optional `claims` JSON object; reserved standard claims are ignored.
+
+### Demo Token/Auth Code Integrity
+
+- Access tokens and ID tokens are JWTs signed with the demo RSA key.
+- `/api/userinfo` and `/api/introspect` verify signature integrity for demo-issued JWTs before treating them as active.
+- Authorization codes and refresh tokens operate in two modes:
+  - Compatibility mode (default): legacy unsigned payload encoding.
+  - Strict mode (`DEMO_TOKEN_SIGNING_SECRET` set): HMAC-signed envelopes in `v1.<payload>.<sig>` format.
+- In strict mode, tampered or legacy-form auth codes/refresh tokens are rejected with OAuth errors (`invalid_grant` for token exchange).

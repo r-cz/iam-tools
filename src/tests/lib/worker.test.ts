@@ -13,7 +13,9 @@ const fetchSpy = async (request: Request | string) => {
   })
 }
 
-const createEnv = (overrides: { CORS_ALLOWED_ORIGINS?: string } = {}) => ({
+const createEnv = (
+  overrides: { CORS_ALLOWED_ORIGINS?: string; DEMO_TOKEN_SIGNING_SECRET?: string } = {}
+) => ({
   ASSETS: {
     fetch: async () =>
       new Response('<html>ok</html>', {
@@ -26,6 +28,19 @@ const createEnv = (overrides: { CORS_ALLOWED_ORIGINS?: string } = {}) => ({
 
 const buildRequest = (path: string, init?: RequestInit) =>
   new Request(`https://app.test${path}`, init)
+
+const tamperToken = (value: string) => {
+  const parts = value.split('.')
+  if (parts.length === 3) {
+    const signature = parts[2]
+    const replacement = signature.endsWith('a') ? 'b' : 'a'
+    parts[2] = `${signature.slice(0, -1)}${replacement}`
+    return parts.join('.')
+  }
+
+  const replacement = value.endsWith('a') ? 'b' : 'a'
+  return `${value.slice(0, -1)}${replacement}`
+}
 
 describe('worker api', () => {
   beforeEach(() => {
@@ -154,5 +169,219 @@ describe('worker api', () => {
     if (CSP_INLINE_SCRIPT_SHA256) {
       expect(csp).toContain(CSP_INLINE_SCRIPT_SHA256)
     }
+  })
+
+  test('accepts signed auth code and rejects tampered auth code in strict mode', async () => {
+    const env = createEnv({ DEMO_TOKEN_SIGNING_SECRET: 'strict-signing-secret' })
+    const redirectUri = 'https://client.example.com/callback'
+
+    const authResponse = await worker.fetch(
+      buildRequest(
+        `/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20offline_access`
+      ),
+      env
+    )
+    expect(authResponse.status).toBe(302)
+
+    const location = authResponse.headers.get('Location')
+    expect(location).toBeTruthy()
+    const redirect = new URL(location!)
+    const authorizationCode = redirect.searchParams.get('code')
+    expect(authorizationCode).toBeTruthy()
+
+    const tokenRequestBody = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: authorizationCode!,
+      redirect_uri: redirectUri,
+      client_id: 'demo-client',
+    }).toString()
+
+    const tokenResponse = await worker.fetch(
+      buildRequest('/api/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: tokenRequestBody,
+      }),
+      env
+    )
+    expect(tokenResponse.status).toBe(200)
+    const tokenData = await tokenResponse.json()
+    expect(typeof tokenData.access_token).toBe('string')
+
+    const tamperedCode = tamperToken(authorizationCode!)
+    const tamperedTokenResponse = await worker.fetch(
+      buildRequest('/api/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: tamperedCode,
+          redirect_uri: redirectUri,
+          client_id: 'demo-client',
+        }).toString(),
+      }),
+      env
+    )
+    expect(tamperedTokenResponse.status).toBe(400)
+    const tamperedData = await tamperedTokenResponse.json()
+    expect(tamperedData.error).toBe('invalid_grant')
+  })
+
+  test('accepts signed refresh token and rejects tampered refresh token in strict mode', async () => {
+    const env = createEnv({ DEMO_TOKEN_SIGNING_SECRET: 'strict-signing-secret' })
+    const redirectUri = 'https://client.example.com/callback'
+
+    const authResponse = await worker.fetch(
+      buildRequest(
+        `/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20offline_access`
+      ),
+      env
+    )
+    const authLocation = authResponse.headers.get('Location')
+    const authCode = authLocation ? new URL(authLocation).searchParams.get('code') : null
+    expect(authCode).toBeTruthy()
+
+    const exchangeResponse = await worker.fetch(
+      buildRequest('/api/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: authCode!,
+          redirect_uri: redirectUri,
+          client_id: 'demo-client',
+        }).toString(),
+      }),
+      env
+    )
+    const exchangeData = await exchangeResponse.json()
+    expect(exchangeResponse.status).toBe(200)
+    expect(typeof exchangeData.refresh_token).toBe('string')
+
+    const refreshResponse = await worker.fetch(
+      buildRequest('/api/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: exchangeData.refresh_token,
+          client_id: 'demo-client',
+        }).toString(),
+      }),
+      env
+    )
+    expect(refreshResponse.status).toBe(200)
+    const refreshedData = await refreshResponse.json()
+    expect(typeof refreshedData.access_token).toBe('string')
+
+    const tamperedRefreshToken = tamperToken(exchangeData.refresh_token)
+    const invalidRefreshResponse = await worker.fetch(
+      buildRequest('/api/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: tamperedRefreshToken,
+          client_id: 'demo-client',
+        }).toString(),
+      }),
+      env
+    )
+    expect(invalidRefreshResponse.status).toBe(400)
+    const invalidRefreshData = await invalidRefreshResponse.json()
+    expect(invalidRefreshData.error).toBe('invalid_grant')
+  })
+
+  test('rejects invalid JWT signatures for userinfo and introspection in strict mode', async () => {
+    const env = createEnv({ DEMO_TOKEN_SIGNING_SECRET: 'strict-signing-secret' })
+
+    const tokenGenerationResponse = await worker.fetch(
+      buildRequest('/api/token/generate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          subject: 'demo-user',
+          client_id: 'demo-client',
+          scope: 'openid profile email',
+        }),
+      }),
+      env
+    )
+    expect(tokenGenerationResponse.status).toBe(200)
+    const generatedToken = await tokenGenerationResponse.json()
+    const tamperedAccessToken = tamperToken(generatedToken.access_token)
+
+    const userInfoResponse = await worker.fetch(
+      buildRequest('/api/userinfo', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${tamperedAccessToken}` },
+      }),
+      env
+    )
+    expect(userInfoResponse.status).toBe(401)
+    const userInfoData = await userInfoResponse.json()
+    expect(userInfoData.error).toBe('invalid_token')
+
+    const introspectionResponse = await worker.fetch(
+      buildRequest('/api/introspect', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: tamperedAccessToken }).toString(),
+      }),
+      env
+    )
+    expect(introspectionResponse.status).toBe(200)
+    const introspectionData = await introspectionResponse.json()
+    expect(introspectionData.active).toBe(false)
+  })
+
+  test('keeps legacy auth-code and refresh-token behavior when strict secret is unset', async () => {
+    const env = createEnv()
+    const redirectUri = 'https://client.example.com/callback'
+
+    const authResponse = await worker.fetch(
+      buildRequest(
+        `/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20offline_access`
+      ),
+      env
+    )
+    expect(authResponse.status).toBe(302)
+    const authLocation = authResponse.headers.get('Location')
+    const authCode = authLocation ? new URL(authLocation).searchParams.get('code') : null
+    expect(authCode).toBeTruthy()
+
+    const exchangeResponse = await worker.fetch(
+      buildRequest('/api/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: authCode!,
+          redirect_uri: redirectUri,
+          client_id: 'demo-client',
+        }).toString(),
+      }),
+      env
+    )
+    expect(exchangeResponse.status).toBe(200)
+    const exchangeData = await exchangeResponse.json()
+    expect(typeof exchangeData.refresh_token).toBe('string')
+    expect(exchangeData.refresh_token.startsWith('rt_')).toBe(true)
+
+    const refreshResponse = await worker.fetch(
+      buildRequest('/api/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: exchangeData.refresh_token,
+          client_id: 'demo-client',
+        }).toString(),
+      }),
+      env
+    )
+    expect(refreshResponse.status).toBe(200)
+    const refreshedData = await refreshResponse.json()
+    expect(typeof refreshedData.access_token).toBe('string')
   })
 })
