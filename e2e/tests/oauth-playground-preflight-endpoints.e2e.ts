@@ -1,5 +1,18 @@
 import { test, expect } from '@playwright/test'
 import { TestUtils } from '../helpers/test-utils'
+import { selectors } from '../helpers/selectors'
+
+function getIssuerHistoryEntry(url: string) {
+  return JSON.stringify([
+    {
+      id: 'e2e-history-issuer',
+      url,
+      name: 'Local Demo Issuer',
+      createdAt: Date.now(),
+      lastUsedAt: Date.now(),
+    },
+  ])
+}
 
 test.describe('OAuth Playground Endpoint Preflight', () => {
   let utils: TestUtils
@@ -8,35 +21,51 @@ test.describe('OAuth Playground Endpoint Preflight', () => {
     utils = new TestUtils(page)
   })
 
-  test('should run introspection preflight and validate endpoint before submit', async ({
+  test('should auto-run introspection preflight after issuer-history discovery', async ({
     page,
   }) => {
     await utils.navigateTo('/oauth-playground/introspection')
 
-    const preflightIssuerInput = page.locator('input[placeholder="https://example.com"]').first()
-    await preflightIssuerInput.fill('http://localhost:8788/api')
-    await page.click('button:has-text("Run Preflight")')
+    await page.evaluate((value) => {
+      localStorage.setItem('iam-tools-issuer-history', value)
+    }, getIssuerHistoryEntry('http://localhost:8788/api'))
+    await page.reload()
 
-    await expect(page.locator('text=Raw Report JSON')).toBeVisible()
-    await expect(page.locator('#introspection-endpoint')).toHaveValue(/\/api\/introspect$/)
+    await page.click(selectors.oauthPlayground.issuerHistoryButton)
+    await page.getByRole('menuitem').filter({ hasText: 'Local Demo Issuer' }).click()
 
-    await page.locator('#token').fill('invalid.token.value')
-    await page.click('button:has-text("Introspect Token")')
+    await expect(page.locator(selectors.oauthPlayground.introspectionEndpointInput)).toHaveValue(
+      /\/api\/introspect$/
+    )
+    await expect(page.locator(selectors.oauthPlayground.preflightReport)).toBeVisible()
+
+    await page
+      .locator(selectors.oauthPlayground.introspectionTokenInput)
+      .fill('invalid.token.value')
+    await page.click(selectors.oauthPlayground.introspectionSubmitButton)
     await expect(page.locator('text=Introspection Result')).toBeVisible()
   })
 
-  test('should run userinfo preflight and validate endpoint before submit', async ({ page }) => {
+  test('should auto-run userinfo preflight after issuer-history discovery', async ({ page }) => {
     await utils.navigateTo('/oauth-playground/userinfo')
 
-    const preflightIssuerInput = page.locator('input[placeholder="https://example.com"]').first()
-    await preflightIssuerInput.fill('http://localhost:8788/api')
-    await page.click('button:has-text("Run Preflight")')
+    await page.evaluate((value) => {
+      localStorage.setItem('iam-tools-issuer-history', value)
+    }, getIssuerHistoryEntry('http://localhost:8788/api'))
+    await page.reload()
 
-    await expect(page.locator('text=Raw Report JSON')).toBeVisible()
-    await expect(page.locator('#userinfo-endpoint')).toHaveValue(/\/api\/userinfo$/)
+    await page.click(selectors.oauthPlayground.issuerHistoryButton)
+    await page.getByRole('menuitem').filter({ hasText: 'Local Demo Issuer' }).click()
 
-    await page.locator('#access-token').fill('invalid.token.value')
-    await page.click('button:has-text("Get UserInfo")')
+    await expect(page.locator(selectors.oauthPlayground.userInfoEndpointInput)).toHaveValue(
+      /\/api\/userinfo$/
+    )
+    await expect(page.locator(selectors.oauthPlayground.preflightReport)).toBeVisible()
+
+    await page
+      .locator(selectors.oauthPlayground.userInfoAccessTokenInput)
+      .fill('invalid.token.value')
+    await page.click(selectors.oauthPlayground.userInfoSubmitButton)
     await expect(page.locator('text=UserInfo Result')).toBeVisible()
   })
 })

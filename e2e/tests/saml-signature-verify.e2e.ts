@@ -18,10 +18,10 @@ test.describe('SAML Signature Verification UI', () => {
 
     // Paste sample base64 response and decode
     await page.locator('textarea#saml-input').fill(SAMPLE_BASE64_RESPONSE)
-    await page.click('button:has-text("Decode Response")')
+    await page.click('[data-testid="saml-response-decode-button"]')
 
     // Open Signature tab
-    await page.click('button:has-text("Signature")')
+    await page.click('[data-testid="saml-response-tab-signature"]')
 
     // Since the response is unsigned, we should see a message indicating no signature
     await expect(

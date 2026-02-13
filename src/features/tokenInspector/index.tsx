@@ -165,7 +165,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-testid="token-inspector-root">
       {/* Input Card */}
       <Card className="lg:col-span-1 py-3">
         <CardContent className="px-5 pb-4 pt-1">
@@ -227,18 +227,34 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
             </div>
 
             {/* Tabs for Decoded Content */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="token-inspector-tabs">
               <TabsList className="mb-4 w-full flex overflow-x-auto max-w-full">
-                <TabsTrigger value="header" className="flex-1 min-w-fit">
+                <TabsTrigger
+                  value="header"
+                  className="flex-1 min-w-fit"
+                  data-testid="token-inspector-tab-header"
+                >
                   Header
                 </TabsTrigger>
-                <TabsTrigger value="payload" className="flex-1 min-w-fit">
+                <TabsTrigger
+                  value="payload"
+                  className="flex-1 min-w-fit"
+                  data-testid="token-inspector-tab-payload"
+                >
                   Payload
                 </TabsTrigger>
-                <TabsTrigger value="signature" className="flex-1 min-w-fit">
+                <TabsTrigger
+                  value="signature"
+                  className="flex-1 min-w-fit"
+                  data-testid="token-inspector-tab-signature"
+                >
                   Signature
                 </TabsTrigger>
-                <TabsTrigger value="timeline" className="flex-1 min-w-fit">
+                <TabsTrigger
+                  value="timeline"
+                  className="flex-1 min-w-fit"
+                  data-testid="token-inspector-tab-timeline"
+                >
                   Timeline
                 </TabsTrigger>
               </TabsList>

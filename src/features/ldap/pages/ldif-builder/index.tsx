@@ -199,6 +199,7 @@ export default function LdifBuilderPage() {
                     onClick={handleUploadClick}
                     className="flex items-center gap-1.5"
                     aria-label="Upload LDIF file"
+                    data-testid="ldap-ldif-upload-button"
                   >
                     <Upload size={16} />
                     <span className="hidden sm:inline">Upload</span>
@@ -211,6 +212,7 @@ export default function LdifBuilderPage() {
                         variant="outline"
                         className="flex items-center gap-1.5"
                         aria-label="Insert template"
+                        data-testid="ldap-ldif-templates-button"
                       >
                         <FileInput size={16} />
                         <span className="hidden sm:inline">Templates</span>
@@ -258,6 +260,7 @@ export default function LdifBuilderPage() {
                         variant="outline"
                         className="flex items-center gap-1.5"
                         aria-label="Select schemas for validation"
+                        data-testid="ldap-ldif-schemas-button"
                       >
                         <Layers size={16} />
                         <span className="hidden sm:inline">Schemas</span>
@@ -385,6 +388,7 @@ export default function LdifBuilderPage() {
                     className="flex items-center gap-1.5 border border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={handleClear}
                     aria-label="Clear LDIF"
+                    data-testid="ldap-ldif-clear-button"
                   >
                     <Eraser size={16} />
                     <span className="hidden sm:inline">Clear</span>
@@ -396,6 +400,7 @@ export default function LdifBuilderPage() {
                 onChange={(event) => setLdifText(event.target.value)}
                 placeholder="dn: uid=jdoe,ou=people,dc=example,dc=com"
                 className="font-mono min-h-[260px]"
+                data-testid="ldap-ldif-input"
               />
             </InputGroup>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">

@@ -165,6 +165,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
               onClick={handleRandomExample}
               title="Load random example"
               aria-label="Load random example"
+              data-testid="oidc-explorer-random-issuer-button"
             >
               <ShuffleIcon className="h-4 w-4" aria-hidden="true" />
               <span className="hidden sm:inline">Random</span>
@@ -184,6 +185,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
               type="url"
               value={issuerUrl}
               data-full-url={fullIssuerUrl || undefined}
+              data-testid="oidc-explorer-issuer-input"
               onChange={(e) => updateIssuerValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="issuer.example.com"
@@ -211,6 +213,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
             disabled={isLoading || !issuerUrl.trim()}
             variant="outline"
             className="flex items-center gap-2"
+            data-testid="oidc-explorer-fetch-config-button"
           >
             {isLoading ? (
               <>

@@ -77,6 +77,7 @@ export function TokenIntrospection() {
   const [isDemoMode, setIsDemoMode] = useState(false)
   const [configLoading, setConfigLoading] = useState(false)
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false)
+  const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
 
   // Auto-fill demo token when demo mode is enabled
   useEffect(() => {
@@ -130,6 +131,7 @@ export function TokenIntrospection() {
       if (endpoints.introspectionEndpoint) {
         setIntrospectionEndpoint(endpoints.introspectionEndpoint)
         addIssuer(normalizedIssuerUrl)
+        setPreflightAutoRunTrigger((value) => value + 1)
       } else {
         toast.error('This issuer does not have an introspection endpoint configured')
       }
@@ -353,6 +355,7 @@ export function TokenIntrospection() {
               </InputGroupAddon>
               <InputGroupInput
                 id="introspection-endpoint"
+                data-testid="oauth-introspection-endpoint-input"
                 type="url"
                 value={introspectionEndpoint}
                 onChange={(e) => setIntrospectionEndpoint(e.target.value)}
@@ -371,6 +374,7 @@ export function TokenIntrospection() {
                 issuerUrl={issuerUrl}
                 onIssuerUrlChange={setIssuerUrl}
                 requiredEndpoints={['introspection_endpoint']}
+                autoRunTrigger={preflightAutoRunTrigger}
                 onConfigResolved={(config, normalizedIssuerUrl) => {
                   const endpoints = extractDiscoveredEndpoints(config)
                   setIssuerUrl(normalizedIssuerUrl)
@@ -415,6 +419,7 @@ export function TokenIntrospection() {
               </InputGroupAddon>
               <InputGroupInput
                 id="token"
+                data-testid="oauth-introspection-token-input"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 required
@@ -450,7 +455,11 @@ export function TokenIntrospection() {
               />
             </FieldSet>
 
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              disabled={loading}
+              data-testid="oauth-introspection-submit-button"
+            >
               {loading
                 ? 'Processing...'
                 : isDemoMode

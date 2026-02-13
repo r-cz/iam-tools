@@ -74,11 +74,21 @@ export function AuthCodeWithPkceFlow() {
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
       <TabsList className="grid grid-cols-3 w-full mb-4">
-        <TabsTrigger value="config">1. Config</TabsTrigger>
-        <TabsTrigger value="auth" disabled={!isAuthTabEnabled}>
+        <TabsTrigger value="config" data-testid="oauth-authcode-tab-config">
+          1. Config
+        </TabsTrigger>
+        <TabsTrigger
+          value="auth"
+          disabled={!isAuthTabEnabled}
+          data-testid="oauth-authcode-tab-auth"
+        >
           2. AuthZ
         </TabsTrigger>
-        <TabsTrigger value="token" disabled={!isTokenTabEnabled}>
+        <TabsTrigger
+          value="token"
+          disabled={!isTokenTabEnabled}
+          data-testid="oauth-authcode-tab-token"
+        >
           3. Get Token
         </TabsTrigger>
       </TabsList>

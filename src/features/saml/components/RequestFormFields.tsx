@@ -56,11 +56,19 @@ export function RequestFormFields({
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 min-w-0">
       <div className="grid gap-2 min-w-0">
         <label className="text-sm">Issuer (entityID)</label>
-        <Input value={issuer} onChange={(e) => onIssuerChange(e.target.value)} className="w-full" />
+        <Input
+          id="saml-request-issuer-input"
+          data-testid="saml-request-issuer-input"
+          value={issuer}
+          onChange={(e) => onIssuerChange(e.target.value)}
+          className="w-full"
+        />
       </div>
       <div className="grid gap-2 min-w-0">
         <label className="text-sm">Destination (IdP SSO URL)</label>
         <Input
+          id="saml-request-destination-input"
+          data-testid="saml-request-destination-input"
           value={destination}
           onChange={(e) => {
             // always allow user editing (so they can fix typos), but do no further processing here
@@ -71,7 +79,13 @@ export function RequestFormFields({
       </div>
       <div className="grid gap-2 min-w-0">
         <label className="text-sm">AssertionConsumerServiceURL</label>
-        <Input value={acsUrl} onChange={(e) => onAcsUrlChange(e.target.value)} className="w-full" />
+        <Input
+          id="saml-request-acs-input"
+          data-testid="saml-request-acs-input"
+          value={acsUrl}
+          onChange={(e) => onAcsUrlChange(e.target.value)}
+          className="w-full"
+        />
       </div>
       <div className="grid gap-2 min-w-0">
         <label className="text-sm">NameIDFormat</label>

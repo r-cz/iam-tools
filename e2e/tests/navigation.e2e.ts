@@ -18,23 +18,19 @@ test.describe('Navigation and Homepage', () => {
 
   test('should display all tool cards on homepage', async ({ page }) => {
     // Token Inspector card
-    await expect(page.locator('h3:has-text("Token Inspector")')).toBeVisible()
+    await expect(page.locator(selectors.home.tokenInspector)).toBeVisible()
     await expect(page.locator('text=Analyze JWT tokens')).toBeVisible()
 
     // OIDC Explorer card
-    await expect(page.locator('h3:has-text("OIDC Explorer")')).toBeVisible()
+    await expect(page.locator(selectors.home.oidcExplorer)).toBeVisible()
     await expect(page.locator('text=Explore OpenID Connect discovery documents')).toBeVisible()
 
-    // OAuth Playground card - use more specific selector to avoid duplicate
-    await expect(
-      page.locator('a[href="/oauth-playground"] h3:has-text("OAuth Playground")')
-    ).toBeVisible()
+    await expect(page.locator(selectors.home.oauthPlayground)).toBeVisible()
     await expect(page.locator('text=Test and explore OAuth 2.0 flows')).toBeVisible()
   })
 
   test('should navigate to Token Inspector', async ({ page }) => {
-    // Click on Token Inspector card
-    await page.click('a[href="/token-inspector"]:has-text("Token Inspector")')
+    await page.click(selectors.home.tokenInspector)
 
     // Verify navigation
     await expect(page).toHaveURL(/token-inspector/)
@@ -42,8 +38,7 @@ test.describe('Navigation and Homepage', () => {
   })
 
   test('should navigate to OIDC Explorer', async ({ page }) => {
-    // Click on OIDC Explorer card
-    await page.click('a[href="/oidc-explorer"]:has-text("OIDC Explorer")')
+    await page.click(selectors.home.oidcExplorer)
 
     // Verify navigation
     await expect(page).toHaveURL(/oidc-explorer/)
@@ -51,8 +46,7 @@ test.describe('Navigation and Homepage', () => {
   })
 
   test('should navigate to OAuth Playground', async ({ page }) => {
-    // Click on OAuth Playground card
-    await page.click('a[href="/oauth-playground"]:has-text("OAuth Playground")')
+    await page.click(selectors.home.oauthPlayground)
 
     // Verify navigation
     await expect(page).toHaveURL(/oauth-playground/)

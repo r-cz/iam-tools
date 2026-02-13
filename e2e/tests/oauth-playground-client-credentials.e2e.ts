@@ -15,218 +15,124 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await expect(page.locator('text=OAuth Client Credentials Flow')).toBeVisible()
   })
 
+  test('should auto-run token endpoint preflight after issuer-history discovery', async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        'iam-tools-issuer-history',
+        JSON.stringify([
+          {
+            id: 'e2e-client-credentials-issuer',
+            url: 'http://localhost:8788/api',
+            name: 'Local Demo Issuer',
+            createdAt: Date.now(),
+            lastUsedAt: Date.now(),
+          },
+        ])
+      )
+    })
+    await page.reload()
+
+    await page.click(selectors.oauthPlayground.issuerHistoryButton)
+    await page.getByRole('menuitem').filter({ hasText: 'Local Demo Issuer' }).click()
+
+    await expect(
+      page.locator(selectors.oauthPlayground.clientCredentialsTokenEndpointInput)
+    ).toHaveValue(/\/api\/token$/)
+    await expect(page.locator(selectors.oauthPlayground.preflightReport)).toBeVisible()
+  })
+
   test('should run token endpoint preflight for reachable and unreachable issuers', async ({
     page,
   }) => {
-    const preflightIssuerInput = page.locator('input[placeholder="https://example.com"]').first()
-    await preflightIssuerInput.fill('http://localhost:8788/api')
-    await page.click('button:has-text("Run Preflight")')
+    const preflightIssuerInput = page.locator('#oidc-preflight-issuer-url')
 
-    await expect(page.locator('text=Token Endpoint Preflight')).toBeVisible()
-    await expect(page.locator('text=Raw Report JSON')).toBeVisible()
-    await expect(page.locator('#token-endpoint')).toHaveValue(/\/api\/token$/)
+    await preflightIssuerInput.fill('http://localhost:8788/api')
+    await page.click(selectors.oauthPlayground.preflightRunButton)
+
+    await expect(page.locator(selectors.oauthPlayground.preflightReport)).toBeVisible()
+    await expect(
+      page.locator(selectors.oauthPlayground.clientCredentialsTokenEndpointInput)
+    ).toHaveValue(/\/api\/token$/)
 
     await preflightIssuerInput.fill('http://localhost:8788/api/not-real')
-    await page.click('button:has-text("Run Preflight")')
-    await expect(page.getByText('FAIL').first()).toBeVisible()
+    await page.click(selectors.oauthPlayground.preflightRunButton)
+
+    await expect(page.locator('[data-testid="oidc-preflight-result-discovery"]')).toBeVisible()
+    await expect(page.locator('[data-testid="oidc-preflight-result-discovery"]')).toContainText(
+      'FAIL'
+    )
   })
 
   test('should toggle demo mode', async ({ page }) => {
-    // Find demo mode switch
-    const demoSwitch = page.locator(selectors.oauthPlayground.demoModeSwitch)
+    await page.click(selectors.oauthPlayground.demoModeSwitch)
 
-    // Toggle demo mode on
-    await demoSwitch.click()
-
-    // Wait a bit for demo mode to activate
-    await page.waitForTimeout(500)
-
-    // Verify form fields are populated with demo values
-    const tokenUrlInput = page.locator('#token-endpoint')
-    const clientIdInput = page.locator('#client-id')
-    const clientSecretInput = page.locator('#client-secret')
-
-    await expect(tokenUrlInput).toHaveValue(/api\/token/)
-    await expect(clientIdInput).toHaveValue(/demo/)
-    await expect(clientSecretInput).toHaveValue(/demo/)
+    await expect(
+      page.locator(selectors.oauthPlayground.clientCredentialsTokenEndpointInput)
+    ).toHaveValue(/api\/token/)
+    await expect(page.locator('#client-id')).toHaveValue(/demo/)
+    await expect(page.locator('#client-secret')).toHaveValue(/demo/)
   })
 
   test('should request token in demo mode', async ({ page }) => {
-    // Enable demo mode
     await page.click(selectors.oauthPlayground.demoModeSwitch)
-    // Wait for demo mode to fully activate
-    await page.waitForTimeout(1000)
 
-    // Request Demo Token button should be enabled
-    const requestButton = await utils.getButtonByText('Request Demo Token')
-    await expect(requestButton).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Request Demo Token' })).toBeEnabled()
+    await page.getByRole('button', { name: 'Request Demo Token' }).click()
 
-    // Click Request Demo Token
-    await requestButton.click()
-
-    // Wait for result section to appear
-    await page.waitForSelector('text=Result', { timeout: 5000 })
-
-    // Verify token details are displayed in the result (as JSON keys)
+    await expect(page.locator('text=Result')).toBeVisible()
     await expect(page.locator('text=/"access_token"/')).toBeVisible()
     await expect(page.locator('text=/"token_type"/')).toBeVisible()
     await expect(page.locator('text=/"expires_in"/')).toBeVisible()
   })
 
   test('should validate required fields', async ({ page }) => {
-    // Make sure demo mode is off
     const demoSwitch = page.locator(selectors.oauthPlayground.demoModeSwitch)
-    const isChecked = await demoSwitch.isChecked()
-    if (isChecked) {
+    if (await demoSwitch.isChecked()) {
       await demoSwitch.click()
-      await page.waitForTimeout(500)
     }
 
-    // Request button should be disabled without required fields
-    const requestButton = await utils.getButtonByText('Request Token')
+    const requestButton = page.getByRole('button', { name: 'Request Token' })
     await expect(requestButton).toBeDisabled()
 
-    // Fill in required fields by targeting stable selectors
-    await page.locator('#token-endpoint').fill('https://example.com/token')
+    await page
+      .locator(selectors.oauthPlayground.clientCredentialsTokenEndpointInput)
+      .fill('https://example.com/token')
     await page.locator('#client-id').fill('test-client-id')
     await page.locator('#client-secret').fill('test-client-secret')
 
-    // Request button should now be enabled
     await expect(requestButton).toBeEnabled()
   })
 
   test('should handle custom scopes', async ({ page }) => {
-    // Enable demo mode
     await page.click(selectors.oauthPlayground.demoModeSwitch)
-    // Wait for demo mode to fully activate
-    await page.waitForTimeout(1000)
 
-    // Add custom scopes
     const scopeInput = page.locator('#scope')
     await scopeInput.clear()
     await scopeInput.fill('read:users write:users admin')
 
-    // Request token
-    await page.click('button:has-text("Request Demo Token")')
+    await page.getByRole('button', { name: 'Request Demo Token' }).click()
 
-    // Wait for result to appear
-    await page.waitForSelector('text=Result', { timeout: 5000 })
-
-    // Verify scopes are included in response - use more specific selector to avoid strict mode violation
+    await expect(page.locator('text=Result')).toBeVisible()
     await expect(page.locator('code:has-text("read:users write:users admin")')).toBeVisible()
   })
 
-  test('should copy access token', async ({ page }) => {
-    // Enable demo mode and request token
-    await page.click(selectors.oauthPlayground.demoModeSwitch)
-    // Wait for demo mode to fully activate
-    await page.waitForTimeout(1000)
-    await page.click('button:has-text("Request Demo Token")')
-    await page.waitForSelector('text=Result', { timeout: 5000 })
-
-    // The result is shown as JSON in a code block - look for copy functionality
-    // Since it's a code block, let's look for the code element and interact with it
-    const resultSection = page.locator('text=Result').locator('..')
-
-    // Click somewhere in the result to potentially trigger copy
-    await resultSection.click()
-
-    // For now, let's just verify the result is displayed
-    await expect(page.locator('text=/"access_token"/')).toBeVisible()
-  })
-
-  test('should display request details', async ({ page }) => {
-    // Enable demo mode
-    await page.click(selectors.oauthPlayground.demoModeSwitch)
-    // Wait for demo mode to fully activate
-    await page.waitForTimeout(1000)
-
-    // Click Request Demo Token to trigger the request
-    await page.click('button:has-text("Request Demo Token")')
-
-    // Wait for result which includes request details
-    await page.waitForSelector('text=Result', { timeout: 5000 })
-
-    // Verify some part of the token response is shown (as JSON)
-    await expect(page.locator('text=/"access_token"/')).toBeVisible()
-  })
-
-  test('should reset form', async ({ page }) => {
-    // Enable demo mode and fill form
-    await page.click(selectors.oauthPlayground.demoModeSwitch)
-    // Wait for demo mode to fully activate
-    await page.waitForTimeout(1000)
-
-    // Verify form is populated by checking the client ID input
-    const clientIdInput = page.locator('#client-id')
-    await expect(clientIdInput).not.toHaveValue('')
-
-    // Generate a token first
-    await page.click('button:has-text("Request Demo Token")')
-    await page.waitForSelector('text=Result', { timeout: 5000 })
-
-    // Click reset button if visible
-    const resetButton = page.locator('button:has-text("Reset")')
-    if (await resetButton.isVisible()) {
-      await resetButton.click()
-
-      // Verify the result is cleared
-      await expect(page.locator('text=Result')).not.toBeVisible()
-    }
-  })
-
   test('should handle token request error', async ({ page }) => {
-    // Make sure demo mode is off
     const demoSwitch = page.locator(selectors.oauthPlayground.demoModeSwitch)
-    const isChecked = await demoSwitch.isChecked()
-    if (isChecked) {
+    if (await demoSwitch.isChecked()) {
       await demoSwitch.click()
-      await page.waitForTimeout(500)
     }
 
-    // Fill in invalid endpoint using stable selectors
-    await page.locator('#token-endpoint').fill('https://invalid.example.com/token')
+    await page
+      .locator(selectors.oauthPlayground.clientCredentialsTokenEndpointInput)
+      .fill('https://invalid.example.com/token')
     await page.locator('#client-id').fill('test-client')
     await page.locator('#client-secret').fill('test-secret')
 
-    // Request token
-    await page.click('button:has-text("Request Token")')
+    await page.getByRole('button', { name: 'Request Token' }).click()
 
-    // Should show error in the response
-    await page.waitForSelector('text=error', { timeout: 5000 })
-  })
-
-  test('should show authentication method options', async ({ page }) => {
-    // This test seems to expect authentication method options that may not exist
-    // in the current implementation. Let's verify the basic form structure instead.
-
-    // Verify main form elements are present - use more specific selectors to avoid strict mode violations
-    await expect(page.locator('span:has-text("Token Endpoint")')).toBeVisible()
-    await expect(page.locator('label:has-text("Client ID")')).toBeVisible()
-    await expect(page.locator('label:has-text("Client Secret")')).toBeVisible()
-    await expect(page.locator('label:has-text("Scope (optional)")')).toBeVisible()
-  })
-
-  test('should handle additional parameters', async ({ page }) => {
-    // Enable demo mode
-    await page.click(selectors.oauthPlayground.demoModeSwitch)
-    // Wait for demo mode to fully activate
-    await page.waitForTimeout(1000)
-
-    // Find additional parameters section
-    const addParamButton = page.locator('button:has-text("Add Parameter")')
-    if (await addParamButton.isVisible()) {
-      await addParamButton.click()
-
-      // Add custom parameter
-      await page.fill('input[placeholder="Parameter name"]', 'custom_param')
-      await page.fill('input[placeholder="Parameter value"]', 'custom_value')
-
-      // Request token
-      await page.click('button:has-text("Request Token")')
-
-      // Wait for success
-      await page.waitForSelector('text=Token request successful')
-    }
+    await expect(page.locator('text=Result')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/\"error\"/').first()).toBeVisible()
   })
 })

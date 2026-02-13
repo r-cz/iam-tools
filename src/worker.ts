@@ -18,6 +18,7 @@ type RateLimitConfig = { max: number; windowMs: number }
 const rateLimitBuckets = new Map<string, RateLimitBucket>()
 const CORS_PROXY_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 60_000 }
 const DEMO_RATE_LIMIT: RateLimitConfig = { max: 120, windowMs: 60_000 }
+const OIDC_PREFLIGHT_PROBE_RATE_LIMIT: RateLimitConfig = { max: 90, windowMs: 60_000 }
 const SIGNED_ENVELOPE_VERSION = 'v1'
 const DEMO_JWT_KID = DEMO_JWKS.keys[0]?.kid
 const hmacKeyCache = new Map<string, Promise<CryptoKey>>()
@@ -48,6 +49,17 @@ export default {
         const rateLimited = enforceRateLimit(request, env, 'cors-proxy', CORS_PROXY_RATE_LIMIT)
         if (rateLimited) return rateLimited
         return handleCorsProxy(request, env)
+      }
+
+      if (normalizedPath === '/api/oidc-preflight-probe') {
+        const rateLimited = enforceRateLimit(
+          request,
+          env,
+          'oidc-preflight-probe',
+          OIDC_PREFLIGHT_PROBE_RATE_LIMIT
+        )
+        if (rateLimited) return rateLimited
+        return handleOidcPreflightProbe(request, env)
       }
 
       if (isDemoEndpoint(normalizedPath)) {
@@ -1167,6 +1179,187 @@ async function computeCodeChallenge(verifier: string): Promise<string> {
   const data = new TextEncoder().encode(verifier)
   const digest = await crypto.subtle.digest('SHA-256', data)
   return base64UrlEncode(new Uint8Array(digest))
+}
+
+type OidcPreflightProbeMethod = 'GET' | 'HEAD' | 'POST'
+type OidcPreflightProbeRequestBody = {
+  url?: unknown
+  method?: unknown
+  headers?: unknown
+  body?: unknown
+}
+
+const OIDC_PREFLIGHT_ALLOWED_METHODS = new Set<OidcPreflightProbeMethod>(['GET', 'HEAD', 'POST'])
+const OIDC_PREFLIGHT_ALLOWED_HEADERS = new Set(['accept', 'content-type', 'authorization'])
+
+async function handleOidcPreflightProbe(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders(request, env) })
+  }
+
+  let payload: OidcPreflightProbeRequestBody
+  try {
+    payload = (await request.json()) as OidcPreflightProbeRequestBody
+  } catch {
+    return json({ ok: false, error: 'Invalid JSON payload' }, { status: 400 }, request, env)
+  }
+
+  const targetUrl = typeof payload.url === 'string' ? payload.url.trim() : ''
+  const methodCandidate = typeof payload.method === 'string' ? payload.method.toUpperCase() : ''
+  const method = OIDC_PREFLIGHT_ALLOWED_METHODS.has(methodCandidate as OidcPreflightProbeMethod)
+    ? (methodCandidate as OidcPreflightProbeMethod)
+    : null
+
+  if (!targetUrl || !method) {
+    return json(
+      { ok: false, error: 'url and method are required for OIDC preflight probes' },
+      { status: 400 },
+      request,
+      env
+    )
+  }
+
+  if (!isAllowedOidcProbeTarget(targetUrl)) {
+    return json(
+      { ok: false, error: 'This probe target is not allowed' },
+      { status: 403 },
+      request,
+      env
+    )
+  }
+
+  const body = typeof payload.body === 'string' ? payload.body : undefined
+  if (body && body.length > 1024) {
+    return json({ ok: false, error: 'Probe body is too large' }, { status: 400 }, request, env)
+  }
+
+  const headers = sanitizeOidcProbeHeaders(payload.headers)
+  if (method === 'POST' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/x-www-form-urlencoded')
+  }
+
+  const upstreamRequest = new Request(targetUrl, {
+    method,
+    headers,
+    body: method === 'POST' ? (body ?? '') : undefined,
+    redirect: 'manual',
+  })
+
+  try {
+    const upstreamResponse = await fetch(upstreamRequest)
+    return json(
+      {
+        ok: true,
+        status: upstreamResponse.status,
+        statusText: upstreamResponse.statusText,
+      },
+      undefined,
+      request,
+      env
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return json({ ok: false, error: message }, undefined, request, env)
+  }
+}
+
+function sanitizeOidcProbeHeaders(rawHeaders: unknown): Headers {
+  const sanitized = new Headers()
+  if (!rawHeaders || typeof rawHeaders !== 'object' || Array.isArray(rawHeaders)) {
+    return sanitized
+  }
+
+  for (const [key, value] of Object.entries(rawHeaders as Record<string, unknown>)) {
+    const lowerKey = key.toLowerCase()
+    if (!OIDC_PREFLIGHT_ALLOWED_HEADERS.has(lowerKey)) {
+      continue
+    }
+
+    if (typeof value !== 'string') {
+      continue
+    }
+
+    sanitized.set(key, value.slice(0, 256))
+  }
+
+  return sanitized
+}
+
+function isAllowedOidcProbeTarget(urlStr: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(urlStr)
+  } catch {
+    return false
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return false
+  }
+
+  if (isPrivateOrLocalHostname(parsed.hostname)) {
+    return false
+  }
+
+  const path = parsed.pathname.toLowerCase()
+  return (
+    path.includes('/.well-known/openid-configuration') ||
+    path.includes('/authorize') ||
+    path.includes('/token') ||
+    path.includes('/userinfo') ||
+    path.includes('/introspect') ||
+    path.includes('/introspection') ||
+    path.includes('/jwks') ||
+    path.includes('/jwk') ||
+    path.includes('/keys') ||
+    path.includes('/certs') ||
+    path.includes('/oauth2') ||
+    path.includes('/oidc') ||
+    path.includes('/connect')
+  )
+}
+
+function isPrivateOrLocalHostname(hostname: string): boolean {
+  const lower = hostname.toLowerCase()
+  if (
+    lower === 'localhost' ||
+    lower === '127.0.0.1' ||
+    lower === '::1' ||
+    lower === '0.0.0.0' ||
+    lower.endsWith('.local')
+  ) {
+    return true
+  }
+
+  const ipv4 = parseIpv4Address(lower)
+  if (!ipv4) {
+    // Avoid proxying probe requests to IPv6 literals.
+    return lower.includes(':')
+  }
+
+  const [a, b] = ipv4
+  return (
+    a === 10 ||
+    a === 127 ||
+    a === 0 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  )
+}
+
+function parseIpv4Address(hostname: string): number[] | null {
+  const parts = hostname.split('.')
+  if (parts.length !== 4) {
+    return null
+  }
+
+  const octets = parts.map((part) => Number(part))
+  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+    return null
+  }
+
+  return octets
 }
 
 async function handleCorsProxy(request: Request, env: Env): Promise<Response> {

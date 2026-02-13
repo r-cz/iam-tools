@@ -21,32 +21,19 @@ test.describe('SAML Request Builder', () => {
   })
 
   test('generates SAML AuthnRequest', async ({ page }) => {
-    // Clear and fill Issuer
-    const issuerInput = page
-      .locator('div')
-      .filter({ hasText: /^Issuer \(entityID\)$/ })
-      .getByRole('textbox')
+    const issuerInput = page.locator('#saml-request-issuer-input')
     await issuerInput.clear()
     await issuerInput.fill('https://sp.example.com')
 
-    // Clear and fill Destination
-    const destinationInput = page
-      .locator('div')
-      .filter({ hasText: /^Destination \(IdP SSO URL\)$/ })
-      .getByRole('textbox')
+    const destinationInput = page.locator('#saml-request-destination-input')
     await destinationInput.clear()
     await destinationInput.fill('https://idp.example.com/sso')
 
-    // Clear and fill AssertionConsumerServiceURL
-    const acsInput = page
-      .locator('div')
-      .filter({ hasText: /^AssertionConsumerServiceURL$/ })
-      .getByRole('textbox')
+    const acsInput = page.locator('#saml-request-acs-input')
     await acsInput.clear()
     await acsInput.fill('https://sp.example.com/saml/acs')
 
-    // Check that XML tab shows generated SAML Request
-    await page.click('button:has-text("XML")')
+    await page.click('[data-testid="saml-request-tab-xml"]')
     await expect(page.locator('text=Generated AuthnRequest XML')).toBeVisible()
 
     // Verify XML contains our values
@@ -55,14 +42,12 @@ test.describe('SAML Request Builder', () => {
     await expect(xmlPanel).toContainText('https://idp.example.com/sso')
     await expect(xmlPanel).toContainText('https://sp.example.com/saml/acs')
 
-    // Check Encoded tab
-    await page.click('button:has-text("Encoded")')
+    await page.click('[data-testid="saml-request-tab-encoded"]')
     await expect(page.locator('text=HTTP-POST: Base64 SAMLRequest')).toBeVisible()
 
-    // For HTTP-POST binding, verify form is shown
-    await page.click('button:has-text("Launch")')
+    await page.click('[data-testid="saml-request-tab-launch"]')
     const postForm = page.locator('form[method="post"]')
     await expect(postForm).toBeVisible()
-    await expect(postForm.locator('button:has-text("Submit POST to IdP")')).toBeVisible()
+    await expect(page.locator('[data-testid="saml-request-submit-post-button"]')).toBeVisible()
   })
 })

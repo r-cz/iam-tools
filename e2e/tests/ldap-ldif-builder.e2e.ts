@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { selectors } from '../helpers/selectors'
 
 test.describe('LDAP LDIF Builder', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.click('text=LDAP')
-    await page.click('text=LDIF Builder')
+    await page.goto('/ldap/ldif-builder')
     await expect(page).toHaveURL('/ldap/ldif-builder')
   })
 
@@ -16,7 +15,7 @@ test.describe('LDAP LDIF Builder', () => {
   })
 
   test('should allow user to input LDIF entries', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await expect(ldifInput).toBeVisible()
 
     const sampleLdif = `dn: uid=jdoe,ou=people,dc=example,dc=com
@@ -30,29 +29,22 @@ sn: Doe`
   })
 
   test('should show templates popover when clicked', async ({ page }) => {
-    const templatesButton = page.locator('button:has-text("Templates")')
-    await templatesButton.click()
-
-    // Should show template options - look specifically in the popover content
+    await page.click(selectors.ldap.ldifTemplatesButton)
     await expect(page.getByRole('button', { name: /Person/i }).first()).toBeVisible()
   })
 
   test('should insert template when selected', async ({ page }) => {
-    await page.click('button:has-text("Templates")')
+    await page.click(selectors.ldap.ldifTemplatesButton)
 
-    // Click on a template (assuming "Person" template exists)
-    const firstTemplate = page.locator('button:has-text("Person")').first()
-    await firstTemplate.click()
+    await page.locator('button:has-text("Person")').first().click()
 
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
-    const value = await ldifInput.inputValue()
-
-    expect(value).toContain('dn:')
-    expect(value).toContain('objectClass')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
+    await expect(ldifInput).toHaveValue(/dn:/)
+    await expect(ldifInput).toHaveValue(/objectClass/)
   })
 
   test('should show quick metrics after LDIF input', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=jdoe,ou=people,dc=example,dc=com
 objectClass: person
 cn: John Doe
@@ -64,27 +56,24 @@ cn: Alice Smith
 sn: Smith`)
 
     await expect(page.locator('text=Quick Metrics')).toBeVisible()
-    // Look for the metric label specifically in the metrics section
     await expect(page.locator('dt:has-text("Entries")').first()).toBeVisible()
   })
 
   test('should clear LDIF when clear button clicked', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=test,dc=example,dc=com\ncn: Test`)
 
-    const clearButton = page.locator('button:has-text("Clear")').last()
-    await clearButton.click()
+    await page.click(selectors.ldap.ldifClearButton)
 
     await expect(ldifInput).toHaveValue('')
   })
 
   test('should show parsed entries section', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=test,dc=example,dc=com
 cn: Test User`)
 
     await expect(page.locator('text=Parsed Entries')).toBeVisible()
-    // Look for the DN in the parsed entries section (now using details/summary)
     await expect(page.locator('summary:has-text("uid=test,dc=example,dc=com")')).toBeVisible()
   })
 
@@ -94,17 +83,14 @@ cn: Test User`)
   })
 
   test('should show schemas popover with built-in schemas', async ({ page }) => {
-    const schemasButton = page.locator('button:has-text("Schemas")')
-    await schemasButton.click()
+    await page.click(selectors.ldap.ldifSchemasButton)
 
-    // Should show the schema selection popover with built-in schemas section
     await expect(page.locator('text=Built-in Schemas')).toBeVisible()
-    // Use exact match for the section header
     await expect(page.getByText('Saved Schemas', { exact: true })).toBeVisible()
   })
 
   test('should show copy button and copy LDIF', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=test,dc=example,dc=com
 cn: Test`)
 
@@ -113,12 +99,11 @@ cn: Test`)
   })
 
   test('should show upload button', async ({ page }) => {
-    const uploadButton = page.locator('button:has-text("Upload")')
-    await expect(uploadButton).toBeVisible()
+    await expect(page.locator(selectors.ldap.ldifUploadButton)).toBeVisible()
   })
 
   test('should parse multiple LDIF entries correctly', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=user1,dc=example,dc=com
 cn: User One
 objectClass: person
@@ -131,15 +116,11 @@ dn: uid=user3,dc=example,dc=com
 cn: User Three
 objectClass: person`)
 
-    // Wait for parsing
-    await page.waitForTimeout(500)
-
-    // Check metrics show 3 entries
     await expect(page.locator('text=Quick Metrics')).toBeVisible()
   })
 
   test('should handle LDIF with multi-valued attributes', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=admin,dc=example,dc=com
 objectClass: person
 objectClass: organizationalPerson
@@ -148,52 +129,38 @@ cn: Admin User
 mail: admin@example.com
 mail: admin@corp.example.com`)
 
-    await page.waitForTimeout(500)
-
-    // Entry should be parsed and displayed
     await expect(page.locator('text=Parsed Entries')).toBeVisible()
-    // Look for the DN in the parsed entries section
     await expect(page.locator('summary:has-text("uid=admin,dc=example,dc=com")')).toBeVisible()
   })
 
   test('should show empty state when no LDIF provided', async ({ page }) => {
-    // With no LDIF input, metrics should show 0 entries
     await expect(page.locator('text=Quick Metrics')).toBeVisible()
-    // The Entries count should show 0
     await expect(page.locator('dt:has-text("Entries")').first()).toBeVisible()
   })
 
   test('should handle base64-encoded attributes in parsed entries', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=test,dc=example,dc=com
 cn: Test
 description:: VGVzdCBkZXNjcmlwdGlvbg==`)
-
-    await page.waitForTimeout(500)
 
     await expect(page.locator('text=Parsed Entries')).toBeVisible()
   })
 
   test('should show parse errors for malformed LDIF', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
-    // Missing DN
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`objectClass: person
 cn: No DN Entry`)
 
-    await page.waitForTimeout(500)
-
-    // Should show error
     await expect(page.locator('text=Issues while parsing LDIF')).toBeVisible()
   })
 
   test('should show file input for upload (hidden)', async ({ page }) => {
-    // File input should exist but be hidden
-    const fileInput = page.locator('input[type="file"]')
-    await expect(fileInput).toBeHidden()
+    await expect(page.locator('input[type="file"]')).toBeHidden()
   })
 
   test('should count attribute values correctly', async ({ page }) => {
-    const ldifInput = page.locator('textarea[placeholder*="dn: uid=jdoe"]')
+    const ldifInput = page.locator(selectors.ldap.ldifInput)
     await ldifInput.fill(`dn: uid=test,dc=example,dc=com
 objectClass: person
 objectClass: inetOrgPerson
@@ -202,9 +169,6 @@ mail: test1@example.com
 mail: test2@example.com
 mail: test3@example.com`)
 
-    await page.waitForTimeout(500)
-
-    // Should show metrics with attribute value count (use exact match)
     await expect(page.locator('dt:has-text("Attribute values")').first()).toBeVisible()
   })
 })
