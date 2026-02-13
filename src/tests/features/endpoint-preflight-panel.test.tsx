@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react'
 import { EndpointPreflightPanel } from '@/features/oauthPlayground/components/EndpointPreflightPanel'
 
 const runOidcEndpointPreflightMock = mock(async () => ({
@@ -24,6 +24,10 @@ const runOidcEndpointPreflightMock = mock(async () => ({
 describe('EndpointPreflightPanel', () => {
   beforeEach(() => {
     runOidcEndpointPreflightMock.mockClear()
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   test('auto-runs once per trigger value and emits report via onReport', async () => {
@@ -91,7 +95,7 @@ describe('EndpointPreflightPanel', () => {
   })
 
   test('supports manual run button without auto-run trigger', async () => {
-    render(
+    const view = render(
       <EndpointPreflightPanel
         issuerUrl="https://issuer.example.com"
         onIssuerUrlChange={() => {}}
@@ -99,12 +103,12 @@ describe('EndpointPreflightPanel', () => {
       />
     )
 
-    fireEvent.click(screen.getByTestId('oidc-preflight-run-button'))
+    fireEvent.click(within(view.container).getByTestId('oidc-preflight-run-button'))
 
     await waitFor(() => {
       expect(runOidcEndpointPreflightMock).toHaveBeenCalledTimes(1)
     })
 
-    expect(await screen.findByTestId('oidc-preflight-report')).toBeTruthy()
+    expect(await within(view.container).findByTestId('oidc-preflight-report')).toBeTruthy()
   })
 })
