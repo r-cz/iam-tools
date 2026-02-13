@@ -56,8 +56,9 @@ describe('EndpointPreflightPanel', () => {
       />
     )
 
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(runOidcEndpointPreflightMock).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(runOidcEndpointPreflightMock).toHaveBeenCalledTimes(1)
+    })
 
     rerender(
       <EndpointPreflightPanel
@@ -84,8 +85,9 @@ describe('EndpointPreflightPanel', () => {
       />
     )
 
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(runOidcEndpointPreflightMock).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(runOidcEndpointPreflightMock).not.toHaveBeenCalled()
+    })
   })
 
   test('supports manual run button without auto-run trigger', async () => {
@@ -103,6 +105,6 @@ describe('EndpointPreflightPanel', () => {
       expect(runOidcEndpointPreflightMock).toHaveBeenCalledTimes(1)
     })
 
-    expect(screen.getByTestId('oidc-preflight-report')).toBeTruthy()
+    expect(await screen.findByTestId('oidc-preflight-report')).toBeTruthy()
   })
 })
