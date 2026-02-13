@@ -48,7 +48,11 @@ export function LaunchTab({
             <JsonDisplay data={redirectUrl} language="text" maxHeight="120px" />
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => window.open(redirectUrl, '_blank')} disabled={!redirectUrl}>
+            <Button
+              onClick={() => window.open(redirectUrl, '_blank')}
+              disabled={!redirectUrl}
+              data-testid="saml-request-open-redirect-button"
+            >
               Open Redirect URL
             </Button>
             <Button
@@ -141,7 +145,11 @@ export function LaunchTab({
           {relayState && <input type="hidden" name="RelayState" value={relayState} />}
           <div className="text-xs text-muted-foreground">Submits via HTTP-POST to the IdP</div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={!isDestinationValid}>
+            <Button
+              type="submit"
+              disabled={!isDestinationValid}
+              data-testid="saml-request-submit-post-button"
+            >
               Submit POST to IdP
             </Button>
             <Button

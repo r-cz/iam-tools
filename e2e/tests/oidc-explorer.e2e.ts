@@ -16,18 +16,14 @@ test.describe('OIDC Explorer', () => {
   })
 
   test('should have disabled fetch button initially', async ({ page }) => {
-    const fetchButton = await utils.getButtonByText('Fetch Config')
-    await expect(fetchButton).toBeDisabled()
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeDisabled()
   })
 
   test('should load random example provider', async ({ page }) => {
-    // Click random example button
     await page.click(selectors.oidcExplorer.randomExample)
 
-    // Verify URL input is populated
     const urlInput = page.locator(selectors.oidcExplorer.urlInput)
-    const urlValue = await urlInput.inputValue()
-    expect(urlValue).toBeTruthy()
+    await expect(urlInput).not.toHaveValue('')
 
     const fullUrl = await urlInput.getAttribute('data-full-url')
     expect(fullUrl).toBeTruthy()
@@ -35,27 +31,30 @@ test.describe('OIDC Explorer', () => {
 
     const schemePrefix = await page.locator(selectors.oidcExplorer.schemePrefix).textContent()
     expect(fullUrl?.startsWith((schemePrefix ?? '').trim())).toBeTruthy()
-    expect(fullUrl?.replace(/^https?:\/\//, '')).toBe(urlValue)
 
-    // Fetch button should be enabled
-    await utils.waitForButtonEnabled('Fetch Config')
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
   })
 
   test('should fetch OIDC configuration for demo endpoint', async ({ page }) => {
-    // Use the local demo endpoint
-    const demoUrl = 'http://localhost:5173/oauth-playground/demo'
+    const demoUrl = 'http://localhost:8788/api'
     await utils.fillInput(selectors.oidcExplorer.urlInput, demoUrl)
 
-    // Fetch button should be enabled
-    await utils.waitForButtonEnabled('Fetch Config')
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
 
-    // Click Fetch Config
-    await page.click(selectors.buttons.fetchConfig)
+    const discoveryResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/.well-known/openid-configuration') &&
+        response.request().method() === 'GET'
+    )
 
-    // Wait for loading to complete - look for configuration display
-    await page.waitForSelector('text=Configuration', { timeout: 10000 })
+    await page.click(selectors.oidcExplorer.fetchConfigButton)
+    const discoveryResponse = await discoveryResponsePromise
+    expect(discoveryResponse.ok()).toBeTruthy()
 
-    // Verify the URL is still in the input (basic check)
+    await expect(page.locator(selectors.oidcExplorer.configTab)).toBeVisible({
+      timeout: 10000,
+    })
+
     const urlValue = await page.locator(selectors.oidcExplorer.urlInput).inputValue()
     expect(urlValue).toBe(demoUrl.replace(/^https?:\/\//, ''))
 
@@ -63,62 +62,32 @@ test.describe('OIDC Explorer', () => {
       .locator(selectors.oidcExplorer.urlInput)
       .getAttribute('data-full-url')
     expect(fullUrl).toBe(demoUrl)
+
     const schemePrefix = await page.locator(selectors.oidcExplorer.schemePrefix).textContent()
     expect((schemePrefix ?? '').trim()).toBe('http://')
   })
 
-  test('should display configuration details', async ({ page }) => {
-    // For this test, let's just verify the UI works with random example
-    await page.click(selectors.oidcExplorer.randomExample)
-    await page.waitForTimeout(500)
-
-    // Verify a URL was populated
-    const urlInput = page.locator(selectors.oidcExplorer.urlInput)
-    const urlValue = await urlInput.inputValue()
-    expect(urlValue).toBeTruthy()
-
-    // Verify the fetch button is enabled
-    const fetchButton = await utils.getButtonByText('Fetch Config')
-    await expect(fetchButton).toBeEnabled()
-
-    // For now, let's not test the actual fetching as it seems to timeout
-    // in the test environment
-  })
-
-  test('should handle invalid OIDC URL', async ({ page }) => {
-    // Enter invalid URL
+  test('should handle invalid OIDC URL without hanging', async ({ page }) => {
     await utils.fillInput(selectors.oidcExplorer.urlInput, 'https://invalid.example.com')
 
-    // Click Fetch Config
-    await utils.waitForButtonEnabled('Fetch Config')
-    await page.click(selectors.buttons.fetchConfig)
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
+    await page.click(selectors.oidcExplorer.fetchConfigButton)
 
-    // Wait for loading to finish
-    await page.waitForTimeout(3000)
-
-    // After timeout, we should either see an error or the loading should have stopped
-    const fetchingText = await page.locator('text=Fetching configuration...').isVisible()
-    const hasError = await page
-      .locator(
-        '[role="alert"]:has-text("Error"), .sonner-toast:has-text("Error"), .sonner-toast:has-text("Failed")'
-      )
-      .first()
-      .isVisible()
-
-    // Either we should see an error or the fetching should have stopped
-    expect(fetchingText || hasError).toBeTruthy()
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled({
+      timeout: 10000,
+    })
+    await expect(page.locator('text=Fetching configuration...')).not.toBeVisible()
   })
 
   test('should detect known providers', async ({ page }) => {
-    // Test with Google
     await utils.fillInput(selectors.oidcExplorer.urlInput, 'https://accounts.google.com')
-    await utils.waitForButtonEnabled('Fetch Config')
-    await page.click(selectors.buttons.fetchConfig)
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
+    await page.click(selectors.oidcExplorer.fetchConfigButton)
 
-    // Wait for loading to complete
-    await page.waitForTimeout(3000)
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled({
+      timeout: 10000,
+    })
 
-    // Verify Google URL is still in the input (basic validation)
     const urlValue = await page.locator(selectors.oidcExplorer.urlInput).inputValue()
     expect(urlValue).toBe('accounts.google.com')
 
@@ -131,80 +100,46 @@ test.describe('OIDC Explorer', () => {
   })
 
   test('should copy configuration to clipboard', async ({ page }) => {
-    // Use random example
-    await page.click(selectors.oidcExplorer.randomExample)
-    await page.waitForTimeout(500)
+    await page.locator(selectors.oidcExplorer.urlInput).fill('http://localhost:8788/api')
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
 
-    // Fetch configuration
-    await page.click(selectors.buttons.fetchConfig)
+    const discoveryResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/.well-known/openid-configuration') &&
+        response.request().method() === 'GET'
+    )
 
-    // Wait for configuration to load
-    await page.waitForSelector('text=Configuration', { timeout: 10000 })
+    await page.click(selectors.oidcExplorer.fetchConfigButton)
+    const discoveryResponse = await discoveryResponsePromise
+    expect(discoveryResponse.ok()).toBeTruthy()
 
-    // Click copy button if available
+    await expect(page.locator(selectors.oidcExplorer.configTab)).toBeVisible({
+      timeout: 10000,
+    })
+
     const copyButtons = page.locator('button:has-text("Copy")')
     if ((await copyButtons.count()) > 0) {
+      await expect(copyButtons.first()).toBeEnabled()
       await copyButtons.first().click()
-      // Just verify the button was clickable
-      await page.waitForTimeout(500)
-    }
-  })
-
-  test('should expand/collapse configuration sections', async ({ page }) => {
-    // Use random example
-    await page.click(selectors.oidcExplorer.randomExample)
-    await page.waitForTimeout(500)
-
-    // Fetch configuration
-    await page.click(selectors.buttons.fetchConfig)
-
-    // Wait for configuration to load
-    await page.waitForSelector('text=Configuration', { timeout: 10000 })
-
-    // Look for expandable/collapsible elements - they might have different attributes
-    const expandButtons = page.locator('button').filter({ hasText: /Show|Hide|Toggle/ })
-    const count = await expandButtons.count()
-
-    if (count > 0) {
-      // Click the first toggle button
-      await expandButtons.first().click()
-      await page.waitForTimeout(500)
-
-      // Just verify the click worked - don't check specific state
-      expect(count).toBeGreaterThan(0)
-    } else {
-      // If no expandable sections, just pass the test
-      expect(true).toBe(true)
     }
   })
 
   test('should clear input and disable fetch button', async ({ page }) => {
-    // Enter URL
     await utils.fillInput(selectors.oidcExplorer.urlInput, 'https://iam.tools/demo')
-    await utils.waitForButtonEnabled('Fetch Config')
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
 
-    // Clear input
     await page.locator(selectors.oidcExplorer.urlInput).clear()
 
-    // Fetch button should be disabled
-    const fetchButton = await utils.getButtonByText('Fetch Config')
-    await expect(fetchButton).toBeDisabled()
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeDisabled()
   })
 
   test('should validate URL format', async ({ page }) => {
-    // The URL validation might be more lenient than expected
-    // Let's test with completely empty input first
     const urlInput = page.locator(selectors.oidcExplorer.urlInput)
     await urlInput.clear()
 
-    // With empty input, button should be disabled
-    const fetchButton = await utils.getButtonByText('Fetch Config')
-    await expect(fetchButton).toBeDisabled()
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeDisabled()
 
-    // Enter valid URL format
     await utils.fillInput(selectors.oidcExplorer.urlInput, 'https://example.com')
-
-    // Fetch button should be enabled
-    await utils.waitForButtonEnabled('Fetch Config')
+    await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
   })
 })

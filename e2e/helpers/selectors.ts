@@ -1,64 +1,99 @@
 export const selectors = {
   // Navigation
   nav: {
-    home: 'a[href="/"]',
-    tokenInspector: 'a[href="/token-inspector"]',
-    oidcExplorer: 'a[href="/oidc-explorer"]',
-    oauthPlayground: 'button:has-text("OAuth Playground")',
-    authCodePkce: 'a[href="/oauth-playground/auth-code-pkce"]',
-    clientCredentials: 'a[href="/oauth-playground/client-credentials"]',
-    introspection: 'a[href="/oauth-playground/introspection"]',
-    userinfo: 'a[href="/oauth-playground/userinfo"]',
+    home: '[data-testid="sidebar-nav-home"]',
+    tokenInspector: '[data-testid="sidebar-nav-token-inspector"]',
+    oidcExplorer: '[data-testid="sidebar-nav-oidc-explorer"]',
+    oauthPlayground: '[data-testid="sidebar-nav-oauth-playground"]',
+    authCodePkce: '[data-testid="sidebar-nav-oauth-auth-code"]',
+    clientCredentials: '[data-testid="sidebar-nav-oauth-client-credentials"]',
+    introspection: '[data-testid="sidebar-nav-oauth-introspection"]',
+    userinfo: '[data-testid="sidebar-nav-oauth-userinfo"]',
   },
 
   // Common buttons
   buttons: {
-    primary: '.bg-primary',
-    secondary: '.bg-secondary',
-    example: 'button:has-text("Example")',
-    clear: 'button:has-text("Clear")',
-    reset: 'button:has-text("Clear")', // Alias for backward compatibility
-    fetchConfig: 'button:has-text("Fetch Config")',
-    inspectToken: 'button:has-text("Inspect Token")',
+    example: '[data-testid="token-inspector-example-button"]',
+    clear: '[data-testid="token-inspector-clear-button"]',
+    reset: '[data-testid="token-inspector-clear-button"]',
+    fetchConfig: '[data-testid="oidc-explorer-fetch-config-button"]',
+    inspectToken: '[data-testid="token-inspector-inspect-button"]',
+  },
+
+  // Home cards
+  home: {
+    tokenInspector: '[data-testid="home-card-token-inspector"]',
+    oidcExplorer: '[data-testid="home-card-oidc-explorer"]',
+    oauthPlayground: '[data-testid="home-card-oauth-playground"]',
   },
 
   // Token Inspector
   tokenInspector: {
-    tokenInput: 'textarea#token-input',
-    tokenDisplay: '.token-display',
-    headerTab: 'button[role="tab"]:has-text("Header")',
-    payloadTab: 'button[role="tab"]:has-text("Payload")',
-    signatureTab: 'button[role="tab"]:has-text("Signature")',
-    timelineTab: 'button[role="tab"]:has-text("Timeline")',
+    tokenInput: '#token-input',
+    headerTab: '[data-testid="token-inspector-tab-header"]',
+    payloadTab: '[data-testid="token-inspector-tab-payload"]',
+    signatureTab: '[data-testid="token-inspector-tab-signature"]',
+    timelineTab: '[data-testid="token-inspector-tab-timeline"]',
     signatureValid: 'text=Signature Valid',
-    tokenSize: 'button:has-text("Token Size")',
+    tokenSizeToggle: '[data-testid="token-inspector-token-size-toggle"]',
   },
 
   // OIDC Explorer
   oidcExplorer: {
-    urlInput: 'input#issuer-url',
-    randomExample: 'button[title="Load random example"]',
+    urlInput: '[data-testid="oidc-explorer-issuer-input"]',
+    randomExample: '[data-testid="oidc-explorer-random-issuer-button"]',
     schemePrefix: '[data-testid="issuer-url-scheme"]',
-    configDisplay: '.config-display',
-    jwksDisplay: '.jwks-display',
+    fetchConfigButton: '[data-testid="oidc-explorer-fetch-config-button"]',
+    configTab: '[data-testid="oidc-explorer-tab-config"]',
   },
 
   // OAuth Playground
   oauthPlayground: {
     demoModeSwitch: '#demo-mode-switch',
-    authUrlInput: 'input[placeholder*="example.com/authorize"]',
-    tokenUrlInput: 'input[placeholder*="example.com/token"]',
-    clientIdInput: 'input#oauth-client-id',
-    clientSecretInput: 'input#oauth-client-secret',
+    authUrlInput: '#oauth-authcode-authorization-endpoint',
+    tokenUrlInput: '#oauth-authcode-token-endpoint',
+    clientIdInput: '#oauth-client-id',
+    clientSecretInput: '#oauth-client-secret',
     scopeInput: 'input[placeholder*="openid profile email"]',
-    startAuthButton: 'button:has-text("Continue to Authorization")',
-    exchangeTokenButton: 'button:has-text("Exchange Token")',
+    startAuthButton: '[data-testid="oauth-authcode-continue-button"]',
+    tabConfig: '[data-testid="oauth-authcode-tab-config"]',
+    tabAuth: '[data-testid="oauth-authcode-tab-auth"]',
+    tabToken: '[data-testid="oauth-authcode-tab-token"]',
+    launchAuthorizationButton: '[data-testid="oauth-authcode-launch-authorization-button"]',
+    preflightPanel: '[data-testid="oidc-preflight-panel"]',
+    preflightRunButton: '[data-testid="oidc-preflight-run-button"]',
+    preflightReport: '[data-testid="oidc-preflight-report"]',
+    preflightRawReport: '[data-testid="oidc-preflight-raw-report"]',
+    issuerHistoryButton: 'button[aria-label="Recent Issuers"]',
+    clientCredentialsTokenEndpointInput:
+      '[data-testid="oauth-client-credentials-token-endpoint-input"]',
+    clientCredentialsSubmitButton: '[data-testid="oauth-client-credentials-submit-button"]',
+    introspectionEndpointInput: '[data-testid="oauth-introspection-endpoint-input"]',
+    introspectionTokenInput: '[data-testid="oauth-introspection-token-input"]',
+    introspectionSubmitButton: '[data-testid="oauth-introspection-submit-button"]',
+    userInfoEndpointInput: '[data-testid="oauth-userinfo-endpoint-input"]',
+    userInfoAccessTokenInput: '[data-testid="oauth-userinfo-access-token-input"]',
+    userInfoSubmitButton: '[data-testid="oauth-userinfo-submit-button"]',
+  },
+
+  // LDAP
+  ldap: {
+    schemaInput: '[data-testid="ldap-schema-input"]',
+    schemaBuiltInButton: '[data-testid="ldap-schema-built-in-button"]',
+    schemaSavedButton: '[data-testid="ldap-schema-saved-button"]',
+    schemaSaveButton: '[data-testid="ldap-schema-save-button"]',
+    schemaClearButton: '[data-testid="ldap-schema-clear-button"]',
+    ldifInput: '[data-testid="ldap-ldif-input"]',
+    ldifUploadButton: '[data-testid="ldap-ldif-upload-button"]',
+    ldifTemplatesButton: '[data-testid="ldap-ldif-templates-button"]',
+    ldifSchemasButton: '[data-testid="ldap-ldif-schemas-button"]',
+    ldifClearButton: '[data-testid="ldap-ldif-clear-button"]',
   },
 
   // Notifications
   toast: {
-    success: '[role="status"]:has-text("success")',
-    error: '[role="status"]:has-text("error")',
+    success: '[role="status"]',
+    error: '[role="status"]',
     close: 'button[aria-label="Close toast"]',
   },
 }

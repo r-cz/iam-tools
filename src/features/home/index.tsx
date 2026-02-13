@@ -37,7 +37,11 @@ export default function HomePage() {
               interactive
               className="h-full border border-blue-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-blue-500/30 dark:bg-card/80 dark:text-white dark:hover:bg-card/90 dark:focus-visible:ring-white/60"
             >
-              <Link to="/token-inspector" className="flex h-full w-full items-center gap-4 p-6">
+              <Link
+                to="/token-inspector"
+                className="flex h-full w-full items-center gap-4 p-6"
+                data-testid="home-card-token-inspector"
+              >
                 <ItemMedia
                   variant="icon"
                   className="bg-blue-500/10 text-blue-600 dark:bg-white/20 dark:text-white"
@@ -60,7 +64,11 @@ export default function HomePage() {
               interactive
               className="h-full border border-indigo-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:border-indigo-500/30 dark:bg-card/80 dark:text-white dark:hover:bg-card/90 dark:focus-visible:ring-white/60"
             >
-              <Link to="/oidc-explorer" className="flex h-full w-full items-center gap-4 p-6">
+              <Link
+                to="/oidc-explorer"
+                className="flex h-full w-full items-center gap-4 p-6"
+                data-testid="home-card-oidc-explorer"
+              >
                 <ItemMedia
                   variant="icon"
                   className="bg-indigo-500/10 text-indigo-600 dark:bg-white/20 dark:text-white"
@@ -83,7 +91,11 @@ export default function HomePage() {
               interactive
               className="h-full border border-emerald-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-emerald-500/30 dark:bg-card/80 dark:text-white dark:hover:bg-card/90 dark:focus-visible:ring-white/60"
             >
-              <Link to="/oauth-playground" className="flex h-full w-full items-center gap-4 p-6">
+              <Link
+                to="/oauth-playground"
+                className="flex h-full w-full items-center gap-4 p-6"
+                data-testid="home-card-oauth-playground"
+              >
                 <ItemMedia
                   variant="icon"
                   className="bg-emerald-500/10 text-emerald-600 dark:bg-white/20 dark:text-white"
@@ -118,6 +130,7 @@ export default function HomePage() {
                 <Link
                   to="/saml/response-decoder"
                   className="flex h-full w-full items-center gap-4 p-6"
+                  data-testid="home-card-saml-response-decoder"
                 >
                   <ItemMedia
                     variant="icon"
@@ -144,6 +157,7 @@ export default function HomePage() {
                 <Link
                   to="/saml/request-builder"
                   className="flex h-full w-full items-center gap-4 p-6"
+                  data-testid="home-card-saml-request-builder"
                 >
                   <ItemMedia
                     variant="icon"
@@ -171,6 +185,7 @@ export default function HomePage() {
                 <Link
                   to="/saml/metadata-validator"
                   className="flex h-full w-full items-center gap-4 p-6"
+                  data-testid="home-card-saml-metadata-validator"
                 >
                   <ItemMedia
                     variant="icon"
@@ -194,7 +209,11 @@ export default function HomePage() {
                 interactive
                 className="h-full border border-sky-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-sky-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:border-sky-500/30 dark:bg-card/80 dark:text-white dark:hover:bg-card/90 dark:focus-visible:ring-white/60"
               >
-                <Link to="/saml/sp-metadata" className="flex h-full w-full items-center gap-4 p-6">
+                <Link
+                  to="/saml/sp-metadata"
+                  className="flex h-full w-full items-center gap-4 p-6"
+                  data-testid="home-card-saml-sp-metadata"
+                >
                   <ItemMedia
                     variant="icon"
                     className="bg-sky-500/10 text-sky-600 dark:bg-white/20 dark:text-white"
@@ -228,6 +247,7 @@ export default function HomePage() {
                 <Link
                   to="/ldap/schema-explorer"
                   className="flex h-full w-full items-center gap-4 p-6"
+                  data-testid="home-card-ldap-schema-explorer"
                 >
                   <ItemMedia
                     variant="icon"
@@ -252,7 +272,11 @@ export default function HomePage() {
                 interactive
                 className="h-full border border-rose-100 bg-white text-slate-900 shadow-sm transition-colors hover:bg-rose-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 dark:border-rose-500/30 dark:bg-card/80 dark:text-white dark:hover:bg-card/90 dark:focus-visible:ring-white/60"
               >
-                <Link to="/ldap/ldif-builder" className="flex h-full w-full items-center gap-4 p-6">
+                <Link
+                  to="/ldap/ldif-builder"
+                  className="flex h-full w-full items-center gap-4 p-6"
+                  data-testid="home-card-ldap-ldif-builder"
+                >
                   <ItemMedia
                     variant="icon"
                     className="bg-rose-500/10 text-rose-600 dark:bg-white/20 dark:text-white"

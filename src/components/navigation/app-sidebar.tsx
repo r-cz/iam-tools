@@ -129,6 +129,28 @@ const menuTree = [
   },
 ]
 
+function getSidebarItemTestId(url?: string): string | undefined {
+  const mapping: Record<string, string> = {
+    '/': 'sidebar-nav-home',
+    '/token-inspector': 'sidebar-nav-token-inspector',
+    '/oidc-explorer': 'sidebar-nav-oidc-explorer',
+    '/oauth-playground': 'sidebar-nav-oauth-playground-root',
+    '/oauth-playground/auth-code-pkce': 'sidebar-nav-oauth-auth-code',
+    '/oauth-playground/client-credentials': 'sidebar-nav-oauth-client-credentials',
+    '/oauth-playground/introspection': 'sidebar-nav-oauth-introspection',
+    '/oauth-playground/userinfo': 'sidebar-nav-oauth-userinfo',
+    '/saml/response-decoder': 'sidebar-nav-saml-response-decoder',
+    '/saml/request-builder': 'sidebar-nav-saml-request-builder',
+    '/saml/metadata-validator': 'sidebar-nav-saml-metadata-validator',
+    '/saml/sp-metadata': 'sidebar-nav-saml-sp-metadata',
+    '/ldap/schema-explorer': 'sidebar-nav-ldap-schema-explorer',
+    '/ldap/ldif-builder': 'sidebar-nav-ldap-ldif-builder',
+  }
+
+  if (!url) return undefined
+  return mapping[url]
+}
+
 // Recursive component to render menu items
 function MenuTreeItem({ item }: { item: any }) {
   // If it has subitems, render as collapsible
@@ -140,7 +162,11 @@ function MenuTreeItem({ item }: { item: any }) {
           defaultOpen={true}
         >
           <CollapsibleTrigger asChild>
-            <SidebarMenuButton>
+            <SidebarMenuButton
+              data-testid={
+                item.url === '/oauth-playground' ? 'sidebar-nav-oauth-playground' : undefined
+              }
+            >
               <ChevronRight className="transition-transform" />
               <item.icon />
               <span className="truncate">{item.title}</span>
@@ -155,7 +181,7 @@ function MenuTreeItem({ item }: { item: any }) {
                   ) : (
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton asChild>
-                        <Link to={subItem.url}>
+                        <Link to={subItem.url} data-testid={getSidebarItemTestId(subItem.url)}>
                           {subItem.icon && <subItem.icon className="mr-2 size-4" />}
                           <span className="truncate">{subItem.title}</span>
                         </Link>
@@ -175,7 +201,7 @@ function MenuTreeItem({ item }: { item: any }) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild>
-        <Link to={item.url}>
+        <Link to={item.url} data-testid={getSidebarItemTestId(item.url)}>
           <item.icon />
           <span className="truncate">{item.title}</span>
         </Link>
@@ -191,7 +217,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link to="/">
+              <Link to="/" data-testid="sidebar-nav-home">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <Fingerprint className="size-4" />
                 </div>

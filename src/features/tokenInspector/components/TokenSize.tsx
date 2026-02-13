@@ -48,7 +48,10 @@ export function TokenSize({ token }: TokenSizeProps) {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-      <CollapsibleTrigger className="flex w-full items-center justify-between p-2 rounded-md border hover:bg-muted/50 transition-colors">
+      <CollapsibleTrigger
+        className="flex w-full items-center justify-between p-2 rounded-md border hover:bg-muted/50 transition-colors"
+        data-testid="token-inspector-token-size-toggle"
+      >
         <span className="text-sm font-medium">Token Size: {totalSize} bytes</span>
         <ChevronDown
           className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}

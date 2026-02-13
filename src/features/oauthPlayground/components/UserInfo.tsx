@@ -85,6 +85,7 @@ export function UserInfo() {
   const [isDemoMode, setIsDemoMode] = useState(false)
   const [configLoading, setConfigLoading] = useState(false)
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false)
+  const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
 
   // Auto-fill demo token when demo mode is enabled
   useEffect(() => {
@@ -129,6 +130,7 @@ export function UserInfo() {
       if (endpoints.userInfoEndpoint) {
         setUserInfoEndpoint(endpoints.userInfoEndpoint)
         addIssuer(normalizedIssuerUrl)
+        setPreflightAutoRunTrigger((value) => value + 1)
       } else {
         toast.error('This issuer does not have a userinfo endpoint configured')
       }
@@ -333,6 +335,7 @@ export function UserInfo() {
               </InputGroupAddon>
               <InputGroupInput
                 id="userinfo-endpoint"
+                data-testid="oauth-userinfo-endpoint-input"
                 type="url"
                 value={userInfoEndpoint}
                 onChange={(e) => setUserInfoEndpoint(e.target.value)}
@@ -356,6 +359,7 @@ export function UserInfo() {
                 issuerUrl={issuerUrl}
                 onIssuerUrlChange={setIssuerUrl}
                 requiredEndpoints={['userinfo_endpoint']}
+                autoRunTrigger={preflightAutoRunTrigger}
                 onConfigResolved={(config, normalizedIssuerUrl) => {
                   const endpoints = extractDiscoveredEndpoints(config)
                   setIssuerUrl(normalizedIssuerUrl)
@@ -400,6 +404,7 @@ export function UserInfo() {
               </InputGroupAddon>
               <InputGroupInput
                 id="access-token"
+                data-testid="oauth-userinfo-access-token-input"
                 value={accessToken}
                 onChange={(e) => setAccessToken(e.target.value)}
                 required={!isDemoMode}
@@ -408,7 +413,7 @@ export function UserInfo() {
               />
             </InputGroup>
 
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} data-testid="oauth-userinfo-submit-button">
               {loading ? 'Fetching...' : isDemoMode ? 'Get Demo UserInfo' : 'Get UserInfo'}
             </Button>
           </form>

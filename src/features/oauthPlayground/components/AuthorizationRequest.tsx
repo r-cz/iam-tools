@@ -213,7 +213,12 @@ export function AuthorizationRequest({
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={launchAuthorization} disabled={!authUrl} className="w-full">
+        <Button
+          onClick={launchAuthorization}
+          disabled={!authUrl}
+          className="w-full"
+          data-testid="oauth-authcode-launch-authorization-button"
+        >
           Launch Authorization Request
         </Button>
       </CardFooter>

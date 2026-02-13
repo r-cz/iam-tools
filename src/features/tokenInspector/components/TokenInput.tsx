@@ -161,6 +161,7 @@ export function TokenInput({
               variant="outline"
               className="flex items-center gap-1.5"
               aria-label="Load example token"
+              data-testid="token-inspector-example-button"
             >
               {isLoadingExample ? (
                 <>
@@ -180,6 +181,7 @@ export function TokenInput({
               className="flex items-center gap-1.5 border border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
               onClick={handleReset}
               aria-label="Clear token"
+              data-testid="token-inspector-clear-button"
             >
               <RotateCcw size={16} />
               <span className="hidden sm:inline">Clear</span>
@@ -200,6 +202,7 @@ export function TokenInput({
             highlight={highlightJwt}
             padding={10}
             textareaId="token-input"
+            data-testid="token-inspector-token-input"
             placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
             onKeyDown={handleEditorKeyDown}
             style={{
@@ -229,6 +232,7 @@ export function TokenInput({
             variant="outline"
             grouped={false}
             aria-label="Inspect token"
+            data-testid="token-inspector-inspect-button"
           >
             <Search size={16} />
             <span className="hidden sm:inline">Inspect Token</span>

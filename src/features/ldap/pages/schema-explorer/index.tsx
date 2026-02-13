@@ -355,6 +355,7 @@ export default function LdapSchemaExplorerPage() {
                         grouped={false}
                         className="flex items-center gap-1.5"
                         aria-label="Built-in schemas"
+                        data-testid="ldap-schema-built-in-button"
                       >
                         <Library size={16} />
                         <span className="hidden sm:inline">Built-in</span>
@@ -403,6 +404,7 @@ export default function LdapSchemaExplorerPage() {
                         grouped={false}
                         className="flex items-center gap-1.5"
                         aria-label="Saved schemas"
+                        data-testid="ldap-schema-saved-button"
                       >
                         <ScrollText size={16} />
                         <span className="hidden sm:inline">Saved</span>
@@ -474,6 +476,7 @@ export default function LdapSchemaExplorerPage() {
                       disabled={!hasInput}
                       className="flex items-center gap-1.5"
                       aria-label="Save schema"
+                      data-testid="ldap-schema-save-button"
                     >
                       <Save size={16} />
                       <span className="hidden sm:inline">Save</span>
@@ -510,6 +513,7 @@ export default function LdapSchemaExplorerPage() {
                     className="flex items-center gap-1.5 border border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => setSchemaText('')}
                     aria-label="Clear schema input"
+                    data-testid="ldap-schema-clear-button"
                   >
                     <Trash2 size={16} />
                     <span className="hidden sm:inline">Clear</span>
@@ -522,6 +526,7 @@ export default function LdapSchemaExplorerPage() {
                 placeholder={"attributeTypes: ( 1.3.6.1.4.1... NAME 'attribute' ... )"}
                 className="font-mono text-sm"
                 rows={10}
+                data-testid="ldap-schema-input"
               />
             </InputGroup>
             <p className="text-xs text-muted-foreground">

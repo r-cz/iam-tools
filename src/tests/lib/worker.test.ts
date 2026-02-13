@@ -165,6 +165,57 @@ describe('worker api', () => {
     expect(response.headers.get('Retry-After')).toBeTruthy()
   })
 
+  test('rejects OIDC preflight probe for disallowed targets', async () => {
+    const response = await worker.fetch(
+      buildRequest('/api/oidc-preflight-probe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          url: 'http://localhost:8080/oauth2/token',
+          method: 'POST',
+        }),
+      }),
+      createEnv()
+    )
+
+    expect(response.status).toBe(403)
+    const data = await response.json()
+    expect(data.ok).toBe(false)
+    expect(fetchCalls.length).toBe(0)
+  })
+
+  test('probes allowed endpoint via OIDC preflight probe route', async () => {
+    const targetUrl = 'https://issuer.example.com/oauth2/token'
+    const response = await worker.fetch(
+      buildRequest('/api/oidc-preflight-probe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          url: targetUrl,
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'grant_type=client_credentials&client_id=oidc_preflight',
+        }),
+      }),
+      createEnv()
+    )
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.ok).toBe(true)
+    expect(data.status).toBe(200)
+    expect(fetchCalls.length).toBe(1)
+
+    const requestArg = fetchCalls[0]
+    expect(requestArg instanceof Request).toBe(true)
+    const forwardedRequest = requestArg as Request
+    expect(forwardedRequest.url).toBe(targetUrl)
+    expect(forwardedRequest.method).toBe('POST')
+  })
+
   test('adds security headers to assets', async () => {
     const response = await worker.fetch(buildRequest('/'), createEnv())
 

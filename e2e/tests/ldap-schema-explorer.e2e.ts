@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { selectors } from '../helpers/selectors'
 
 test.describe('LDAP Schema Explorer', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.click('text=LDAP')
-    await page.click('text=Schema Explorer')
+    await page.goto('/ldap/schema-explorer')
     await expect(page).toHaveURL('/ldap/schema-explorer')
   })
 
@@ -16,7 +15,7 @@ test.describe('LDAP Schema Explorer', () => {
   })
 
   test('should allow user to input schema definitions', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await expect(schemaInput).toBeVisible()
 
     const sampleSchema = `attributeTypes: ( 2.5.4.41 NAME 'name' DESC 'Test attribute' EQUALITY caseIgnoreMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )`
@@ -26,31 +25,21 @@ test.describe('LDAP Schema Explorer', () => {
   })
 
   test('should load built-in schema when clicked', async ({ page }) => {
-    // Open the built-in schemas popover
-    const builtinButton = page.locator('button:has-text("Built-in")')
-    await builtinButton.click()
-
-    // Click on PingDirectory schema
+    await page.click(selectors.ldap.schemaBuiltInButton)
     await page.click('button:has-text("PingDirectory")')
 
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
-    const value = await schemaInput.inputValue()
-
-    expect(value).toContain('attributeTypes')
-    expect(value).toContain('objectClasses')
-    expect(value).toContain('pingDirectoryPerson')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
+    await expect(schemaInput).toHaveValue(/attributeTypes/)
+    await expect(schemaInput).toHaveValue(/objectClasses/)
+    await expect(schemaInput).toHaveValue(/pingDirectoryPerson/)
   })
 
   test('should parse and display attribute types', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(
       `attributeTypes: ( 2.5.4.3 NAME 'cn' DESC 'Common Name' EQUALITY caseIgnoreMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )`
     )
 
-    // Wait for parsing
-    await page.waitForTimeout(1000)
-
-    // Look for the section heading (h2 with exact text)
     await expect(page.locator('h2:has-text("Attribute Types")').first()).toBeVisible()
     await expect(page.locator('text=1 found')).toBeVisible()
     await expect(page.locator('text=cn').first()).toBeVisible()
@@ -58,14 +47,11 @@ test.describe('LDAP Schema Explorer', () => {
   })
 
   test('should parse and display object classes', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(
       `objectClasses: ( 2.5.6.6 NAME 'person' DESC 'RFC4519: represents a person' SUP top STRUCTURAL MUST ( sn $ cn ) MAY ( userPassword $ telephoneNumber ) )`
     )
 
-    await page.waitForTimeout(1000)
-
-    // Look for the section heading (h2 with exact text)
     await expect(page.locator('h2:has-text("Object Classes")').first()).toBeVisible()
     await expect(page.locator('text=1 found')).toBeVisible()
     await expect(page.locator('text=person').first()).toBeVisible()
@@ -73,59 +59,45 @@ test.describe('LDAP Schema Explorer', () => {
   })
 
   test('should show quick summary metrics', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(`attributeTypes: ( 2.5.4.3 NAME 'cn' )
 objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
-    await page.waitForTimeout(1000)
-
     await expect(page.locator('text=Quick Summary')).toBeVisible()
-    // Look for metrics labels specifically (dt elements)
     await expect(page.locator('dt:has-text("Object classes")').first()).toBeVisible()
     await expect(page.locator('dt:has-text("Attribute types")').first()).toBeVisible()
   })
 
   test('should display parse warnings for errors', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
-    // Invalid schema with malformed syntax
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(`attributeTypes: ( INVALID SYNTAX WITHOUT PROPER FORMAT `)
 
-    await page.waitForTimeout(1000)
-
-    // Should still attempt to parse but may show warnings - look for the section heading
     await expect(page.getByRole('heading', { name: 'Attribute Types' })).toBeVisible()
   })
 
   test('should clear schema when clear button clicked', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(`attributeTypes: ( 2.5.4.3 NAME 'cn' )`)
 
-    const clearButton = page.locator('button:has-text("Clear")')
-    await clearButton.click()
-
+    await page.click(selectors.ldap.schemaClearButton)
     await expect(schemaInput).toHaveValue('')
   })
 
   test('should show OID and type information for object classes', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(
       `objectClasses: ( 2.5.6.0 NAME 'top' DESC 'Top of superclass chain' ABSTRACT MUST objectClass )`
     )
 
-    await page.waitForTimeout(1000)
-
-    // OID is now displayed in a badge
     await expect(page.locator('span.font-mono:has-text("2.5.6.0")').first()).toBeVisible()
     await expect(page.locator('text=ABSTRACT').first()).toBeVisible()
   })
 
   test('should display required and optional attributes for object classes', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(
       `objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST ( sn $ cn ) MAY ( userPassword $ telephoneNumber ) )`
     )
-
-    await page.waitForTimeout(1000)
 
     await expect(page.locator('span.font-medium:has-text("Required:")').first()).toBeVisible()
     await expect(page.locator('text=sn, cn').first()).toBeVisible()
@@ -134,12 +106,10 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
   })
 
   test('should show attribute details including syntax and equality', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(
       `attributeTypes: ( 2.5.4.41 NAME 'name' EQUALITY caseIgnoreMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )`
     )
-
-    await page.waitForTimeout(1000)
 
     await expect(page.locator('text=name').first()).toBeVisible()
     await expect(page.locator('span.font-medium:has-text("Equality")').first()).toBeVisible()
@@ -148,15 +118,12 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
   })
 
   test('should expand raw definition on click', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(`attributeTypes: ( 2.5.4.3 NAME 'cn' DESC 'Common Name' )`)
-
-    await page.waitForTimeout(1000)
 
     const detailsElement = page.locator('details:has-text("Raw definition")').first()
     await detailsElement.click()
 
-    // Verify OID is visible within the expanded details section (in pre tag)
     await expect(detailsElement.locator('pre:has-text("2.5.4.3")')).toBeVisible()
   })
 
@@ -166,38 +133,28 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
   })
 
   test('should show saved schemas popover', async ({ page }) => {
-    const savedButton = page.locator('button:has-text("Saved")')
-    await expect(savedButton).toBeVisible()
+    await expect(page.locator(selectors.ldap.schemaSavedButton)).toBeVisible()
 
-    await savedButton.click()
+    await page.click(selectors.ldap.schemaSavedButton)
     await expect(page.locator('text=No saved schemas yet')).toBeVisible()
   })
 
   test('should save schema with custom name via save dialog', async ({ page }) => {
-    const schemaInput = page.locator('textarea[placeholder*="attributeTypes"]')
+    const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(`attributeTypes: ( 2.5.4.3 NAME 'cn' )
 objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
 
-    // Wait for parsing
-    await page.waitForTimeout(500)
+    await page.click(selectors.ldap.schemaSaveButton)
 
-    // Click the save button (use aria-label to be specific)
-    await page.click('button[aria-label="Save schema"]')
-
-    // Wait for dialog to open - look for the dialog title specifically
     await expect(page.getByRole('heading', { name: 'Save Schema' })).toBeVisible()
 
-    // Wait for input and check default value
     const nameInput = page.locator('#schema-name')
     await expect(nameInput).toBeVisible()
     await expect(nameInput).toHaveValue('person')
 
-    // Confirm save by clicking the dialog's Save button
     await page.getByRole('button', { name: 'Save Schema' }).click()
 
-    // Wait for dialog to close and then open saved schemas
-    await page.waitForTimeout(300)
-    await page.click('button:has-text("Saved")')
+    await page.click(selectors.ldap.schemaSavedButton)
     await expect(page.locator('p.text-sm.font-medium:has-text("person")')).toBeVisible()
   })
 })

@@ -13,12 +13,22 @@ export type OidcEndpointName =
 
 export type OidcDiscoveryEndpointName = Exclude<OidcEndpointName, 'discovery'>
 export type OidcEndpointStatus = 'pass' | 'warn' | 'fail'
+export type OidcPreflightReasonCode =
+  | 'reachable'
+  | 'auth_required'
+  | 'method_not_allowed'
+  | 'network_or_cors'
+  | 'missing_or_unavailable'
+  | 'server_error'
+  | 'invalid_url'
 
 export interface OidcPreflightRequest {
   issuerUrl: string
   requiredEndpoints?: OidcEndpointName[]
   includeOptionalEndpoints?: boolean
   timeoutMs?: number
+  enableServerAssistedProbes?: boolean
+  serverAssistedProbeFetcher?: OidcFetchFunction
 }
 
 export interface OidcEndpointPreflightResult {
@@ -26,6 +36,8 @@ export interface OidcEndpointPreflightResult {
   label: string
   method: 'GET' | 'HEAD' | 'POST'
   status: OidcEndpointStatus
+  required: boolean
+  reasonCode: OidcPreflightReasonCode
   url?: string
   httpStatus?: number
   httpStatusText?: string
@@ -90,6 +102,9 @@ const ENDPOINT_METHODS: Record<OidcDiscoveryEndpointName, 'GET' | 'HEAD' | 'POST
   introspection_endpoint: 'POST',
   jwks_uri: 'GET',
 }
+
+const SERVER_ASSISTED_PROBE_PATH = '/api/oidc-preflight-probe'
+const defaultServerAssistedProbeFetcher: OidcFetchFunction = (url, options) => fetch(url, options)
 
 export function normalizeIssuerUrl(rawIssuerUrl: string): string {
   const trimmed = rawIssuerUrl.trim()
@@ -172,10 +187,14 @@ export async function runOidcEndpointPreflight(
     : DEFAULT_REQUIRED_ENDPOINTS
   const includeOptionalEndpoints = request.includeOptionalEndpoints ?? true
   const timeoutMs = request.timeoutMs ?? 8000
+  const enableServerAssistedProbes = request.enableServerAssistedProbes ?? fetcher === proxyFetch
+  const serverAssistedProbeFetcher =
+    request.serverAssistedProbeFetcher ?? defaultServerAssistedProbeFetcher
 
   const normalizedIssuerUrl = normalizeIssuerUrl(request.issuerUrl)
   const discoveryUrl = buildOidcDiscoveryUrl(normalizedIssuerUrl)
   const endpoints: OidcEndpointPreflightResult[] = []
+  const requiredSet = new Set<OidcEndpointName>(['discovery', ...requiredEndpoints])
 
   let discoveryResult: OidcDiscoveryFetchResult
   try {
@@ -184,11 +203,13 @@ export async function runOidcEndpointPreflight(
       endpoint: 'discovery',
       label: ENDPOINT_LABELS.discovery,
       method: 'GET',
-      status: classifyStatus('discovery', discoveryResult.status),
+      status: 'pass',
+      required: true,
+      reasonCode: 'reachable',
       url: discoveryResult.discoveryUrl,
       httpStatus: discoveryResult.status,
       httpStatusText: discoveryResult.statusText,
-      message: `Fetched discovery document (${discoveryResult.status})`,
+      message: `Discovery document resolved (${discoveryResult.status})`,
     })
   } catch (error) {
     endpoints.push({
@@ -196,8 +217,10 @@ export async function runOidcEndpointPreflight(
       label: ENDPOINT_LABELS.discovery,
       method: 'GET',
       status: 'fail',
+      required: true,
+      reasonCode: 'missing_or_unavailable',
       url: discoveryUrl,
-      message: 'Unable to fetch discovery document',
+      message: 'Discovery document is unavailable',
       error: error instanceof Error ? error.message : String(error),
     })
 
@@ -213,19 +236,20 @@ export async function runOidcEndpointPreflight(
 
   const keysToCheck = resolveEndpointsToProbe(requiredEndpoints, includeOptionalEndpoints)
 
-  const requiredSet = new Set(requiredEndpoints)
-
   for (const key of keysToCheck) {
+    const endpointRequired = requiredSet.has(key)
     const endpointUrl = getStringValue(discoveryResult.config[key])
     if (!endpointUrl) {
       endpoints.push({
         endpoint: key,
         label: ENDPOINT_LABELS[key],
         method: ENDPOINT_METHODS[key],
-        status: requiredSet.has(key) ? 'fail' : 'warn',
-        message: requiredSet.has(key)
-          ? `${ENDPOINT_LABELS[key]} is missing from discovery document`
-          : `${ENDPOINT_LABELS[key]} is not published by this provider`,
+        status: endpointRequired ? 'fail' : 'warn',
+        required: endpointRequired,
+        reasonCode: 'missing_or_unavailable',
+        message: endpointRequired
+          ? `${ENDPOINT_LABELS[key]} is required but missing in discovery`
+          : 'Optional endpoint unavailable',
       })
       continue
     }
@@ -235,19 +259,26 @@ export async function runOidcEndpointPreflight(
         endpoint: key,
         label: ENDPOINT_LABELS[key],
         method: ENDPOINT_METHODS[key],
-        status: requiredSet.has(key) ? 'fail' : 'warn',
+        status: endpointRequired ? 'fail' : 'warn',
+        required: endpointRequired,
+        reasonCode: 'invalid_url',
         url: endpointUrl,
-        message: `${ENDPOINT_LABELS[key]} is not a valid absolute URL`,
+        message: endpointRequired
+          ? `${ENDPOINT_LABELS[key]} is required but has an invalid URL`
+          : `${ENDPOINT_LABELS[key]} has an invalid URL`,
       })
       continue
     }
 
     const probeResult = await probeEndpoint({
       endpoint: key,
+      required: endpointRequired,
       url: endpointUrl,
       method: ENDPOINT_METHODS[key],
       timeoutMs,
       fetcher,
+      enableServerAssistedProbes,
+      serverAssistedProbeFetcher,
     })
 
     endpoints.push(probeResult)
@@ -310,10 +341,13 @@ async function buildResponseError(response: Response, prefix: string): Promise<s
 
 async function probeEndpoint(input: {
   endpoint: OidcDiscoveryEndpointName
+  required: boolean
   url: string
   method: 'GET' | 'HEAD' | 'POST'
   timeoutMs: number
   fetcher: OidcFetchFunction
+  enableServerAssistedProbes: boolean
+  serverAssistedProbeFetcher: OidcFetchFunction
 }): Promise<OidcEndpointPreflightResult> {
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(), input.timeoutMs)
@@ -321,28 +355,77 @@ async function probeEndpoint(input: {
   try {
     const requestInit = createProbeRequest(input.endpoint, input.method, controller.signal)
     const response = await input.fetcher(input.url, requestInit)
+    const classification = classifyProbeResponse(input.endpoint, response.status, input.required)
 
     return {
       endpoint: input.endpoint,
       label: ENDPOINT_LABELS[input.endpoint],
       method: input.method,
-      status: classifyStatus(input.endpoint, response.status),
+      status: classification.status,
+      required: input.required,
+      reasonCode: classification.reasonCode,
       url: input.url,
       httpStatus: response.status,
       httpStatusText: response.statusText,
-      message: describeProbeResult(input.endpoint, response.status),
+      message: classification.message,
     }
   } catch (error) {
+    const classification = classifyProbeError(error, input.required)
+
+    if (classification.reasonCode === 'network_or_cors' && input.enableServerAssistedProbes) {
+      try {
+        const assistedResponse = await probeEndpointViaServer({
+          endpoint: input.endpoint,
+          url: input.url,
+          method: input.method,
+          fetcher: input.serverAssistedProbeFetcher,
+        })
+        const assistedClassification = classifyProbeResponse(
+          input.endpoint,
+          assistedResponse.status,
+          input.required
+        )
+
+        return {
+          endpoint: input.endpoint,
+          label: ENDPOINT_LABELS[input.endpoint],
+          method: input.method,
+          status: assistedClassification.status,
+          required: input.required,
+          reasonCode: assistedClassification.reasonCode,
+          url: input.url,
+          httpStatus: assistedResponse.status,
+          httpStatusText: assistedResponse.statusText,
+          message: `${assistedClassification.message} (server-assisted probe)`,
+        }
+      } catch (assistedError) {
+        const primaryError = error instanceof Error ? error.message : String(error)
+        const fallbackError =
+          assistedError instanceof Error ? assistedError.message : String(assistedError)
+
+        return {
+          endpoint: input.endpoint,
+          label: ENDPOINT_LABELS[input.endpoint],
+          method: input.method,
+          status: classification.status,
+          required: input.required,
+          reasonCode: classification.reasonCode,
+          url: input.url,
+          message: `${classification.message}; server-assisted probe also failed`,
+          error: `${primaryError} | fallback: ${fallbackError}`,
+        }
+      }
+    }
+
     return {
       endpoint: input.endpoint,
       label: ENDPOINT_LABELS[input.endpoint],
       method: input.method,
-      status: classifyProbeError(error),
+      status: classification.status,
+      required: input.required,
+      reasonCode: classification.reasonCode,
       url: input.url,
-      message:
-        classifyProbeError(error) === 'warn'
-          ? 'Network/CORS prevented browser probe'
-          : 'Probe failed',
+      message: classification.message,
       error: error instanceof Error ? error.message : String(error),
     }
   } finally {
@@ -355,6 +438,21 @@ function createProbeRequest(
   method: 'GET' | 'HEAD' | 'POST',
   signal: AbortSignal
 ): RequestInit {
+  const probePayload = createProbePayload(endpoint, method)
+
+  return {
+    method,
+    headers: probePayload.headers,
+    body: probePayload.body,
+    redirect: 'manual',
+    signal,
+  }
+}
+
+function createProbePayload(
+  endpoint: OidcDiscoveryEndpointName,
+  method: 'GET' | 'HEAD' | 'POST'
+): { headers: Record<string, string>; body?: string } {
   const headers: Record<string, string> = {
     Accept: 'application/json, text/plain, */*',
   }
@@ -373,13 +471,69 @@ function createProbeRequest(
     headers.Authorization = 'Bearer oidc-preflight-token'
   }
 
-  return {
-    method,
-    headers,
-    body,
-    redirect: 'manual',
-    signal,
+  return { headers, body }
+}
+
+async function probeEndpointViaServer(input: {
+  endpoint: OidcDiscoveryEndpointName
+  url: string
+  method: 'GET' | 'HEAD' | 'POST'
+  fetcher: OidcFetchFunction
+}): Promise<{ status: number; statusText: string }> {
+  const probePayload = createProbePayload(input.endpoint, input.method)
+  const response = await input.fetcher(resolveServerAssistedProbeUrl(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      url: input.url,
+      method: input.method,
+      headers: probePayload.headers,
+      body: probePayload.body,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await buildResponseError(response, 'Server-assisted probe failed'))
   }
+
+  const payload = (await response.json()) as unknown
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Server-assisted probe returned an invalid response')
+  }
+
+  const result = payload as {
+    ok?: boolean
+    status?: unknown
+    statusText?: unknown
+    error?: unknown
+  }
+
+  if (!result.ok) {
+    const errorMessage =
+      typeof result.error === 'string' && result.error.trim()
+        ? result.error
+        : 'Server-assisted probe did not complete'
+    throw new Error(errorMessage)
+  }
+
+  if (typeof result.status !== 'number') {
+    throw new Error('Server-assisted probe response did not include an upstream status')
+  }
+
+  return {
+    status: result.status,
+    statusText: typeof result.statusText === 'string' ? result.statusText : '',
+  }
+}
+
+function resolveServerAssistedProbeUrl(): string {
+  if (import.meta.env.DEV) {
+    return `http://localhost:8788${SERVER_ASSISTED_PROBE_PATH}`
+  }
+
+  return SERVER_ASSISTED_PROBE_PATH
 }
 
 function resolveEndpointsToProbe(
@@ -404,69 +558,109 @@ function resolveEndpointsToProbe(
   return Array.from(discovered)
 }
 
-function classifyStatus(endpoint: OidcEndpointName, statusCode: number): OidcEndpointStatus {
-  if (statusCode >= 200 && statusCode < 300) return 'pass'
-
-  if (statusCode >= 300 && statusCode < 400) {
-    return endpoint === 'authorization_endpoint' || endpoint === 'discovery' ? 'pass' : 'warn'
+function classifyProbeResponse(
+  endpoint: OidcDiscoveryEndpointName,
+  statusCode: number,
+  required: boolean
+): {
+  status: OidcEndpointStatus
+  reasonCode: OidcPreflightReasonCode
+  message: string
+} {
+  if ((statusCode >= 200 && statusCode < 300) || (statusCode >= 300 && statusCode < 400)) {
+    return {
+      status: 'pass',
+      reasonCode: 'reachable',
+      message: `${ENDPOINT_LABELS[endpoint]} is reachable (${statusCode})`,
+    }
   }
 
   if ([400, 401, 403].includes(statusCode)) {
-    return endpoint === 'discovery' ? 'warn' : 'pass'
-  }
-
-  if (statusCode === 405) return 'warn'
-  if (statusCode >= 500) return 'fail'
-  if (statusCode === 404 || statusCode === 410) return 'fail'
-
-  return 'warn'
-}
-
-function describeProbeResult(endpoint: OidcEndpointName, statusCode: number): string {
-  if (statusCode >= 200 && statusCode < 300) {
-    return `${ENDPOINT_LABELS[endpoint]} is reachable`
-  }
-
-  if (statusCode >= 300 && statusCode < 400) {
-    return `${ENDPOINT_LABELS[endpoint]} redirected (${statusCode})`
-  }
-
-  if ([400, 401, 403].includes(statusCode)) {
-    return `${ENDPOINT_LABELS[endpoint]} is reachable and enforcing input/auth checks`
+    return {
+      status: 'pass',
+      reasonCode: 'auth_required',
+      message: `Reachable but requires auth/input validation (${statusCode})`,
+    }
   }
 
   if (statusCode === 405) {
-    return `${ENDPOINT_LABELS[endpoint]} rejected probe method but appears reachable`
+    return {
+      status: 'warn',
+      reasonCode: 'method_not_allowed',
+      message: `${ENDPOINT_LABELS[endpoint]} rejected probe method (${statusCode})`,
+    }
+  }
+
+  if (statusCode === 404 || statusCode === 410) {
+    return {
+      status: required ? 'fail' : 'warn',
+      reasonCode: 'missing_or_unavailable',
+      message: required
+        ? `${ENDPOINT_LABELS[endpoint]} is required but unavailable (${statusCode})`
+        : 'Optional endpoint unavailable',
+    }
   }
 
   if (statusCode >= 500) {
-    return `${ENDPOINT_LABELS[endpoint]} returned a server error`
+    return {
+      status: required ? 'fail' : 'warn',
+      reasonCode: 'server_error',
+      message: required
+        ? `${ENDPOINT_LABELS[endpoint]} returned a server error (${statusCode})`
+        : `${ENDPOINT_LABELS[endpoint]} returned a server error but is optional`,
+    }
   }
 
-  return `${ENDPOINT_LABELS[endpoint]} returned status ${statusCode}`
+  return {
+    status: required ? 'fail' : 'warn',
+    reasonCode: 'missing_or_unavailable',
+    message: `${ENDPOINT_LABELS[endpoint]} returned status ${statusCode}`,
+  }
 }
 
-function classifyProbeError(error: unknown): OidcEndpointStatus {
+function classifyProbeError(
+  error: unknown,
+  required: boolean
+): {
+  status: OidcEndpointStatus
+  reasonCode: OidcPreflightReasonCode
+  message: string
+} {
+  if (isNetworkOrCorsError(error)) {
+    return {
+      status: 'warn',
+      reasonCode: 'network_or_cors',
+      message: 'Browser probe blocked by CORS/network; endpoint may still be healthy',
+    }
+  }
+
+  return {
+    status: required ? 'fail' : 'warn',
+    reasonCode: 'server_error',
+    message: 'Probe failed unexpectedly',
+  }
+}
+
+function isNetworkOrCorsError(error: unknown): boolean {
   if (error instanceof DOMException && error.name === 'AbortError') {
-    return 'warn'
+    return true
   }
 
   if (error instanceof TypeError) {
-    return 'warn'
+    return true
   }
 
   if (error instanceof Error) {
     const message = error.message.toLowerCase()
-    if (
+    return (
       message.includes('failed to fetch') ||
       message.includes('network') ||
       message.includes('cors') ||
       message.includes('load failed') ||
-      message.includes('blocked')
-    ) {
-      return 'warn'
-    }
+      message.includes('blocked') ||
+      message.includes('timeout')
+    )
   }
 
-  return 'fail'
+  return false
 }

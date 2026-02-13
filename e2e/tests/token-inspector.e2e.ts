@@ -15,38 +15,22 @@ test.describe('Token Inspector', () => {
     await expect(page.locator('text=OAuth/OIDC Token Inspector')).toBeVisible()
   })
 
-  test('should have disabled inspect button initially', async () => {
-    const inspectButton = await utils.getButtonByText('Inspect Token')
-    await expect(inspectButton).toBeDisabled()
+  test('should have disabled inspect button initially', async ({ page }) => {
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeDisabled()
   })
 
   test('should generate and inspect example token', async ({ page }) => {
-    // Click Example button
-    await utils.clickAndWait(selectors.buttons.example)
+    await page.click(selectors.buttons.example)
 
-    // Wait for the token to be loaded - don't wait for toast
-    await page.waitForTimeout(500)
-
-    // Verify token is populated
     const tokenInput = page.locator(selectors.tokenInspector.tokenInput)
-    const tokenValue = await tokenInput.inputValue()
-    expect(tokenValue).toBeTruthy()
-    expect(tokenValue).toContain('eyJ')
+    await expect(tokenInput).toHaveValue(/eyJ/)
 
-    // Inspect button should be enabled
-    await utils.waitForButtonEnabled('Inspect Token')
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeEnabled()
+    await page.click(selectors.buttons.inspectToken)
 
-    // Click Inspect Token
-    await utils.clickAndWait(selectors.buttons.inspectToken)
-
-    // Wait for the inspection to complete
-    await page.waitForTimeout(500)
-
-    // Verify signature valid message appears
-    await expect(page.locator('text=Signature Valid')).toBeVisible()
+    await expect(page.locator(selectors.tokenInspector.signatureValid)).toBeVisible()
     await expect(page.locator('text=Demo Token')).toBeVisible()
 
-    // Verify tabs are present
     await expect(page.locator(selectors.tokenInspector.headerTab)).toBeVisible()
     await expect(page.locator(selectors.tokenInspector.payloadTab)).toBeVisible()
     await expect(page.locator(selectors.tokenInspector.signatureTab)).toBeVisible()
@@ -54,98 +38,72 @@ test.describe('Token Inspector', () => {
   })
 
   test('should switch between tabs', async ({ page }) => {
-    // Generate example token and inspect it
-    await utils.clickAndWait(selectors.buttons.example)
-    await utils.waitForButtonEnabled('Inspect Token')
-    await utils.clickAndWait(selectors.buttons.inspectToken)
+    await page.click(selectors.buttons.example)
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeEnabled()
+    await page.click(selectors.buttons.inspectToken)
 
-    // Wait for the default payload tab content
-    await page.waitForTimeout(500)
     await expect(page.locator('text=Common OAuth/JWT Claims')).toBeVisible()
 
-    // Switch to Header tab
     await page.click(selectors.tokenInspector.headerTab)
-    await page.waitForTimeout(300)
-    // Verify we see header content (algorithm type)
+    await expect(page.locator(selectors.tokenInspector.headerTab)).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
     await expect(page.locator('text=alg').first()).toBeVisible()
 
-    // Switch to Signature tab
     await page.click(selectors.tokenInspector.signatureTab)
-    await page.waitForTimeout(300)
-    // Should see signature-related content
+    await expect(page.locator(selectors.tokenInspector.signatureTab)).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
 
-    // Switch to Timeline tab
     await page.click(selectors.tokenInspector.timelineTab)
-    await page.waitForTimeout(300)
-    // Should see timeline-related content
+    await expect(page.locator(selectors.tokenInspector.timelineTab)).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
   })
 
   test('should reset token input', async ({ page }) => {
-    // Generate example token
-    await utils.clickAndWait(selectors.buttons.example)
-    // Wait for the input/state to reflect the generated token
-    await utils.waitForButtonEnabled('Inspect Token')
+    await page.click(selectors.buttons.example)
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeEnabled()
 
-    // Verify token is populated
     const tokenInput = page.locator(selectors.tokenInspector.tokenInput)
-    let tokenValue = await tokenInput.inputValue()
-    expect(tokenValue).toBeTruthy()
+    await expect(tokenInput).not.toHaveValue('')
 
-    // Click Reset
     await page.click(selectors.buttons.reset)
 
-    // Verify token is cleared
-    tokenValue = await tokenInput.inputValue()
-    expect(tokenValue).toBe('')
-
-    // Inspect button should be disabled again
-    const inspectButton = await utils.getButtonByText('Inspect Token')
-    await expect(inspectButton).toBeDisabled()
+    await expect(tokenInput).toHaveValue('')
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeDisabled()
   })
 
   test('should handle invalid token', async ({ page }) => {
-    // Enter invalid token
     await utils.fillInput(selectors.tokenInspector.tokenInput, 'invalid-token')
 
-    // Should show error message immediately
     await expect(page.locator('text=Invalid token: Invalid JWT format')).toBeVisible()
-
-    // Inspect button should still be enabled
-    await utils.waitForButtonEnabled('Inspect Token')
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeEnabled()
   })
 
   test('should display token size', async ({ page }) => {
-    // Generate and inspect example token
-    await utils.clickAndWait(selectors.buttons.example)
-    await utils.waitForButtonEnabled('Inspect Token')
-    await utils.clickAndWait(selectors.buttons.inspectToken)
+    await page.click(selectors.buttons.example)
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeEnabled()
+    await page.click(selectors.buttons.inspectToken)
 
-    // Token size button should be visible
-    await expect(page.locator(selectors.tokenInspector.tokenSize)).toBeVisible()
+    await expect(page.locator(selectors.tokenInspector.tokenSizeToggle)).toBeVisible()
+    await page.click(selectors.tokenInspector.tokenSizeToggle)
 
-    // Click token size button to expand details
-    await page.click(selectors.tokenInspector.tokenSize)
-
-    // Should show size breakdown - wait for it to expand
-    await page.waitForTimeout(500)
-    // Just verify the token size section is expanded
-    const tokenSizeText = await page.textContent('body')
-    expect(tokenSizeText).toContain('bytes')
+    await expect(page.locator('text=Base64 Encoding Overhead')).toBeVisible()
   })
 
   test('should show token claims details', async ({ page }) => {
-    // Generate and inspect example token
-    await utils.clickAndWait(selectors.buttons.example)
-    await utils.waitForButtonEnabled('Inspect Token')
-    await utils.clickAndWait(selectors.buttons.inspectToken)
+    await page.click(selectors.buttons.example)
+    await expect(page.locator(selectors.buttons.inspectToken)).toBeEnabled()
+    await page.click(selectors.buttons.inspectToken)
 
-    // Verify common claims are displayed in the claims section
-    // Looking for the claim keys in the table format
     await expect(page.locator('text=iss').first()).toBeVisible()
     await expect(page.locator('text=sub').first()).toBeVisible()
     await expect(page.locator('text=aud').first()).toBeVisible()
 
-    // Verify we see some claim values
     await expect(page.locator('text=https://iam.tools/demo').first()).toBeVisible()
     await expect(page.locator('text=user-example-123').first()).toBeVisible()
   })

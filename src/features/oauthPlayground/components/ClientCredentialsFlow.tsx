@@ -60,6 +60,7 @@ export function ClientCredentialsFlow() {
   const [result, setResult] = useState<TokenResponse | null>(null)
   const [isDemoMode, setIsDemoMode] = useState(false) // Add state for demo mode
   const [configLoading, setConfigLoading] = useState(false)
+  const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
 
   // Update values when demo mode changes
   React.useEffect(() => {
@@ -91,6 +92,7 @@ export function ClientCredentialsFlow() {
       if (endpoints.tokenEndpoint) {
         setTokenEndpoint(endpoints.tokenEndpoint)
         addIssuer(normalizedIssuerUrl)
+        setPreflightAutoRunTrigger((value) => value + 1)
       } else {
         toast.error('This issuer does not have a token endpoint configured')
       }
@@ -319,6 +321,7 @@ export function ClientCredentialsFlow() {
               </InputGroupAddon>
               <InputGroupInput
                 id="token-endpoint"
+                data-testid="oauth-client-credentials-token-endpoint-input"
                 type="url"
                 value={tokenEndpoint}
                 onChange={(e) => setTokenEndpoint(e.target.value)}
@@ -342,6 +345,7 @@ export function ClientCredentialsFlow() {
                 issuerUrl={issuerUrl}
                 onIssuerUrlChange={setIssuerUrl}
                 requiredEndpoints={['token_endpoint']}
+                autoRunTrigger={preflightAutoRunTrigger}
                 onConfigResolved={(config, normalizedIssuerUrl) => {
                   const endpoints = extractDiscoveredEndpoints(config)
                   setIssuerUrl(normalizedIssuerUrl)
@@ -417,6 +421,7 @@ export function ClientCredentialsFlow() {
             <Button
               type="submit"
               disabled={loading || (!isDemoMode && (!tokenEndpoint || !clientId || !clientSecret))}
+              data-testid="oauth-client-credentials-submit-button"
             >
               {loading ? 'Requesting...' : isDemoMode ? 'Request Demo Token' : 'Request Token'}
             </Button>

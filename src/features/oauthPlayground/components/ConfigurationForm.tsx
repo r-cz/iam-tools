@@ -18,6 +18,7 @@ import EndpointPreflightPanel from './EndpointPreflightPanel'
 import {
   extractDiscoveredEndpoints,
   fetchOidcDiscoveryConfiguration,
+  hasUsableDiscoveredEndpoints,
 } from '../utils/oidc-preflight'
 
 interface ConfigurationFormProps {
@@ -37,6 +38,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState<boolean>(false)
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false)
   const [endpointsLocked, setEndpointsLocked] = useState<boolean>(false) // Track if endpoints were set by discovery
+  const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
   const { addIssuer } = useIssuerHistory()
 
   // Generate PKCE values
@@ -73,9 +75,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     setJwksEndpoint(endpoints.jwksEndpoint ?? '')
     setIssuerUrl(normalizedIssuerUrl)
 
-    const hasUsableEndpoints = Boolean(
-      endpoints.authorizationEndpoint || endpoints.tokenEndpoint || endpoints.jwksEndpoint
-    )
+    const hasUsableEndpoints = hasUsableDiscoveredEndpoints(config)
 
     if (hasUsableEndpoints) {
       setEndpointsLocked(true)
@@ -111,6 +111,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
       const hasUsableEndpoints = applyDiscoveredConfiguration(config, normalizedIssuerUrl)
 
       if (hasUsableEndpoints) {
+        setPreflightAutoRunTrigger((value) => value + 1)
         toast.success('OIDC configuration loaded successfully')
       } else {
         toast.error('Discovery succeeded but no usable OAuth endpoints were returned')
@@ -233,6 +234,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                       <div data-slot="input-group-control" className="w-full px-3 pb-3 pt-0">
                         <InputGroupInput
                           id="issuer-url-discovery"
+                          data-testid="oauth-authcode-issuer-input"
                           placeholder="https://example.com"
                           value={issuerUrl}
                           onChange={(e) => {
@@ -254,6 +256,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                           }}
                           disabled={isLoadingDiscovery || !issuerUrl}
                           className="flex items-center gap-2"
+                          data-testid="oauth-authcode-discover-button"
                         >
                           {isLoadingDiscovery ? (
                             <>
@@ -274,11 +277,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
 
                   {/* Manual/Discovered Endpoints */}
                   <FormFieldInput
+                    id="oauth-authcode-authorization-endpoint"
                     label="Authorization Endpoint"
                     placeholder="https://example.com/authorize"
                     value={authEndpoint}
                     onChange={(e) => setAuthEndpoint(e.target.value)}
                     readOnly={endpointsLocked}
+                    data-testid="oauth-authcode-authorization-endpoint-input"
                     description={
                       <span className="flex items-center gap-2">
                         <span>Required endpoint for starting the authorization flow.</span>
@@ -292,11 +297,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                   />
 
                   <FormFieldInput
+                    id="oauth-authcode-token-endpoint"
                     label="Token Endpoint"
                     placeholder="https://example.com/token"
                     value={tokenEndpoint}
                     onChange={(e) => setTokenEndpoint(e.target.value)}
                     readOnly={endpointsLocked}
+                    data-testid="oauth-authcode-token-endpoint-input"
                     description={
                       <span className="flex items-center gap-2">
                         <span>
@@ -312,11 +319,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                   />
 
                   <FormFieldInput
+                    id="oauth-authcode-jwks-endpoint"
                     label="JWKS Endpoint (Optional)"
                     placeholder="https://example.com/.well-known/jwks.json"
                     value={jwksEndpoint}
                     onChange={(e) => setJwksEndpoint(e.target.value)}
                     readOnly={endpointsLocked}
+                    data-testid="oauth-authcode-jwks-endpoint-input"
                     description={
                       <span className="flex items-center gap-2">
                         <span>
@@ -337,6 +346,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                     setIssuerUrl(value)
                     clearDiscoveredEndpoints()
                   }}
+                  autoRunTrigger={preflightAutoRunTrigger}
                   showIssuerInput={false}
                   description="Run endpoint probes with the issuer URL above before starting the flow."
                   onConfigResolved={(config, normalizedIssuerUrl) => {
@@ -432,7 +442,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
             />
           </FieldSet>
 
-          <Button type="button" onClick={handleSubmit}>
+          <Button type="button" onClick={handleSubmit} data-testid="oauth-authcode-continue-button">
             Continue to Authorization
           </Button>
         </div>

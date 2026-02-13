@@ -148,6 +148,7 @@ export function SamlResponseDecoder() {
                   variant="outline"
                   className="flex items-center gap-1.5"
                   aria-label="Load example response"
+                  data-testid="saml-response-example-button"
                 >
                   <TestTubeDiagonal size={16} />
                   <span className="hidden sm:inline">Example</span>
@@ -158,6 +159,7 @@ export function SamlResponseDecoder() {
                   className="flex items-center gap-1.5 border border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
                   onClick={handleClear}
                   aria-label="Clear response"
+                  data-testid="saml-response-clear-button"
                 >
                   <RotateCcw size={16} />
                   <span className="hidden sm:inline">Clear</span>
@@ -166,6 +168,7 @@ export function SamlResponseDecoder() {
             </InputGroupAddon>
             <InputGroupTextarea
               id="saml-input"
+              data-testid="saml-response-input"
               placeholder="Paste your base64-encoded SAML Response here..."
               value={input}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
@@ -187,6 +190,7 @@ export function SamlResponseDecoder() {
                 onClick={handleDecode}
                 disabled={!input.trim()}
                 aria-label="Decode response"
+                data-testid="saml-response-decode-button"
               >
                 <Search size={16} />
                 <span className="hidden sm:inline">Decode Response</span>
@@ -231,12 +235,20 @@ export function SamlResponseDecoder() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="saml-response-tabs">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="response">Response</TabsTrigger>
-                <TabsTrigger value="assertion">Assertion</TabsTrigger>
-                <TabsTrigger value="signature">Signature</TabsTrigger>
-                <TabsTrigger value="validation">Validation</TabsTrigger>
+                <TabsTrigger value="response" data-testid="saml-response-tab-response">
+                  Response
+                </TabsTrigger>
+                <TabsTrigger value="assertion" data-testid="saml-response-tab-assertion">
+                  Assertion
+                </TabsTrigger>
+                <TabsTrigger value="signature" data-testid="saml-response-tab-signature">
+                  Signature
+                </TabsTrigger>
+                <TabsTrigger value="validation" data-testid="saml-response-tab-validation">
+                  Validation
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="response" className="mt-4">

@@ -131,9 +131,11 @@ export function OidcExplorer() {
       {!isLoading && oidcConfigHook.data && (
         <Tabs defaultValue="config" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="config">Configuration</TabsTrigger>
+            <TabsTrigger value="config" data-testid="oidc-explorer-tab-config">
+              Configuration
+            </TabsTrigger>
             {oidcConfigHook.data.jwks_uri && (
-              <TabsTrigger value="jwks" disabled={!jwksData}>
+              <TabsTrigger value="jwks" disabled={!jwksData} data-testid="oidc-explorer-tab-jwks">
                 JWKS
               </TabsTrigger>
             )}

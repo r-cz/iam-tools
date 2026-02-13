@@ -80,9 +80,15 @@ export default function SamlRequestBuilderPage() {
 
           <Tabs defaultValue="xml" className="min-w-0">
             <TabsList>
-              <TabsTrigger value="xml">XML</TabsTrigger>
-              <TabsTrigger value="encoded">Encoded</TabsTrigger>
-              <TabsTrigger value="launch">Launch</TabsTrigger>
+              <TabsTrigger value="xml" data-testid="saml-request-tab-xml">
+                XML
+              </TabsTrigger>
+              <TabsTrigger value="encoded" data-testid="saml-request-tab-encoded">
+                Encoded
+              </TabsTrigger>
+              <TabsTrigger value="launch" data-testid="saml-request-tab-launch">
+                Launch
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="xml" className="mt-3">
               <div className="flex justify-between mb-2">
