@@ -338,7 +338,6 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                     clearDiscoveredEndpoints()
                   }}
                   showIssuerInput={false}
-                  title="Endpoint Preflight"
                   description="Run endpoint probes with the issuer URL above before starting the flow."
                   onConfigResolved={(config, normalizedIssuerUrl) => {
                     const hasUsableEndpoints = applyDiscoveredConfiguration(
