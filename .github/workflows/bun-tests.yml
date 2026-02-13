@@ -92,7 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-smoke-test-results
-          path: e2e/test-results/
+          path: test-results/
           retention-days: 30
 
   e2e_full:
@@ -123,5 +123,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-full-test-results
-          path: e2e/test-results/
+          path: test-results/
           retention-days: 30

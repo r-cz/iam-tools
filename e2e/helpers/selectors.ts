@@ -44,6 +44,7 @@ export const selectors = {
     randomExample: '[data-testid="oidc-explorer-random-issuer-button"]',
     schemePrefix: '[data-testid="issuer-url-scheme"]',
     fetchConfigButton: '[data-testid="oidc-explorer-fetch-config-button"]',
+    configTab: '[data-testid="oidc-explorer-tab-config"]',
   },
 
   // OAuth Playground

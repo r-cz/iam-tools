@@ -40,9 +40,18 @@ test.describe('OIDC Explorer', () => {
     await utils.fillInput(selectors.oidcExplorer.urlInput, demoUrl)
 
     await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
-    await page.click(selectors.oidcExplorer.fetchConfigButton)
 
-    await expect(page.locator('button[role="tab"]:has-text("Configuration")')).toBeVisible({
+    const discoveryResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/.well-known/openid-configuration') &&
+        response.request().method() === 'GET'
+    )
+
+    await page.click(selectors.oidcExplorer.fetchConfigButton)
+    const discoveryResponse = await discoveryResponsePromise
+    expect(discoveryResponse.ok()).toBeTruthy()
+
+    await expect(page.locator(selectors.oidcExplorer.configTab)).toBeVisible({
       timeout: 10000,
     })
 
@@ -94,8 +103,17 @@ test.describe('OIDC Explorer', () => {
     await page.locator(selectors.oidcExplorer.urlInput).fill('http://localhost:8788/api')
     await expect(page.locator(selectors.oidcExplorer.fetchConfigButton)).toBeEnabled()
 
+    const discoveryResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/.well-known/openid-configuration') &&
+        response.request().method() === 'GET'
+    )
+
     await page.click(selectors.oidcExplorer.fetchConfigButton)
-    await expect(page.locator('button[role="tab"]:has-text("Configuration")')).toBeVisible({
+    const discoveryResponse = await discoveryResponsePromise
+    expect(discoveryResponse.ok()).toBeTruthy()
+
+    await expect(page.locator(selectors.oidcExplorer.configTab)).toBeVisible({
       timeout: 10000,
     })
 

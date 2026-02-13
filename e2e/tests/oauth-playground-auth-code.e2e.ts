@@ -20,7 +20,15 @@ test.describe('OAuth Playground - Auth Code with PKCE', () => {
   }) => {
     await page.locator('#issuer-url-discovery').fill('http://localhost:8788/api')
 
+    const discoveryResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/.well-known/openid-configuration') &&
+        response.request().method() === 'GET'
+    )
+
     await page.click('[data-testid="oauth-authcode-discover-button"]')
+    const discoveryResponse = await discoveryResponsePromise
+    expect(discoveryResponse.ok()).toBeTruthy()
 
     await expect(page.locator(selectors.oauthPlayground.tokenUrlInput)).toHaveValue(/\/api\/token$/)
     await expect(page.locator(selectors.oauthPlayground.preflightReport)).toBeVisible()
