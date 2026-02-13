@@ -29,17 +29,26 @@ const createEnv = (
 const buildRequest = (path: string, init?: RequestInit) =>
   new Request(`https://app.test${path}`, init)
 
+const mutateSegment = (segment: string): string => {
+  if (!segment) {
+    return 'A'
+  }
+
+  // Avoid mutating the final base64url character where padding bits can be ignored.
+  const indexToMutate = segment.length > 1 ? 1 : 0
+  const current = segment[indexToMutate]
+  const replacement = current === 'A' ? 'B' : 'A'
+  return `${segment.slice(0, indexToMutate)}${replacement}${segment.slice(indexToMutate + 1)}`
+}
+
 const tamperToken = (value: string) => {
   const parts = value.split('.')
   if (parts.length === 3) {
-    const signature = parts[2]
-    const replacement = signature.endsWith('a') ? 'b' : 'a'
-    parts[2] = `${signature.slice(0, -1)}${replacement}`
+    parts[2] = mutateSegment(parts[2])
     return parts.join('.')
   }
 
-  const replacement = value.endsWith('a') ? 'b' : 'a'
-  return `${value.slice(0, -1)}${replacement}`
+  return mutateSegment(value)
 }
 
 describe('worker api', () => {

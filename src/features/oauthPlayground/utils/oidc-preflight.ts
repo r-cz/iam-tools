@@ -1,6 +1,8 @@
 import { proxyFetch } from '@/lib/proxy-fetch'
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'
 
+export type OidcFetchFunction = (url: string, options?: RequestInit) => Promise<Response>
+
 export type OidcEndpointName =
   | 'discovery'
   | 'authorization_endpoint'
@@ -113,12 +115,13 @@ export function buildOidcDiscoveryUrl(issuerUrl: string): string {
 }
 
 export async function fetchOidcDiscoveryConfiguration(
-  issuerUrl: string
+  issuerUrl: string,
+  fetcher: OidcFetchFunction = proxyFetch
 ): Promise<OidcDiscoveryFetchResult> {
   const normalizedIssuerUrl = normalizeIssuerUrl(issuerUrl)
   const discoveryUrl = buildOidcDiscoveryUrl(normalizedIssuerUrl)
 
-  const response = await proxyFetch(discoveryUrl)
+  const response = await fetcher(discoveryUrl)
   if (!response.ok) {
     throw new Error(await buildResponseError(response, 'OIDC discovery failed'))
   }
@@ -161,7 +164,8 @@ export function hasUsableDiscoveredEndpoints(config: Partial<OidcConfiguration>)
 }
 
 export async function runOidcEndpointPreflight(
-  request: OidcPreflightRequest
+  request: OidcPreflightRequest,
+  fetcher: OidcFetchFunction = proxyFetch
 ): Promise<OidcPreflightReport> {
   const requiredEndpoints = request.requiredEndpoints?.length
     ? request.requiredEndpoints
@@ -175,7 +179,7 @@ export async function runOidcEndpointPreflight(
 
   let discoveryResult: OidcDiscoveryFetchResult
   try {
-    discoveryResult = await fetchOidcDiscoveryConfiguration(normalizedIssuerUrl)
+    discoveryResult = await fetchOidcDiscoveryConfiguration(normalizedIssuerUrl, fetcher)
     endpoints.push({
       endpoint: 'discovery',
       label: ENDPOINT_LABELS.discovery,
@@ -243,6 +247,7 @@ export async function runOidcEndpointPreflight(
       url: endpointUrl,
       method: ENDPOINT_METHODS[key],
       timeoutMs,
+      fetcher,
     })
 
     endpoints.push(probeResult)
@@ -308,13 +313,14 @@ async function probeEndpoint(input: {
   url: string
   method: 'GET' | 'HEAD' | 'POST'
   timeoutMs: number
+  fetcher: OidcFetchFunction
 }): Promise<OidcEndpointPreflightResult> {
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(), input.timeoutMs)
 
   try {
     const requestInit = createProbeRequest(input.endpoint, input.method, controller.signal)
-    const response = await proxyFetch(input.url, requestInit)
+    const response = await input.fetcher(input.url, requestInit)
 
     return {
       endpoint: input.endpoint,

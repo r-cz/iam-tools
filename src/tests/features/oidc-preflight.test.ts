@@ -1,10 +1,8 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import {
   fetchOidcDiscoveryConfiguration,
   runOidcEndpointPreflight,
 } from '@/features/oauthPlayground/utils/oidc-preflight'
-
-const originalFetch = globalThis.fetch
 
 function createJsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -13,34 +11,13 @@ function createJsonResponse(body: unknown, status = 200): Response {
   })
 }
 
-function resolveTargetUrl(input: Request | string): string {
-  const url = typeof input === 'string' ? input : input.url
-  const proxyPrefix = '/api/cors-proxy/'
-  const proxyIndex = url.indexOf(proxyPrefix)
-  if (proxyIndex === -1) {
-    return url
-  }
-
-  const encodedTarget = url.slice(proxyIndex + proxyPrefix.length)
-  return decodeURIComponent(encodedTarget)
-}
-
 function isDiscoveryUrl(target: string): boolean {
   return target.includes('/.well-known/openid-configuration')
 }
 
 describe('OIDC endpoint preflight', () => {
-  beforeEach(() => {
-    globalThis.fetch = mock(async () => createJsonResponse({ error: 'not mocked' }, 404)) as any
-  })
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch
-  })
-
   test('fetches discovery document and normalizes issuer URL', async () => {
-    ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
-      const target = resolveTargetUrl(input)
+    const fetcher = mock(async (target: string) => {
       if (target.endsWith('/tenant/.well-known/openid-configuration')) {
         return createJsonResponse({
           issuer: 'https://issuer.example.com/tenant',
@@ -53,7 +30,7 @@ describe('OIDC endpoint preflight', () => {
       return createJsonResponse({}, 404)
     })
 
-    const result = await fetchOidcDiscoveryConfiguration('issuer.example.com/tenant/')
+    const result = await fetchOidcDiscoveryConfiguration('issuer.example.com/tenant/', fetcher)
 
     expect(result.normalizedIssuerUrl).toBe('https://issuer.example.com/tenant')
     expect(result.discoveryUrl).toBe(
@@ -63,8 +40,7 @@ describe('OIDC endpoint preflight', () => {
   })
 
   test('fails discovery when discovery endpoint is not successful', async () => {
-    ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
-      const target = resolveTargetUrl(input)
+    const fetcher = mock(async (target: string) => {
       if (isDiscoveryUrl(target)) {
         return createJsonResponse({ error: 'unavailable' }, 503)
       }
@@ -72,15 +48,13 @@ describe('OIDC endpoint preflight', () => {
       return createJsonResponse({}, 404)
     })
 
-    await expect(fetchOidcDiscoveryConfiguration('https://issuer.example.com')).rejects.toThrow(
-      /OIDC discovery failed: 503/
-    )
+    await expect(
+      fetchOidcDiscoveryConfiguration('https://issuer.example.com', fetcher)
+    ).rejects.toThrow(/OIDC discovery failed: 503/)
   })
 
   test('classifies endpoint probe results across status classes', async () => {
-    ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
-      const target = resolveTargetUrl(input)
-
+    const fetcher = mock(async (target: string) => {
       if (isDiscoveryUrl(target)) {
         return createJsonResponse({
           issuer: 'https://issuer.example.com',
@@ -111,7 +85,10 @@ describe('OIDC endpoint preflight', () => {
       return createJsonResponse({}, 404)
     })
 
-    const report = await runOidcEndpointPreflight({ issuerUrl: 'https://issuer.example.com' })
+    const report = await runOidcEndpointPreflight(
+      { issuerUrl: 'https://issuer.example.com' },
+      fetcher
+    )
     const statuses = Object.fromEntries(
       report.endpoints.map((entry) => [entry.endpoint, entry.status])
     )
@@ -125,9 +102,7 @@ describe('OIDC endpoint preflight', () => {
   })
 
   test('marks network, CORS, and timeout probe failures as warnings', async () => {
-    ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
-      const target = resolveTargetUrl(input)
-
+    const fetcher = mock(async (target: string) => {
       if (isDiscoveryUrl(target)) {
         return createJsonResponse({
           issuer: 'https://issuer.example.com',
@@ -150,10 +125,13 @@ describe('OIDC endpoint preflight', () => {
       return createJsonResponse({}, 200)
     })
 
-    const report = await runOidcEndpointPreflight({
-      issuerUrl: 'https://issuer.example.com',
-      timeoutMs: 5,
-    })
+    const report = await runOidcEndpointPreflight(
+      {
+        issuerUrl: 'https://issuer.example.com',
+        timeoutMs: 5,
+      },
+      fetcher
+    )
 
     const tokenResult = report.endpoints.find((entry) => entry.endpoint === 'token_endpoint')
     const userInfoResult = report.endpoints.find((entry) => entry.endpoint === 'userinfo_endpoint')
