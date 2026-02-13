@@ -21,6 +21,7 @@ interface EndpointPreflightPanelProps {
   onConfigResolved?: (config: OidcConfiguration, normalizedIssuerUrl: string) => void
   title?: string
   description?: string
+  showIssuerInput?: boolean
 }
 
 function getStatusVariant(status: OidcEndpointPreflightResult['status']) {
@@ -41,6 +42,7 @@ export function EndpointPreflightPanel({
   onConfigResolved,
   title = 'OIDC Endpoint Preflight',
   description = 'Check discovery and key endpoints before running OAuth flows.',
+  showIssuerInput = true,
 }: EndpointPreflightPanelProps) {
   const [report, setReport] = useState<OidcPreflightReport | null>(null)
   const [isRunning, setIsRunning] = useState(false)
@@ -93,13 +95,15 @@ export function EndpointPreflightPanel({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <FormFieldInput
-          label="Issuer URL"
-          placeholder="https://example.com"
-          value={issuerUrl}
-          onChange={(event) => onIssuerUrlChange(event.target.value)}
-          description="Used to resolve /.well-known/openid-configuration and probe endpoint reachability."
-        />
+        {showIssuerInput ? (
+          <FormFieldInput
+            label="Issuer URL"
+            placeholder="https://example.com"
+            value={issuerUrl}
+            onChange={(event) => onIssuerUrlChange(event.target.value)}
+            description="Used to resolve /.well-known/openid-configuration and probe endpoint reachability."
+          />
+        ) : null}
 
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={handleRunPreflight} disabled={isRunning}>

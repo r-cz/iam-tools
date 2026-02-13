@@ -115,7 +115,7 @@ describe('OIDC endpoint preflight', () => {
       }
 
       if (target.includes('/oauth2/token')) {
-        throw new Error('Failed to fetch')
+        throw new TypeError('NetworkError when attempting to fetch resource.')
       }
 
       if (target.includes('/oauth2/userinfo')) {

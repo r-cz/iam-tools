@@ -451,8 +451,21 @@ function classifyProbeError(error: unknown): OidcEndpointStatus {
     return 'warn'
   }
 
-  if (error instanceof Error && error.message.toLowerCase().includes('failed to fetch')) {
+  if (error instanceof TypeError) {
     return 'warn'
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase()
+    if (
+      message.includes('failed to fetch') ||
+      message.includes('network') ||
+      message.includes('cors') ||
+      message.includes('load failed') ||
+      message.includes('blocked')
+    ) {
+      return 'warn'
+    }
   }
 
   return 'fail'
