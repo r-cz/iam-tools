@@ -7,13 +7,18 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce'
-import { proxyFetch } from '@/lib/proxy-fetch'
 import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
 import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import { toast } from 'sonner'
 import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { Label } from '@/components/ui/label'
+import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'
+import EndpointPreflightPanel from './EndpointPreflightPanel'
+import {
+  extractDiscoveredEndpoints,
+  fetchOidcDiscoveryConfiguration,
+} from '../utils/oidc-preflight'
 
 interface ConfigurationFormProps {
   onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void
@@ -51,16 +56,35 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     }
   }, [isDemoMode])
 
-  // Handle selecting an issuer from the history
-  const handleSelectIssuer = (issuerUrl: string) => {
-    setIssuerUrl(issuerUrl)
-    // Clear endpoints when issuer changes
+  const clearDiscoveredEndpoints = () => {
     setAuthEndpoint('')
     setTokenEndpoint('')
     setJwksEndpoint('')
     setEndpointsLocked(false)
-    // Fetch config from the selected issuer
-    setTimeout(() => fetchOidcConfig(), 0)
+  }
+
+  const applyDiscoveredConfiguration = (
+    config: Partial<OidcConfiguration>,
+    normalizedIssuerUrl: string
+  ) => {
+    const endpoints = extractDiscoveredEndpoints(config)
+    setAuthEndpoint(endpoints.authorizationEndpoint ?? '')
+    setTokenEndpoint(endpoints.tokenEndpoint ?? '')
+    setJwksEndpoint(endpoints.jwksEndpoint ?? '')
+    setIssuerUrl(normalizedIssuerUrl)
+
+    const hasUsableEndpoints = Boolean(
+      endpoints.authorizationEndpoint || endpoints.tokenEndpoint || endpoints.jwksEndpoint
+    )
+
+    if (hasUsableEndpoints) {
+      setEndpointsLocked(true)
+      addIssuer(normalizedIssuerUrl)
+    } else {
+      setEndpointsLocked(false)
+    }
+
+    return hasUsableEndpoints
   }
 
   const regeneratePkce = async () => {
@@ -74,34 +98,23 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     setState(newState)
   }
 
-  const fetchOidcConfig = async () => {
-    if (!issuerUrl) {
+  const fetchOidcConfig = async (issuerInput = issuerUrl) => {
+    const targetIssuer = issuerInput.trim()
+    if (!targetIssuer) {
       toast.error('Please enter an issuer URL')
       return
     }
 
     setIsLoadingDiscovery(true)
     try {
-      const discoveryUrl = issuerUrl.endsWith('/')
-        ? `${issuerUrl}.well-known/openid-configuration`
-        : `${issuerUrl}/.well-known/openid-configuration`
+      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(targetIssuer)
+      const hasUsableEndpoints = applyDiscoveredConfiguration(config, normalizedIssuerUrl)
 
-      const response = await proxyFetch(discoveryUrl)
-      const config = await response.json()
-
-      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint)
-      if (config.authorization_endpoint) setAuthEndpoint(config.authorization_endpoint)
-      if (config.token_endpoint) setTokenEndpoint(config.token_endpoint)
-      if (config.jwks_uri) setJwksEndpoint(config.jwks_uri)
-
-      // Lock endpoints if discovery was successful
-      if (config.authorization_endpoint || config.token_endpoint || config.jwks_uri) {
-        setEndpointsLocked(true)
-        // Add to issuer history if discovery was successful
-        addIssuer(issuerUrl)
+      if (hasUsableEndpoints) {
+        toast.success('OIDC configuration loaded successfully')
+      } else {
+        toast.error('Discovery succeeded but no usable OAuth endpoints were returned')
       }
-
-      toast.success('OIDC configuration loaded successfully')
     } catch (error) {
       setEndpointsLocked(false) // Unlock on error
       if (import.meta?.env?.DEV) {
@@ -111,6 +124,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     } finally {
       setIsLoadingDiscovery(false)
     }
+  }
+
+  // Handle selecting an issuer from the history
+  const handleSelectIssuer = (selectedIssuerUrl: string) => {
+    setIssuerUrl(selectedIssuerUrl)
+    clearDiscoveredEndpoints()
+    void fetchOidcConfig(selectedIssuerUrl)
   }
 
   const handleSubmit = () => {
@@ -186,129 +206,152 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           {/* Configuration based on mode */}
           {
             !isDemoMode ? (
-              <FieldSet className="space-y-4 rounded-lg border border-border p-4">
-                <FieldLegend>Identity Provider Details</FieldLegend>
-                {/* Issuer URL for Auto-Discovery */}
-                <div className="space-y-2">
-                  <InputGroup className="flex-wrap">
-                    <InputGroupAddon
-                      align="block-start"
-                      className="flex w-full flex-wrap items-center justify-between gap-2 border-0 bg-transparent pb-1"
-                    >
-                      <Label
-                        htmlFor="issuer-url-discovery"
-                        className="text-sm font-medium text-foreground"
+              <>
+                <FieldSet className="space-y-4 rounded-lg border border-border p-4">
+                  <FieldLegend>Identity Provider Details</FieldLegend>
+                  {/* Issuer URL for Auto-Discovery */}
+                  <div className="space-y-2">
+                    <InputGroup className="flex-wrap">
+                      <InputGroupAddon
+                        align="block-start"
+                        className="flex w-full flex-wrap items-center justify-between gap-2 border-0 bg-transparent pb-1"
                       >
-                        Issuer URL (for Auto-Discovery)
-                      </Label>
-                      <IssuerHistory
-                        onSelectIssuer={handleSelectIssuer}
-                        compact
-                        label="Recents"
-                        buttonVariant="input-group"
-                        configLoading={isLoadingDiscovery}
-                      />
-                    </InputGroupAddon>
-                    <div data-slot="input-group-control" className="w-full px-3 pb-3 pt-0">
-                      <InputGroupInput
-                        id="issuer-url-discovery"
-                        placeholder="https://example.com"
-                        value={issuerUrl}
-                        onChange={(e) => {
-                          setIssuerUrl(e.target.value)
-                          setAuthEndpoint('')
-                          setTokenEndpoint('')
-                          setJwksEndpoint('')
-                          setEndpointsLocked(false)
-                        }}
-                        className="h-11 rounded-none border-0 bg-transparent px-3 focus-visible:ring-0 focus-visible:ring-offset-0"
-                      />
-                    </div>
-                    <InputGroupAddon
-                      align="block-end"
-                      className="flex w-full justify-end border-0 bg-transparent pt-0 text-foreground"
-                    >
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={fetchOidcConfig}
-                        disabled={isLoadingDiscovery || !issuerUrl}
-                        className="flex items-center gap-2"
+                        <Label
+                          htmlFor="issuer-url-discovery"
+                          className="text-sm font-medium text-foreground"
+                        >
+                          Issuer URL (for Auto-Discovery)
+                        </Label>
+                        <IssuerHistory
+                          onSelectIssuer={handleSelectIssuer}
+                          compact
+                          label="Recents"
+                          buttonVariant="input-group"
+                          configLoading={isLoadingDiscovery}
+                        />
+                      </InputGroupAddon>
+                      <div data-slot="input-group-control" className="w-full px-3 pb-3 pt-0">
+                        <InputGroupInput
+                          id="issuer-url-discovery"
+                          placeholder="https://example.com"
+                          value={issuerUrl}
+                          onChange={(e) => {
+                            setIssuerUrl(e.target.value)
+                            clearDiscoveredEndpoints()
+                          }}
+                          className="h-11 rounded-none border-0 bg-transparent px-3 focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                      </div>
+                      <InputGroupAddon
+                        align="block-end"
+                        className="flex w-full justify-end border-0 bg-transparent pt-0 text-foreground"
                       >
-                        {isLoadingDiscovery ? (
-                          <>
-                            <Spinner size="sm" thickness="thin" aria-hidden="true" />
-                            <span>Discovering…</span>
-                          </>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            void fetchOidcConfig()
+                          }}
+                          disabled={isLoadingDiscovery || !issuerUrl}
+                          className="flex items-center gap-2"
+                        >
+                          {isLoadingDiscovery ? (
+                            <>
+                              <Spinner size="sm" thickness="thin" aria-hidden="true" />
+                              <span>Discovering…</span>
+                            </>
+                          ) : (
+                            'Discover'
+                          )}
+                        </Button>
+                      </InputGroupAddon>
+                    </InputGroup>
+                    <FieldDescription className="text-xs text-muted-foreground">
+                      Enter the base URL of your IdP to attempt auto-discovery of endpoints via the
+                      OIDC discovery document.
+                    </FieldDescription>
+                  </div>
+
+                  {/* Manual/Discovered Endpoints */}
+                  <FormFieldInput
+                    label="Authorization Endpoint"
+                    placeholder="https://example.com/authorize"
+                    value={authEndpoint}
+                    onChange={(e) => setAuthEndpoint(e.target.value)}
+                    readOnly={endpointsLocked}
+                    description={
+                      <span className="flex items-center gap-2">
+                        <span>Required endpoint for starting the authorization flow.</span>
+                        {endpointsLocked ? (
+                          <Badge variant="secondary">Auto-discovered</Badge>
                         ) : (
-                          'Discover'
+                          <span>(Enter manually if not discovered)</span>
                         )}
-                      </Button>
-                    </InputGroupAddon>
-                  </InputGroup>
-                  <FieldDescription className="text-xs text-muted-foreground">
-                    Enter the base URL of your IdP to attempt auto-discovery of endpoints via the
-                    OIDC discovery document.
-                  </FieldDescription>
-                </div>
-
-                {/* Manual/Discovered Endpoints */}
-                <FormFieldInput
-                  label="Authorization Endpoint"
-                  placeholder="https://example.com/authorize"
-                  value={authEndpoint}
-                  onChange={(e) => setAuthEndpoint(e.target.value)}
-                  readOnly={endpointsLocked}
-                  description={
-                    <span className="flex items-center gap-2">
-                      <span>Required endpoint for starting the authorization flow.</span>
-                      {endpointsLocked ? (
-                        <Badge variant="secondary">Auto-discovered</Badge>
-                      ) : (
-                        <span>(Enter manually if not discovered)</span>
-                      )}
-                    </span>
-                  }
-                />
-
-                <FormFieldInput
-                  label="Token Endpoint"
-                  placeholder="https://example.com/token"
-                  value={tokenEndpoint}
-                  onChange={(e) => setTokenEndpoint(e.target.value)}
-                  readOnly={endpointsLocked}
-                  description={
-                    <span className="flex items-center gap-2">
-                      <span>
-                        Required endpoint for exchanging the authorization code for tokens.
                       </span>
-                      {endpointsLocked ? (
-                        <Badge variant="secondary">Auto-discovered</Badge>
-                      ) : (
-                        <span>(Enter manually if not discovered)</span>
-                      )}
-                    </span>
-                  }
-                />
+                    }
+                  />
 
-                <FormFieldInput
-                  label="JWKS Endpoint (Optional)"
-                  placeholder="https://example.com/.well-known/jwks.json"
-                  value={jwksEndpoint}
-                  onChange={(e) => setJwksEndpoint(e.target.value)}
-                  readOnly={endpointsLocked}
-                  description={
-                    <span className="flex items-center gap-2">
-                      <span>Endpoint for retrieving public keys to validate token signatures.</span>
-                      {endpointsLocked ? (
-                        <Badge variant="secondary">Auto-discovered</Badge>
-                      ) : (
-                        <span>(Enter manually if not discovered)</span>
-                      )}
-                    </span>
-                  }
+                  <FormFieldInput
+                    label="Token Endpoint"
+                    placeholder="https://example.com/token"
+                    value={tokenEndpoint}
+                    onChange={(e) => setTokenEndpoint(e.target.value)}
+                    readOnly={endpointsLocked}
+                    description={
+                      <span className="flex items-center gap-2">
+                        <span>
+                          Required endpoint for exchanging the authorization code for tokens.
+                        </span>
+                        {endpointsLocked ? (
+                          <Badge variant="secondary">Auto-discovered</Badge>
+                        ) : (
+                          <span>(Enter manually if not discovered)</span>
+                        )}
+                      </span>
+                    }
+                  />
+
+                  <FormFieldInput
+                    label="JWKS Endpoint (Optional)"
+                    placeholder="https://example.com/.well-known/jwks.json"
+                    value={jwksEndpoint}
+                    onChange={(e) => setJwksEndpoint(e.target.value)}
+                    readOnly={endpointsLocked}
+                    description={
+                      <span className="flex items-center gap-2">
+                        <span>
+                          Endpoint for retrieving public keys to validate token signatures.
+                        </span>
+                        {endpointsLocked ? (
+                          <Badge variant="secondary">Auto-discovered</Badge>
+                        ) : (
+                          <span>(Enter manually if not discovered)</span>
+                        )}
+                      </span>
+                    }
+                  />
+                </FieldSet>
+                <EndpointPreflightPanel
+                  issuerUrl={issuerUrl}
+                  onIssuerUrlChange={(value) => {
+                    setIssuerUrl(value)
+                    clearDiscoveredEndpoints()
+                  }}
+                  showIssuerInput={false}
+                  description="Run endpoint probes with the issuer URL above before starting the flow."
+                  onConfigResolved={(config, normalizedIssuerUrl) => {
+                    const hasUsableEndpoints = applyDiscoveredConfiguration(
+                      config,
+                      normalizedIssuerUrl
+                    )
+                    if (!hasUsableEndpoints) {
+                      toast.warning(
+                        'Preflight completed, but discovery returned no usable endpoints'
+                      )
+                    }
+                  }}
                 />
-              </FieldSet>
+              </>
             ) : // Removed the empty div that previously held the static message
             null // Or simply remove the entire else block if nothing else goes here
           }

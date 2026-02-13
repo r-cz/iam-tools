@@ -24,6 +24,7 @@ No special environment variables are required for basic deployment. However, you
 - **NODE_ENV**: Set to `production` for production builds
 - **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins for CORS (disallowed origins receive `403`)
 - **APP_VERSION**: Release version string embedded in the frontend (defaults to package.json version)
+- **DEMO_TOKEN_SIGNING_SECRET**: Optional secret used to HMAC-sign demo authorization codes and refresh tokens (`v1.<payload>.<sig>`). When set, strict verification is enforced for these artifacts.
 
 ### Custom Domains
 
@@ -128,7 +129,9 @@ The deployment includes several security measures:
 3. API request validation in function handlers
 4. Strict allow-listing for the CORS proxy (well-known/JWKS endpoints, `GET/HEAD` only)
 5. In-worker rate limiting on `/api/cors-proxy` and demo OAuth endpoints (`429` with `Retry-After`)
-6. Regular security updates through GitHub dependency management
+6. Signed envelope integrity for demo auth codes/refresh tokens when `DEMO_TOKEN_SIGNING_SECRET` is configured
+7. Demo JWT signature checks in `/api/userinfo` and `/api/introspect` before treating tokens as active
+8. Regular security updates through GitHub dependency management
 
 ## Performance Optimizations
 

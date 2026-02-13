@@ -73,62 +73,73 @@ export function JwksDisplay({ jwks, jwksUri }: JwksDisplayProps) {
     // Skip the kid and kty as they're shown elsewhere
     if (key === 'kid' || key === 'kty') return null
 
-    let displayValue = ''
-    let description = ''
-
-    switch (key) {
-      case 'use':
-        displayValue = value === 'sig' ? 'Signature' : value === 'enc' ? 'Encryption' : value
-        description = 'Intended use for the key'
-        break
-      case 'alg':
-        displayValue = value
-        description = getAlgorithmDescription(value)
-        break
-      case 'n':
-        displayValue = `${value.substring(0, 20)}...`
-        description = 'RSA modulus (base64url encoded)'
-        break
-      case 'e':
-        displayValue = value
-        description = 'RSA exponent (base64url encoded)'
-        break
-      case 'x5c':
-        displayValue = `${Array.isArray(value) ? value.length : 0} certificate(s)`
-        description = 'X.509 certificate chain'
-        break
-      case 'x5t':
-        displayValue = formatFingerprint(value)
-        description = 'X.509 certificate SHA-1 thumbprint'
-        break
-      case 'x5t#S256':
-        displayValue = formatFingerprint(value)
-        description = 'X.509 certificate SHA-256 thumbprint'
-        break
-      case 'crv':
-        displayValue = value
-        description = 'Curve for EC keys'
-        break
-      case 'x':
-        displayValue = `${value.substring(0, 20)}...`
-        description = 'X coordinate for EC key'
-        break
-      case 'y':
-        displayValue = `${value.substring(0, 20)}...`
-        description = 'Y coordinate for EC key'
-        break
-      default:
-        displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value)
-        description = 'Additional key parameter'
-    }
+    const details = (() => {
+      switch (key) {
+        case 'use':
+          return {
+            displayValue: value === 'sig' ? 'Signature' : value === 'enc' ? 'Encryption' : value,
+            description: 'Intended use for the key',
+          }
+        case 'alg':
+          return {
+            displayValue: value,
+            description: getAlgorithmDescription(value),
+          }
+        case 'n':
+          return {
+            displayValue: `${value.substring(0, 20)}...`,
+            description: 'RSA modulus (base64url encoded)',
+          }
+        case 'e':
+          return {
+            displayValue: value,
+            description: 'RSA exponent (base64url encoded)',
+          }
+        case 'x5c':
+          return {
+            displayValue: `${Array.isArray(value) ? value.length : 0} certificate(s)`,
+            description: 'X.509 certificate chain',
+          }
+        case 'x5t':
+          return {
+            displayValue: formatFingerprint(value),
+            description: 'X.509 certificate SHA-1 thumbprint',
+          }
+        case 'x5t#S256':
+          return {
+            displayValue: formatFingerprint(value),
+            description: 'X.509 certificate SHA-256 thumbprint',
+          }
+        case 'crv':
+          return {
+            displayValue: value,
+            description: 'Curve for EC keys',
+          }
+        case 'x':
+          return {
+            displayValue: `${value.substring(0, 20)}...`,
+            description: 'X coordinate for EC key',
+          }
+        case 'y':
+          return {
+            displayValue: `${value.substring(0, 20)}...`,
+            description: 'Y coordinate for EC key',
+          }
+        default:
+          return {
+            displayValue: typeof value === 'object' ? JSON.stringify(value) : String(value),
+            description: 'Additional key parameter',
+          }
+      }
+    })()
 
     return (
       <tr key={key}>
         <td className="w-1/4 font-medium">{key}</td>
         <td className="w-2/5 break-all">
-          <code>{displayValue}</code>
+          <code>{details.displayValue}</code>
         </td>
-        <td className="w-2/5">{description}</td>
+        <td className="w-2/5">{details.description}</td>
       </tr>
     )
   }

@@ -30,6 +30,11 @@ import {
 import { cn } from '@/lib/utils'
 import { Clock, Hash, Layers, ShieldCheck } from 'lucide-react'
 import { ButtonGroup } from '@/components/ui/button-group'
+import EndpointPreflightPanel from './EndpointPreflightPanel'
+import {
+  extractDiscoveredEndpoints,
+  fetchOidcDiscoveryConfiguration,
+} from '../utils/oidc-preflight'
 
 interface TokenResponse {
   access_token?: string
@@ -44,6 +49,7 @@ interface TokenResponse {
 export function ClientCredentialsFlow() {
   const navigate = useNavigate() // Instantiate useNavigate
   const { addIssuer } = useIssuerHistory()
+  const [issuerUrl, setIssuerUrl] = useState('')
   const [tokenEndpoint, setTokenEndpoint] = useState('')
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
@@ -74,32 +80,19 @@ export function ClientCredentialsFlow() {
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
+    setIssuerUrl(issuerUrl)
     setConfigLoading(true)
 
     try {
-      // Construct the well-known URL
-      const url = new URL(issuerUrl)
-      const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`
-      const wellKnownUrl = new URL(
-        `${basePath}.well-known/openid-configuration`,
-        url.origin
-      ).toString()
+      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(issuerUrl)
+      const endpoints = extractDiscoveredEndpoints(config)
+      setIssuerUrl(normalizedIssuerUrl)
 
-      // Fetch OIDC configuration to get token endpoint
-      const response = await proxyFetch(wellKnownUrl)
-
-      if (response.ok) {
-        const config = await response.json()
-        if (config.token_endpoint) {
-          setTokenEndpoint(config.token_endpoint)
-          // Add issuer to history
-          addIssuer(issuerUrl)
-        } else {
-          // Show error if no token endpoint is available
-          toast.error('This issuer does not have a token endpoint configured')
-        }
+      if (endpoints.tokenEndpoint) {
+        setTokenEndpoint(endpoints.tokenEndpoint)
+        addIssuer(normalizedIssuerUrl)
       } else {
-        toast.error('Failed to fetch OIDC configuration')
+        toast.error('This issuer does not have a token endpoint configured')
       }
     } catch (error) {
       toast.error('Error fetching OIDC configuration: ' + (error as Error).message)
@@ -343,6 +336,24 @@ export function ClientCredentialsFlow() {
                 </InputGroupAddon>
               )}
             </InputGroup>
+
+            {!isDemoMode && (
+              <EndpointPreflightPanel
+                issuerUrl={issuerUrl}
+                onIssuerUrlChange={setIssuerUrl}
+                requiredEndpoints={['token_endpoint']}
+                onConfigResolved={(config, normalizedIssuerUrl) => {
+                  const endpoints = extractDiscoveredEndpoints(config)
+                  setIssuerUrl(normalizedIssuerUrl)
+                  if (endpoints.tokenEndpoint) {
+                    setTokenEndpoint(endpoints.tokenEndpoint)
+                    addIssuer(normalizedIssuerUrl)
+                  }
+                }}
+                title="Token Endpoint Preflight"
+                description="Run OIDC discovery and endpoint probes before requesting a token."
+              />
+            )}
 
             <FieldSet className="space-y-4 rounded-md border border-border p-4">
               <FieldLegend>Client Authentication</FieldLegend>

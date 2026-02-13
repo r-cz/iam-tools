@@ -9,6 +9,7 @@ type AssetsBinding = { fetch: (request: Request) => Promise<Response> }
 interface Env {
   ASSETS: AssetsBinding
   CORS_ALLOWED_ORIGINS?: string
+  DEMO_TOKEN_SIGNING_SECRET?: string
 }
 
 type RateLimitBucket = { count: number; resetAt: number }
@@ -17,6 +18,10 @@ type RateLimitConfig = { max: number; windowMs: number }
 const rateLimitBuckets = new Map<string, RateLimitBucket>()
 const CORS_PROXY_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 60_000 }
 const DEMO_RATE_LIMIT: RateLimitConfig = { max: 120, windowMs: 60_000 }
+const SIGNED_ENVELOPE_VERSION = 'v1'
+const DEMO_JWT_KID = DEMO_JWKS.keys[0]?.kid
+const hmacKeyCache = new Map<string, Promise<CryptoKey>>()
+let demoJwtVerifyKeyPromise: Promise<CryptoKey> | null = null
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -391,7 +396,7 @@ async function handleAuthorization(request: Request, env: Env): Promise<Response
     exp: now + AUTH_CODE_TTL,
   }
 
-  const code = encodeAuthCode(payload)
+  const code = await encodeAuthCode(payload, env)
   const redirect = new URL(redirectUri)
   redirect.searchParams.set('code', code)
   if (state) {
@@ -429,7 +434,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
       return oauthError('invalid_request', 'code and redirect_uri are required', request, env)
     }
 
-    const authCode = decodeAuthCode(code)
+    const authCode = await decodeAuthCode(code, env)
     if (!authCode) {
       return oauthError('invalid_grant', 'Authorization code is invalid', request, env)
     }
@@ -472,6 +477,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
     )
     const scopeList = splitScopes(resolvedScope)
     const tokenResponse = await issueTokenResponse({
+      env,
       issuer,
       clientId,
       subject: authCode.sub,
@@ -491,7 +497,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
       return oauthError('invalid_request', 'refresh_token is required', request, env)
     }
 
-    const refreshPayload = decodeRefreshToken(refreshToken)
+    const refreshPayload = await decodeRefreshToken(refreshToken, env)
     if (!refreshPayload) {
       return oauthError('invalid_grant', 'refresh_token is invalid', request, env)
     }
@@ -515,6 +521,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
     )
     const scopeList = splitScopes(resolvedScope)
     const tokenResponse = await issueTokenResponse({
+      env,
       issuer,
       clientId,
       subject: refreshPayload.sub,
@@ -530,6 +537,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
   if (grantType === 'client_credentials') {
     const resolvedScope = normalizeScope(getString(params, 'scope') || DEFAULT_API_SCOPE)
     const tokenResponse = await issueTokenResponse({
+      env,
       issuer,
       clientId,
       subject: clientId,
@@ -605,6 +613,13 @@ async function handleUserInfo(request: Request, env: Env): Promise<Response> {
     return oauthError('invalid_token', 'Token is not a valid JWT', request, env, 401)
   }
 
+  if (isDemoJwtCandidate(token, payload, request)) {
+    const signatureValid = await verifyDemoJwtSignature(token)
+    if (!signatureValid) {
+      return oauthError('invalid_token', 'Token signature is invalid', request, env, 401)
+    }
+  }
+
   if (!isTokenActive(payload)) {
     return oauthError('invalid_token', 'Token has expired', request, env, 401)
   }
@@ -630,7 +645,14 @@ async function handleIntrospection(request: Request, env: Env): Promise<Response
   }
 
   const jwtPayload = decodeJwtPayload(token)
-  const refreshPayload = jwtPayload ? null : decodeRefreshToken(token)
+  if (jwtPayload && isDemoJwtCandidate(token, jwtPayload, request)) {
+    const signatureValid = await verifyDemoJwtSignature(token)
+    if (!signatureValid) {
+      return oauthJson({ active: false }, undefined, request, env)
+    }
+  }
+
+  const refreshPayload = jwtPayload ? null : await decodeRefreshToken(token, env)
   const payload = (jwtPayload || refreshPayload) as Record<string, unknown>
 
   if (!payload) {
@@ -741,6 +763,7 @@ function oauthError(
 }
 
 async function issueTokenResponse(opts: {
+  env: Env
   issuer: string
   clientId: string
   subject: string
@@ -788,13 +811,16 @@ async function issueTokenResponse(opts: {
   }
 
   if (opts.includeRefreshToken) {
-    response.refresh_token = encodeRefreshToken({
-      client_id: opts.clientId,
-      sub: opts.subject,
-      scope: opts.scope,
-      issued_at: now,
-      exp: now + REFRESH_TOKEN_TTL,
-    })
+    response.refresh_token = await encodeRefreshToken(
+      {
+        client_id: opts.clientId,
+        sub: opts.subject,
+        scope: opts.scope,
+        issued_at: now,
+        exp: now + REFRESH_TOKEN_TTL,
+      },
+      opts.env
+    )
   }
 
   return response
@@ -815,21 +841,41 @@ function splitScopes(scope: string): string[] {
   return scope.split(/\s+/).filter(Boolean)
 }
 
-function encodeAuthCode(payload: AuthCodePayload): string {
-  return encodeJson(payload)
+async function encodeAuthCode(payload: AuthCodePayload, env: Env): Promise<string> {
+  const secret = getDemoTokenSigningSecret(env)
+  if (!secret) {
+    return encodeJson(payload)
+  }
+
+  return await encodeSignedEnvelope(payload, secret)
 }
 
-function decodeAuthCode(value: string): AuthCodePayload | null {
-  return decodeJson<AuthCodePayload>(value)
+async function decodeAuthCode(value: string, env: Env): Promise<AuthCodePayload | null> {
+  const secret = getDemoTokenSigningSecret(env)
+  if (!secret) {
+    return decodeJson<AuthCodePayload>(value)
+  }
+
+  return await decodeSignedEnvelope<AuthCodePayload>(value, secret)
 }
 
-function encodeRefreshToken(payload: RefreshTokenPayload): string {
-  return `rt_${encodeJson(payload)}`
+async function encodeRefreshToken(payload: RefreshTokenPayload, env: Env): Promise<string> {
+  const secret = getDemoTokenSigningSecret(env)
+  if (!secret) {
+    return `rt_${encodeJson(payload)}`
+  }
+
+  return await encodeSignedEnvelope(payload, secret)
 }
 
-function decodeRefreshToken(token: string): RefreshTokenPayload | null {
-  const raw = token.startsWith('rt_') ? token.slice(3) : token
-  return decodeJson<RefreshTokenPayload>(raw)
+async function decodeRefreshToken(token: string, env: Env): Promise<RefreshTokenPayload | null> {
+  const secret = getDemoTokenSigningSecret(env)
+  if (!secret) {
+    const raw = token.startsWith('rt_') ? token.slice(3) : token
+    return decodeJson<RefreshTokenPayload>(raw)
+  }
+
+  return await decodeSignedEnvelope<RefreshTokenPayload>(token, secret)
 }
 
 function extractBearerToken(headers: Headers): string | null {
@@ -844,6 +890,58 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split('.')
   if (parts.length < 2) return null
   return decodeJson<Record<string, unknown>>(parts[1])
+}
+
+function decodeJwtHeader(token: string): Record<string, unknown> | null {
+  const parts = token.split('.')
+  if (parts.length < 1) return null
+  return decodeJson<Record<string, unknown>>(parts[0])
+}
+
+function isDemoJwtCandidate(
+  token: string,
+  payload: Record<string, unknown>,
+  request: Request
+): boolean {
+  const header = decodeJwtHeader(token)
+  const headerKid = typeof header?.kid === 'string' ? header.kid : undefined
+  const issuer = typeof payload.iss === 'string' ? payload.iss : undefined
+  const requestIssuer = getIssuer(request)
+  const hasDemoMarker = payload.is_demo_token === true
+
+  return Boolean(headerKid === DEMO_JWT_KID || hasDemoMarker || issuer === requestIssuer)
+}
+
+async function verifyDemoJwtSignature(token: string): Promise<boolean> {
+  try {
+    const [header, payload, signature] = token.split('.')
+    if (!header || !payload || !signature) return false
+
+    const key = await getDemoJwtVerifyKey()
+    const data = new TextEncoder().encode(`${header}.${payload}`)
+    const signatureBytes = base64UrlDecode(signature)
+
+    return await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, toArrayBuffer(signatureBytes), data)
+  } catch {
+    return false
+  }
+}
+
+async function getDemoJwtVerifyKey(): Promise<CryptoKey> {
+  if (!demoJwtVerifyKeyPromise) {
+    demoJwtVerifyKeyPromise = crypto.subtle.importKey(
+      'jwk',
+      DEMO_JWKS.keys[0] as JsonWebKey,
+      {
+        name: 'RSASSA-PKCS1-v1_5',
+        hash: { name: 'SHA-256' },
+      },
+      false,
+      ['verify']
+    )
+  }
+
+  return await demoJwtVerifyKeyPromise
 }
 
 function isTokenActive(payload: Record<string, unknown>): boolean {
@@ -970,6 +1068,70 @@ function getIssuer(request: Request): string {
   return `${url.protocol}//${url.host}/api`
 }
 
+function getDemoTokenSigningSecret(env: Env): string | null {
+  const secret = env.DEMO_TOKEN_SIGNING_SECRET?.trim()
+  return secret ? secret : null
+}
+
+async function encodeSignedEnvelope(payload: unknown, secret: string): Promise<string> {
+  const encodedPayload = encodeJson(payload)
+  const signingInput = `${SIGNED_ENVELOPE_VERSION}.${encodedPayload}`
+  const signature = await createHmacSignature(signingInput, secret)
+  return `${SIGNED_ENVELOPE_VERSION}.${encodedPayload}.${signature}`
+}
+
+async function decodeSignedEnvelope<T>(value: string, secret: string): Promise<T | null> {
+  const parts = value.split('.')
+  if (parts.length !== 3) return null
+
+  const [version, encodedPayload, signature] = parts
+  if (version !== SIGNED_ENVELOPE_VERSION) return null
+  if (!encodedPayload || !signature) return null
+
+  const signingInput = `${version}.${encodedPayload}`
+  const expectedSignature = await createHmacSignature(signingInput, secret)
+  if (!constantTimeEqual(signature, expectedSignature)) {
+    return null
+  }
+
+  return decodeJson<T>(encodedPayload)
+}
+
+async function createHmacSignature(value: string, secret: string): Promise<string> {
+  const key = await getHmacSigningKey(secret)
+  const data = new TextEncoder().encode(value)
+  const signature = await crypto.subtle.sign('HMAC', key, data)
+  return base64UrlEncode(new Uint8Array(signature))
+}
+
+async function getHmacSigningKey(secret: string): Promise<CryptoKey> {
+  let keyPromise = hmacKeyCache.get(secret)
+  if (!keyPromise) {
+    keyPromise = crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: { name: 'SHA-256' } },
+      false,
+      ['sign']
+    )
+    hmacKeyCache.set(secret, keyPromise)
+  }
+  return await keyPromise
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  let mismatch = 0
+  for (let i = 0; i < left.length; i += 1) {
+    mismatch |= left.charCodeAt(i) ^ right.charCodeAt(i)
+  }
+
+  return mismatch === 0
+}
+
 function encodeJson(value: unknown): string {
   const json = JSON.stringify(value)
   return base64UrlEncode(new TextEncoder().encode(json))
@@ -995,6 +1157,10 @@ function base64UrlDecode(value: string): Uint8Array {
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
   const binary = atob(padded)
   return Uint8Array.from(binary, (c) => c.charCodeAt(0))
+}
+
+function toArrayBuffer(data: Uint8Array): ArrayBuffer {
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
 }
 
 async function computeCodeChallenge(verifier: string): Promise<string> {

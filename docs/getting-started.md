@@ -81,6 +81,7 @@ See [file-structure.md](./file-structure.md) for a more detailed breakdown.
 This project doesn't require any environment variables for basic development. However, if you're deploying your own instance, you may want to configure:
 
 - `CORS_ALLOWED_ORIGINS` - Comma-separated allowlist for API origins (disallowed origins receive `403`)
+- `DEMO_TOKEN_SIGNING_SECRET` - Enables strict signed demo auth-code and refresh-token envelopes (`v1.<payload>.<sig>`)
 
 ## Working with Features
 
@@ -91,6 +92,7 @@ The application currently includes these main features:
 1. **Token Inspector** - For analyzing JWT tokens
 2. **OIDC Explorer** - For exploring OpenID Connect configurations
 3. **CORS Proxy** - For accessing external APIs with CORS restrictions
+4. **OAuth Endpoint Preflight** - For checking OIDC discovery and endpoint reachability before running flows
 
 ### Creating a New Feature
 

@@ -15,6 +15,22 @@ test.describe('OAuth Playground - Client Credentials', () => {
     await expect(page.locator('text=OAuth Client Credentials Flow')).toBeVisible()
   })
 
+  test('should run token endpoint preflight for reachable and unreachable issuers', async ({
+    page,
+  }) => {
+    const preflightIssuerInput = page.locator('input[placeholder="https://example.com"]').first()
+    await preflightIssuerInput.fill('http://localhost:8788/api')
+    await page.click('button:has-text("Run Preflight")')
+
+    await expect(page.locator('text=Token Endpoint Preflight')).toBeVisible()
+    await expect(page.locator('text=Raw Report JSON')).toBeVisible()
+    await expect(page.locator('#token-endpoint')).toHaveValue(/\/api\/token$/)
+
+    await preflightIssuerInput.fill('http://localhost:8788/api/not-real')
+    await page.click('button:has-text("Run Preflight")')
+    await expect(page.getByText('FAIL').first()).toBeVisible()
+  })
+
   test('should toggle demo mode', async ({ page }) => {
     // Find demo mode switch
     const demoSwitch = page.locator(selectors.oauthPlayground.demoModeSwitch)

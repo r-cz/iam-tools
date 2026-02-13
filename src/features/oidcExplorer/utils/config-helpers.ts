@@ -76,7 +76,8 @@ export async function fetchJwks(jwksUri: string): Promise<Jwks> {
     // Enhance error messages for common issues
     if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
       throw new Error(
-        `CORS error: Could not fetch JWKS from ${jwksUri}. The server may not allow direct browser access.`
+        `CORS error: Could not fetch JWKS from ${jwksUri}. The server may not allow direct browser access.`,
+        { cause: error }
       )
     }
 
