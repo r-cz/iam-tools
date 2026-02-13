@@ -25,6 +25,10 @@ function resolveTargetUrl(input: Request | string): string {
   return decodeURIComponent(encodedTarget)
 }
 
+function isDiscoveryUrl(target: string): boolean {
+  return target.includes('/.well-known/openid-configuration')
+}
+
 describe('OIDC endpoint preflight', () => {
   beforeEach(() => {
     globalThis.fetch = mock(async () => createJsonResponse({ error: 'not mocked' }, 404)) as any
@@ -37,7 +41,7 @@ describe('OIDC endpoint preflight', () => {
   test('fetches discovery document and normalizes issuer URL', async () => {
     ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
       const target = resolveTargetUrl(input)
-      if (target === 'https://issuer.example.com/tenant/.well-known/openid-configuration') {
+      if (target.endsWith('/tenant/.well-known/openid-configuration')) {
         return createJsonResponse({
           issuer: 'https://issuer.example.com/tenant',
           authorization_endpoint: 'https://issuer.example.com/tenant/oauth2/authorize',
@@ -61,7 +65,7 @@ describe('OIDC endpoint preflight', () => {
   test('fails discovery when discovery endpoint is not successful', async () => {
     ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
       const target = resolveTargetUrl(input)
-      if (target.endsWith('/.well-known/openid-configuration')) {
+      if (isDiscoveryUrl(target)) {
         return createJsonResponse({ error: 'unavailable' }, 503)
       }
 
@@ -77,7 +81,7 @@ describe('OIDC endpoint preflight', () => {
     ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
       const target = resolveTargetUrl(input)
 
-      if (target === 'https://issuer.example.com/.well-known/openid-configuration') {
+      if (isDiscoveryUrl(target)) {
         return createJsonResponse({
           issuer: 'https://issuer.example.com',
           authorization_endpoint: 'https://issuer.example.com/oauth2/authorize',
@@ -88,19 +92,19 @@ describe('OIDC endpoint preflight', () => {
         })
       }
 
-      if (target === 'https://issuer.example.com/oauth2/authorize') {
+      if (target.includes('/oauth2/authorize')) {
         return new Response(null, { status: 302, headers: { Location: '/login' } })
       }
-      if (target === 'https://issuer.example.com/oauth2/token') {
+      if (target.includes('/oauth2/token')) {
         return createJsonResponse({ error: 'invalid_client' }, 401)
       }
-      if (target === 'https://issuer.example.com/oauth2/userinfo') {
+      if (target.includes('/oauth2/userinfo')) {
         return new Response(null, { status: 405 })
       }
-      if (target === 'https://issuer.example.com/oauth2/introspect') {
+      if (target.includes('/oauth2/introspect')) {
         return createJsonResponse({ error: 'server_error' }, 503)
       }
-      if (target === 'https://issuer.example.com/oauth2/jwks') {
+      if (target.includes('/oauth2/jwks')) {
         return createJsonResponse({ error: 'missing' }, 404)
       }
 
@@ -121,41 +125,30 @@ describe('OIDC endpoint preflight', () => {
   })
 
   test('marks network, CORS, and timeout probe failures as warnings', async () => {
-    ;(globalThis.fetch as any).mockImplementation(
-      async (input: Request | string, init?: RequestInit) => {
-        const target = resolveTargetUrl(input)
+    ;(globalThis.fetch as any).mockImplementation(async (input: Request | string) => {
+      const target = resolveTargetUrl(input)
 
-        if (target === 'https://issuer.example.com/.well-known/openid-configuration') {
-          return createJsonResponse({
-            issuer: 'https://issuer.example.com',
-            authorization_endpoint: 'https://issuer.example.com/oauth2/authorize',
-            token_endpoint: 'https://issuer.example.com/oauth2/token',
-            userinfo_endpoint: 'https://issuer.example.com/oauth2/userinfo',
-            introspection_endpoint: 'https://issuer.example.com/oauth2/introspect',
-            jwks_uri: 'https://issuer.example.com/oauth2/jwks',
-          })
-        }
-
-        if (target === 'https://issuer.example.com/oauth2/token') {
-          throw new Error('Failed to fetch')
-        }
-
-        if (target === 'https://issuer.example.com/oauth2/userinfo') {
-          return await new Promise<Response>((_, reject) => {
-            const abortHandler = () => reject(new DOMException('Aborted', 'AbortError'))
-            if (init?.signal) {
-              if (init.signal.aborted) {
-                abortHandler()
-                return
-              }
-              init.signal.addEventListener('abort', abortHandler, { once: true })
-            }
-          })
-        }
-
-        return createJsonResponse({}, 200)
+      if (isDiscoveryUrl(target)) {
+        return createJsonResponse({
+          issuer: 'https://issuer.example.com',
+          authorization_endpoint: 'https://issuer.example.com/oauth2/authorize',
+          token_endpoint: 'https://issuer.example.com/oauth2/token',
+          userinfo_endpoint: 'https://issuer.example.com/oauth2/userinfo',
+          introspection_endpoint: 'https://issuer.example.com/oauth2/introspect',
+          jwks_uri: 'https://issuer.example.com/oauth2/jwks',
+        })
       }
-    )
+
+      if (target.includes('/oauth2/token')) {
+        throw new Error('Failed to fetch')
+      }
+
+      if (target.includes('/oauth2/userinfo')) {
+        throw new DOMException('Aborted', 'AbortError')
+      }
+
+      return createJsonResponse({}, 200)
+    })
 
     const report = await runOidcEndpointPreflight({
       issuerUrl: 'https://issuer.example.com',

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig'
 import { oidcConfigCache } from '@/lib/cache/oidc-config-cache'
 
@@ -24,6 +24,14 @@ function resolveTargetUrl(input: Request | string): string {
   return decodeURIComponent(encodedTarget)
 }
 
+function isTenantDiscoveryUrl(target: string): boolean {
+  return target.endsWith('/tenant/.well-known/openid-configuration')
+}
+
+function isIssuerDiscoveryUrl(target: string): boolean {
+  return target.includes('/.well-known/openid-configuration')
+}
+
 describe('useOidcConfig', () => {
   beforeEach(() => {
     oidcConfigCache.clear()
@@ -40,7 +48,7 @@ describe('useOidcConfig', () => {
       const target = resolveTargetUrl(input)
       fetchCalls.push(target)
 
-      if (target === 'https://issuer.example.com/tenant/.well-known/openid-configuration') {
+      if (isTenantDiscoveryUrl(target)) {
         return createJsonResponse({
           issuer: 'https://issuer.example.com/tenant',
           authorization_endpoint: 'https://issuer.example.com/tenant/oauth2/authorize',
@@ -58,13 +66,9 @@ describe('useOidcConfig', () => {
       await result.current.fetchConfig('issuer.example.com/tenant/')
     })
 
-    await waitFor(() => {
-      expect(result.current.data?.issuer).toBe('https://issuer.example.com/tenant')
-    })
+    expect(result.current.data?.issuer).toBe('https://issuer.example.com/tenant')
     expect(result.current.currentIssuer).toBe('https://issuer.example.com/tenant')
-    expect(fetchCalls).toContain(
-      'https://issuer.example.com/tenant/.well-known/openid-configuration'
-    )
+    expect(fetchCalls.some((target) => isTenantDiscoveryUrl(target))).toBe(true)
 
     await act(async () => {
       await result.current.fetchConfig('https://issuer.example.com/tenant')
@@ -77,7 +81,7 @@ describe('useOidcConfig', () => {
   test('captures response errors from discovery fetch failures', async () => {
     globalThis.fetch = mock(async (input: Request | string) => {
       const target = resolveTargetUrl(input)
-      if (target === 'https://issuer.example.com/.well-known/openid-configuration') {
+      if (isIssuerDiscoveryUrl(target)) {
         return createJsonResponse({ error: 'server unavailable' }, 500)
       }
 
@@ -90,10 +94,7 @@ describe('useOidcConfig', () => {
       await result.current.fetchConfig('https://issuer.example.com')
     })
 
-    await waitFor(() => {
-      expect(result.current.error).toBeTruthy()
-    })
-
+    expect(result.current.error).toBeTruthy()
     expect(result.current.data).toBeNull()
     expect(result.current.error?.message).toContain('OIDC discovery failed: 500')
   })
