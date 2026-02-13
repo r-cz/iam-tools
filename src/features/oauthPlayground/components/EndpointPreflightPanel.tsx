@@ -157,7 +157,7 @@ export function EndpointPreflightPanel({
         </div>
 
         {report && (
-          <div className="space-y-4" data-testid="oidc-preflight-report">
+          <div className="min-w-0 max-w-full space-y-4" data-testid="oidc-preflight-report">
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <Badge variant="outline">
                 Generated: {new Date(report.generatedAt).toLocaleString()}
@@ -166,11 +166,11 @@ export function EndpointPreflightPanel({
               <Badge variant="outline">Issuer: {report.normalizedIssuerUrl}</Badge>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 max-w-full space-y-2">
               {report.endpoints.map((result) => (
                 <div
                   key={result.endpoint}
-                  className="rounded-md border bg-muted/20 p-3"
+                  className="min-w-0 max-w-full rounded-md border bg-muted/20 p-3"
                   data-testid={`oidc-preflight-result-${result.endpoint}`}
                 >
                   <div className="flex flex-wrap items-center gap-2">
@@ -192,12 +192,17 @@ export function EndpointPreflightPanel({
             </div>
 
             <details
-              className="rounded-md border bg-muted/10 p-3"
+              className="min-w-0 max-w-full overflow-hidden rounded-md border bg-muted/10 p-3"
               data-testid="oidc-preflight-raw-report"
             >
               <summary className="cursor-pointer text-sm font-medium">Raw Report JSON</summary>
-              <div className="mt-3">
-                <JsonDisplay data={report} containerClassName="relative" maxHeight="320px" />
+              <div className="mt-3 min-w-0 max-w-full overflow-x-auto">
+                <JsonDisplay
+                  data={report}
+                  containerClassName="relative w-full min-w-0 max-w-full"
+                  className="max-w-full"
+                  maxHeight="320px"
+                />
               </div>
             </details>
           </div>
