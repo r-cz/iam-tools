@@ -100,7 +100,7 @@
     "happy-dom": "^20.3.9",
     "node-jose-tools": "^2.0.4",
     "prettier": "^3.8.1",
-    "semantic-release": "^25.0.2",
+    "semantic-release": "^25.0.3",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.53.1",
     "vite": "^7.3.1",
