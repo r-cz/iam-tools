@@ -62,43 +62,45 @@ export function AuthorizationRequest({
 
   // Build the authorization URL
   useEffect(() => {
-    const buildAuthorizationUrl = () => {
-      const baseUrl = config.authEndpoint
+    const baseUrl = config.authEndpoint
+    if (!baseUrl) {
+      setAuthUrl('')
+      return
+    }
 
-      if (!baseUrl) {
-        setAuthUrl('')
-        return
-      }
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      code_challenge: pkce.codeChallenge,
+      code_challenge_method: 'S256',
+      state: pkce.state,
+    })
 
-      // Construct the authorization URL
-      const params = new URLSearchParams({
-        response_type: 'code',
-        client_id: config.clientId,
-        redirect_uri: config.redirectUri,
-        code_challenge: pkce.codeChallenge,
-        code_challenge_method: 'S256',
-        state: pkce.state,
-      })
+    if (config.scopes && config.scopes.length > 0) {
+      params.set('scope', config.scopes.join(' '))
+    }
 
-      // Add scopes
-      if (config.scopes && config.scopes.length > 0) {
-        params.set('scope', config.scopes.join(' '))
-      }
+    const constructedUrl = `${baseUrl}?${params.toString()}`
+    let nextAuthUrl = ''
 
-      const constructedUrl = `${baseUrl}?${params.toString()}`
-      try {
-        const sanitizedUrl = new URL(constructedUrl)
-        setAuthUrl(sanitizedUrl.toString())
-      } catch (error) {
-        if (import.meta?.env?.DEV) {
-          console.error('Invalid authorization URL:', error)
-        }
-        setAuthUrl('')
+    try {
+      nextAuthUrl = new URL(constructedUrl).toString()
+    } catch (error) {
+      if (import.meta?.env?.DEV) {
+        console.error('Invalid authorization URL:', error)
       }
     }
 
-    buildAuthorizationUrl()
-  }, [config, pkce])
+    setAuthUrl(nextAuthUrl)
+  }, [
+    config.authEndpoint,
+    config.clientId,
+    config.redirectUri,
+    config.scopes,
+    pkce.codeChallenge,
+    pkce.state,
+  ])
 
   const storeRedirectState = () => {
     if (typeof window === 'undefined') return

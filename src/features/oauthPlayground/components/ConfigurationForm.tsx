@@ -51,13 +51,6 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     regeneratePkce()
   }, [])
 
-  // Add useEffect to show toast when demo mode is enabled
-  useEffect(() => {
-    if (isDemoMode) {
-      toast.info('Demo mode enabled. A mock OAuth server will be used.')
-    }
-  }, [isDemoMode])
-
   const clearDiscoveredEndpoints = () => {
     setAuthEndpoint('')
     setTokenEndpoint('')
@@ -183,6 +176,13 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     onConfigComplete(config, pkce)
   }
 
+  const handleDemoModeChange = (enabled: boolean) => {
+    setIsDemoMode(enabled)
+    if (enabled) {
+      toast.info('Demo mode enabled. A mock OAuth server will be used.')
+    }
+  }
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -199,7 +199,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
             <DemoModeToggle
               id="demo-mode-switch"
               checked={isDemoMode}
-              onCheckedChange={setIsDemoMode}
+              onCheckedChange={handleDemoModeChange}
               description="Use a simulated Identity Provider for testing"
             />
           </div>

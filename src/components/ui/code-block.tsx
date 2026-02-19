@@ -19,9 +19,7 @@ export function CodeBlock({ code, language = 'json', className, ...props }: Code
     return false
   }, [theme])
 
-  const codeTheme = useMemo(() => {
-    return isDarkMode ? themes.nightOwl : themes.github
-  }, [isDarkMode])
+  const codeTheme = isDarkMode ? themes.nightOwl : themes.github
 
   return (
     <Highlight theme={codeTheme} code={code} language={language as any}>

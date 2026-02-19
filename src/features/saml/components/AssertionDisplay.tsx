@@ -272,9 +272,9 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        {assertion.conditions.audiences.map((audience, i) => (
+                        {assertion.conditions.audiences.map((audience) => (
                           <div
-                            key={i}
+                            key={audience}
                             className="flex items-center justify-between p-2 bg-muted/50 rounded"
                           >
                             <span className="font-mono text-sm break-all">{audience}</span>
@@ -318,9 +318,9 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
-                  {visibleAttributes.map((attr, i) => (
+                  {visibleAttributes.map((attr) => (
                     <div
-                      key={i}
+                      key={`${attr.name}-${attr.nameFormat ?? 'default'}`}
                       className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden"
                     >
                       <div className="p-4 space-y-3">
@@ -336,8 +336,11 @@ export function AssertionDisplay({ response }: AssertionDisplayProps) {
                           <CopyButton text={attr.values.join(', ')} showText={false} />
                         </div>
                         <div className="space-y-1">
-                          {attr.values.map((value, vi) => (
-                            <div key={vi} className="font-mono text-sm p-2 bg-muted/50 rounded">
+                          {attr.values.map((value) => (
+                            <div
+                              key={`${attr.name}-${value}`}
+                              className="font-mono text-sm p-2 bg-muted/50 rounded"
+                            >
                               {value}
                             </div>
                           ))}

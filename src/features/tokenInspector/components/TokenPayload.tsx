@@ -74,8 +74,8 @@ export function TokenPayload({ payload, tokenType, validationResults }: TokenPay
     if (key === 'groups' && Array.isArray(value)) {
       return (
         <div className="flex flex-wrap gap-1">
-          {value.map((group, index) => (
-            <Badge key={index} variant="secondary" className="text-xs font-medium">
+          {value.map((group) => (
+            <Badge key={group} variant="secondary" className="text-xs font-medium">
               {group}
             </Badge>
           ))}
@@ -159,7 +159,7 @@ export function TokenPayload({ payload, tokenType, validationResults }: TokenPay
           {/* Validation results */}
           {relevantResults.length > 0 && (
             <div className="space-y-2">
-              {relevantResults.map((result, index) => {
+              {relevantResults.map((result) => {
                 // Determine the appropriate variant based on the severity
                 const variant = result.severity === 'error' ? 'destructive' : 'default'
                 const className =
@@ -172,7 +172,11 @@ export function TokenPayload({ payload, tokenType, validationResults }: TokenPay
                         : ''
 
                 return (
-                  <Alert key={index} variant={variant} className={className}>
+                  <Alert
+                    key={`${result.claim}-${result.message}-${result.severity}`}
+                    variant={variant}
+                    className={className}
+                  >
                     <AlertTitle>{result.message}</AlertTitle>
                     {result.details && <AlertDescription>{result.details}</AlertDescription>}
                   </Alert>
@@ -234,8 +238,8 @@ export function TokenPayload({ payload, tokenType, validationResults }: TokenPay
                   </Alert>
                 ) : (
                   <ul className="list-disc list-inside">
-                    {value.split(' ').map((scope, i) => (
-                      <li key={i}>{scope}</li>
+                    {value.split(' ').map((scope) => (
+                      <li key={scope}>{scope}</li>
                     ))}
                   </ul>
                 )}

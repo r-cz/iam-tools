@@ -7,7 +7,7 @@ interface UseJwksResult {
   data: JSONWebKeySet | null
   isLoading: boolean
   error: Error | null
-  fetchJwks: (url: string, forceRefresh?: boolean) => Promise<void>
+  fetchJwks: (url: string, forceRefresh?: boolean) => Promise<JSONWebKeySet | null>
 }
 
 /**
@@ -24,7 +24,7 @@ export function useJwks(): UseJwksResult {
       setData(null)
       setError(null)
       setIsLoading(false)
-      return
+      return null
     }
 
     // Validate URL format
@@ -34,7 +34,7 @@ export function useJwks(): UseJwksResult {
       setError(new Error('Invalid JWKS URI format.'))
       setData(null)
       setIsLoading(false)
-      return
+      return null
     }
 
     setIsLoading(true)
@@ -50,7 +50,7 @@ export function useJwks(): UseJwksResult {
           }
           setData(cachedJwks)
           setIsLoading(false)
-          return
+          return cachedJwks
         }
 
         // Check if there's already a pending request
@@ -64,7 +64,7 @@ export function useJwks(): UseJwksResult {
           const jwksData = await pendingRequest
           setData(jwksData)
           setIsLoading(false)
-          return
+          return jwksData
         }
 
         if (import.meta.env.DEV) {
@@ -118,6 +118,7 @@ export function useJwks(): UseJwksResult {
       try {
         const jwksData = await fetchPromise
         setData(jwksData)
+        return jwksData
       } finally {
         // Always remove the pending request when done
         jwksCache.removePendingRequest(jwksUri)
@@ -130,6 +131,7 @@ export function useJwks(): UseJwksResult {
         err instanceof Error ? err : new Error('An unknown error occurred while fetching JWKS')
       )
       setData(null)
+      return null
     } finally {
       setIsLoading(false)
     }

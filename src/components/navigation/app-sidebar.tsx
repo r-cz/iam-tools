@@ -174,8 +174,8 @@ function MenuTreeItem({ item }: { item: any }) {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <SidebarMenuSub>
-              {item.items.map((subItem: any, index: number) => (
-                <React.Fragment key={index}>
+              {item.items.map((subItem: any) => (
+                <React.Fragment key={subItem.url ?? subItem.title}>
                   {subItem.items && subItem.items.length ? (
                     <MenuTreeItem item={subItem} />
                   ) : (
@@ -231,13 +231,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {menuTree.map((section, index) => (
-          <SidebarGroup key={index}>
+        {menuTree.map((section) => (
+          <SidebarGroup key={section.title}>
             <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {section.items.map((item, itemIndex) => (
-                  <MenuTreeItem key={itemIndex} item={item} />
+                {section.items.map((item) => (
+                  <MenuTreeItem key={item.url ?? item.title} item={item} />
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>

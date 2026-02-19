@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { PageContainer, PageHeader } from '@/components/page'
 import { FileCog } from 'lucide-react'
@@ -54,20 +55,36 @@ export default function SpMetadataGeneratorPage() {
         <CardContent className="p-5 grid gap-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <label className="text-sm">entityID</label>
-              <Input value={entityId} onChange={(e) => setEntityId(e.target.value)} />
+              <Label htmlFor="sp-entity-id" className="text-sm">
+                entityID
+              </Label>
+              <Input
+                id="sp-entity-id"
+                value={entityId}
+                onChange={(e) => setEntityId(e.target.value)}
+              />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm">AssertionConsumerService (HTTP-POST)</label>
-              <Input value={acsUrl} onChange={(e) => setAcsUrl(e.target.value)} />
+              <Label htmlFor="sp-acs-url" className="text-sm">
+                AssertionConsumerService (HTTP-POST)
+              </Label>
+              <Input id="sp-acs-url" value={acsUrl} onChange={(e) => setAcsUrl(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm">SingleLogoutService (optional)</label>
-              <Input value={sloUrl} onChange={(e) => setSloUrl(e.target.value)} />
+              <Label htmlFor="sp-slo-url" className="text-sm">
+                SingleLogoutService (optional)
+              </Label>
+              <Input id="sp-slo-url" value={sloUrl} onChange={(e) => setSloUrl(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm">NameIDFormat</label>
-              <Input value={nameIdFormat} onChange={(e) => setNameIdFormat(e.target.value)} />
+              <Label htmlFor="sp-name-id-format" className="text-sm">
+                NameIDFormat
+              </Label>
+              <Input
+                id="sp-name-id-format"
+                value={nameIdFormat}
+                onChange={(e) => setNameIdFormat(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -76,8 +93,11 @@ export default function SpMetadataGeneratorPage() {
           </div>
           {includeCert && (
             <div className="grid gap-2">
-              <label className="text-sm">X.509 Certificate (base64, no PEM headers)</label>
+              <Label htmlFor="sp-certificate" className="text-sm">
+                X.509 Certificate (base64, no PEM headers)
+              </Label>
               <Textarea
+                id="sp-certificate"
                 value={x509}
                 onChange={(e) => setX509(e.target.value)}
                 rows={6}

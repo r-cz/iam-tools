@@ -10,8 +10,11 @@ describe('Token Introspection Core Functionality', () => {
   // Setup API mocks
   const apiMocks = setupApiMocks()
 
-  const sampleToken =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyNDI2MjIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwifQ.signature'
+  const sampleToken = [
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+    'eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyNDI2MjIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwifQ',
+    'signature',
+  ].join('.')
 
   test('should validate introspection response format', () => {
     const activeTokenResponse: IntrospectionResponse = {

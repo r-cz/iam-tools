@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -79,39 +79,34 @@ export function TokenIntrospection() {
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false)
   const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
 
-  // Auto-fill demo token when demo mode is enabled
-  useEffect(() => {
-    const loadDemoToken = async () => {
-      if (isDemoMode) {
-        const demoEndpoint = `${getIssuerBaseUrl()}/introspect`
-        if (introspectionEndpoint !== demoEndpoint) {
-          setIntrospectionEndpoint(demoEndpoint)
-        }
-
-        if (!token) {
-          setIsLoadingDemoToken(true)
-          try {
-            const demoToken = await generateFreshToken()
-            setToken(demoToken)
-            toast.success('Demo token loaded')
-          } catch (error) {
-            if (import.meta?.env?.DEV) {
-              console.error('Error loading demo token:', error)
-            }
-            toast.error('Failed to load demo token')
-          } finally {
-            setIsLoadingDemoToken(false)
-          }
-        }
-        // Also set a default client ID for demo mode
-        if (!clientId) {
-          setClientId('demo-client')
-        }
+  const loadDemoToken = async () => {
+    setIsLoadingDemoToken(true)
+    try {
+      const demoToken = await generateFreshToken()
+      setToken(demoToken)
+      toast.success('Demo token loaded')
+    } catch (error) {
+      if (import.meta?.env?.DEV) {
+        console.error('Error loading demo token:', error)
       }
+      toast.error('Failed to load demo token')
+    } finally {
+      setIsLoadingDemoToken(false)
     }
+  }
 
-    loadDemoToken()
-  }, [clientId, introspectionEndpoint, isDemoMode, token])
+  const handleDemoModeChange = (enabled: boolean) => {
+    setIsDemoMode(enabled)
+    if (!enabled) return
+
+    setIntrospectionEndpoint(`${getIssuerBaseUrl()}/introspect`)
+    if (!clientId) {
+      setClientId('demo-client')
+    }
+    if (!token) {
+      void loadDemoToken()
+    }
+  }
 
   // Handle token selection from history
   const handleSelectToken = (tokenValue: string) => {
@@ -317,7 +312,7 @@ export function TokenIntrospection() {
             <Switch
               id="demo-mode-switch"
               checked={isDemoMode}
-              onCheckedChange={setIsDemoMode}
+              onCheckedChange={handleDemoModeChange}
               disabled={isLoadingDemoToken}
             />
             <Label htmlFor="demo-mode-switch" className="mb-0">

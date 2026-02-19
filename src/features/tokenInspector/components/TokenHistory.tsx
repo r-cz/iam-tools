@@ -127,7 +127,6 @@ export function TokenHistory({
                     onChange={(e) => setEditName(e.target.value)}
                     className="flex-1 px-2 py-1 text-sm border rounded"
                     placeholder="Token name"
-                    autoFocus
                   />
                   <div className="flex gap-1">
                     <Button

@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { toast } from 'sonner'
 import { verifySamlMetadataSignature } from '@/features/saml/utils/signature-verify'
@@ -72,8 +73,11 @@ export default function SamlMetadataValidatorPage() {
         <CardContent className="p-5 grid gap-4">
           <div className="grid md:grid-cols-[1fr_auto] gap-2 items-end">
             <div className="grid gap-2 min-w-0">
-              <label className="text-sm">Metadata URL</label>
+              <Label htmlFor="metadata-url" className="text-sm">
+                Metadata URL
+              </Label>
               <Input
+                id="metadata-url"
                 placeholder="https://idp.example.com/FederationMetadata/2007-06/FederationMetadata.xml"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -82,8 +86,11 @@ export default function SamlMetadataValidatorPage() {
             <Button onClick={fetchMetadata}>Fetch</Button>
           </div>
           <div className="grid gap-2">
-            <label className="text-sm">Metadata XML</label>
+            <Label htmlFor="metadata-xml" className="text-sm">
+              Metadata XML
+            </Label>
             <Textarea
+              id="metadata-xml"
               value={xml}
               onChange={(e) => setXml(e.target.value)}
               rows={10}
@@ -112,8 +119,8 @@ export default function SamlMetadataValidatorPage() {
               <div>
                 <div className="text-sm font-medium mb-1">SingleSignOnService</div>
                 <ul className="text-sm list-disc pl-5">
-                  {parsed.sso.map((s, i) => (
-                    <li key={i}>
+                  {parsed.sso.map((s) => (
+                    <li key={`${s.binding}-${s.location}`}>
                       <span className="font-mono">{s.binding}</span> →{' '}
                       <span className="font-mono">{s.location}</span>
                     </li>
@@ -124,8 +131,8 @@ export default function SamlMetadataValidatorPage() {
               <div>
                 <div className="text-sm font-medium mb-1">SingleLogoutService</div>
                 <ul className="text-sm list-disc pl-5">
-                  {parsed.slo.map((s, i) => (
-                    <li key={i}>
+                  {parsed.slo.map((s) => (
+                    <li key={`${s.binding}-${s.location}`}>
                       <span className="font-mono">{s.binding}</span> →{' '}
                       <span className="font-mono">{s.location}</span>
                     </li>
@@ -136,8 +143,8 @@ export default function SamlMetadataValidatorPage() {
               <div>
                 <div className="text-sm font-medium mb-1">Keys</div>
                 <ul className="text-sm list-disc pl-5 break-all">
-                  {parsed.keys.map((k, i) => (
-                    <li key={i}>
+                  {parsed.keys.map((k) => (
+                    <li key={`${k.use ?? 'none'}-${k.x509 ?? 'none'}`}>
                       use: <span className="font-mono">{k.use || '—'}</span>
                       {k.x509 && (
                         <>
@@ -155,8 +162,8 @@ export default function SamlMetadataValidatorPage() {
                 <div className="text-sm font-medium mb-1">Checks</div>
                 <ul className="text-sm list-disc pl-5">
                   {parsed.warnings.length === 0 && <li>No obvious issues found</li>}
-                  {parsed.warnings.map((w, i) => (
-                    <li key={i} className="text-amber-700 dark:text-amber-400">
+                  {parsed.warnings.map((w) => (
+                    <li key={w} className="text-amber-700 dark:text-amber-400">
                       {w}
                     </li>
                   ))}
@@ -166,6 +173,7 @@ export default function SamlMetadataValidatorPage() {
               <div className="grid gap-2">
                 <div className="text-sm font-medium">Verify Metadata Signature</div>
                 <Textarea
+                  id="metadata-cert-pem"
                   rows={6}
                   placeholder={'-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----'}
                   value={certPem}

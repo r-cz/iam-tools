@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -87,35 +87,31 @@ export function UserInfo() {
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false)
   const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
 
-  // Auto-fill demo token when demo mode is enabled
-  useEffect(() => {
-    const loadDemoToken = async () => {
-      if (isDemoMode) {
-        const demoEndpoint = `${getIssuerBaseUrl()}/userinfo`
-        if (userInfoEndpoint !== demoEndpoint) {
-          setUserInfoEndpoint(demoEndpoint)
-        }
-
-        if (!accessToken) {
-          setIsLoadingDemoToken(true)
-          try {
-            const demoToken = await generateFreshToken()
-            setAccessToken(demoToken)
-            toast.success('Demo token loaded')
-          } catch (error) {
-            if (import.meta?.env?.DEV) {
-              console.error('Error loading demo token:', error)
-            }
-            toast.error('Failed to load demo token')
-          } finally {
-            setIsLoadingDemoToken(false)
-          }
-        }
+  const loadDemoToken = async () => {
+    setIsLoadingDemoToken(true)
+    try {
+      const demoToken = await generateFreshToken()
+      setAccessToken(demoToken)
+      toast.success('Demo token loaded')
+    } catch (error) {
+      if (import.meta?.env?.DEV) {
+        console.error('Error loading demo token:', error)
       }
+      toast.error('Failed to load demo token')
+    } finally {
+      setIsLoadingDemoToken(false)
     }
+  }
 
-    loadDemoToken()
-  }, [accessToken, isDemoMode, userInfoEndpoint])
+  const handleDemoModeChange = (enabled: boolean) => {
+    setIsDemoMode(enabled)
+    if (!enabled) return
+
+    setUserInfoEndpoint(`${getIssuerBaseUrl()}/userinfo`)
+    if (!accessToken) {
+      void loadDemoToken()
+    }
+  }
 
   // Handle issuer selection from history
   const handleSelectIssuer = async (issuerUrl: string) => {
@@ -297,7 +293,7 @@ export function UserInfo() {
             <Switch
               id="demo-mode-switch"
               checked={isDemoMode}
-              onCheckedChange={setIsDemoMode}
+              onCheckedChange={handleDemoModeChange}
               disabled={isLoadingDemoToken}
             />
             <Label htmlFor="demo-mode-switch" className="mb-0">

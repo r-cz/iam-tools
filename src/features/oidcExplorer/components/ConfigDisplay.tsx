@@ -21,6 +21,65 @@ interface ConfigDisplayProps {
   // onJwksClick: () => void; // Removed unused prop
 }
 
+interface ConfigItemProps {
+  config: OidcConfiguration
+  fieldKey: string
+  formatPropertyName: (key: string) => string
+  getEndpointDescription: (key: string) => React.ReactNode
+  formatArrayValue: (value: string[]) => React.ReactNode
+  formatBooleanValue: (value: boolean | undefined) => React.ReactNode
+  formatEndpoint: (key: string) => React.ReactNode
+  icon?: React.ReactNode
+  button?: React.ReactNode
+}
+
+function ConfigItem({
+  config,
+  fieldKey,
+  formatPropertyName,
+  getEndpointDescription,
+  formatArrayValue,
+  formatBooleanValue,
+  formatEndpoint,
+  icon,
+  button,
+}: ConfigItemProps) {
+  const value = config[fieldKey]
+  const description = getEndpointDescription(fieldKey)
+  const required = endpointDescriptions[fieldKey]?.required
+  const displayName = endpointDescriptions[fieldKey]?.name || formatPropertyName(fieldKey)
+  const isLongProperty = displayName.length > 30
+
+  return (
+    <div className="py-3 first:pt-0 last:pb-0">
+      <div className="flex flex-wrap justify-between gap-2 mb-1">
+        <div className="flex items-start gap-2">
+          {icon && <span className="mt-1">{icon}</span>}
+          <h4 className={`font-medium break-words ${isLongProperty ? 'text-sm' : ''}`}>
+            {displayName}
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </h4>
+        </div>
+        {button}
+      </div>
+
+      {description && <div className="mb-2">{description}</div>}
+
+      <div className="mt-1">
+        {Array.isArray(value) ? (
+          formatArrayValue(value)
+        ) : typeof value === 'boolean' ? (
+          formatBooleanValue(value)
+        ) : fieldKey.endsWith('_endpoint') || fieldKey.endsWith('_uri') ? (
+          formatEndpoint(fieldKey)
+        ) : (
+          <code className="text-sm break-all">{String(value || '')}</code>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function ConfigDisplay({ config }: ConfigDisplayProps) {
   // Removed onJwksClick from destructuring
   const [view, setView] = useState<'formatted' | 'raw'>('formatted')
@@ -110,8 +169,8 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
     // Display all values by default since that's more user-friendly
     return (
       <div className="flex flex-wrap gap-1">
-        {value.map((item, index) => (
-          <Badge key={index} variant="secondary" className="text-xs font-medium">
+        {value.map((item) => (
+          <Badge key={item} variant="secondary" className="text-xs font-medium">
             {item}
           </Badge>
         ))}
@@ -170,47 +229,6 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
     )
   }
 
-  const renderConfigItem = (key: string, icon?: React.ReactNode, button?: React.ReactNode) => {
-    const value = config[key]
-    const description = getEndpointDescription(key)
-    const required = endpointDescriptions[key]?.required
-
-    // Get a friendly formatted property name
-    const displayName = endpointDescriptions[key]?.name || formatPropertyName(key)
-
-    // Determine if this is a very long property name
-    const isLongProperty = displayName.length > 30
-
-    return (
-      <div key={key} className="py-3 first:pt-0 last:pb-0">
-        <div className="flex flex-wrap justify-between gap-2 mb-1">
-          <div className="flex items-start gap-2">
-            {icon && <span className="mt-1">{icon}</span>}
-            <h4 className={`font-medium break-words ${isLongProperty ? 'text-sm' : ''}`}>
-              {displayName}
-              {required && <span className="text-red-500 ml-1">*</span>}
-            </h4>
-          </div>
-          {button}
-        </div>
-
-        {description && <div className="mb-2">{description}</div>}
-
-        <div className="mt-1">
-          {Array.isArray(value) ? (
-            formatArrayValue(value)
-          ) : typeof value === 'boolean' ? (
-            formatBooleanValue(value)
-          ) : key.endsWith('_endpoint') || key.endsWith('_uri') ? (
-            formatEndpoint(key)
-          ) : (
-            <code className="text-sm break-all">{String(value || '')}</code>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -239,7 +257,15 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
               {/* Issuer section */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">Provider Identity</h3>
-                {renderConfigItem('issuer')}
+                <ConfigItem
+                  config={config}
+                  fieldKey="issuer"
+                  formatPropertyName={formatPropertyName}
+                  getEndpointDescription={getEndpointDescription}
+                  formatArrayValue={formatArrayValue}
+                  formatBooleanValue={formatBooleanValue}
+                  formatEndpoint={formatEndpoint}
+                />
               </div>
 
               <Separator />
@@ -289,7 +315,19 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
                         )
                       }
 
-                      return renderConfigItem(key, <Link className="h-4 w-4 text-blue-600" />)
+                      return (
+                        <ConfigItem
+                          key={key}
+                          config={config}
+                          fieldKey={key}
+                          icon={<Link className="h-4 w-4 text-blue-600" />}
+                          formatPropertyName={formatPropertyName}
+                          getEndpointDescription={getEndpointDescription}
+                          formatArrayValue={formatArrayValue}
+                          formatBooleanValue={formatBooleanValue}
+                          formatEndpoint={formatEndpoint}
+                        />
+                      )
                     })}
                 </div>
               </div>
@@ -302,7 +340,18 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
                 <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {supportedFeatures
                     .filter((key) => key in config)
-                    .map((key) => renderConfigItem(key))}
+                    .map((key) => (
+                      <ConfigItem
+                        key={key}
+                        config={config}
+                        fieldKey={key}
+                        formatPropertyName={formatPropertyName}
+                        getEndpointDescription={getEndpointDescription}
+                        formatArrayValue={formatArrayValue}
+                        formatBooleanValue={formatBooleanValue}
+                        formatEndpoint={formatEndpoint}
+                      />
+                    ))}
                 </div>
               </div>
 
@@ -314,7 +363,18 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
                 <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {booleanFeatures
                     .filter((key) => key in config)
-                    .map((key) => renderConfigItem(key))}
+                    .map((key) => (
+                      <ConfigItem
+                        key={key}
+                        config={config}
+                        fieldKey={key}
+                        formatPropertyName={formatPropertyName}
+                        getEndpointDescription={getEndpointDescription}
+                        formatArrayValue={formatArrayValue}
+                        formatBooleanValue={formatBooleanValue}
+                        formatEndpoint={formatEndpoint}
+                      />
+                    ))}
                 </div>
               </div>
 
@@ -327,7 +387,18 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
                     <div className="space-y-4">
                       {miscFeatures
                         .filter((key) => key in config)
-                        .map((key) => renderConfigItem(key))}
+                        .map((key) => (
+                          <ConfigItem
+                            key={key}
+                            config={config}
+                            fieldKey={key}
+                            formatPropertyName={formatPropertyName}
+                            getEndpointDescription={getEndpointDescription}
+                            formatArrayValue={formatArrayValue}
+                            formatBooleanValue={formatBooleanValue}
+                            formatEndpoint={formatEndpoint}
+                          />
+                        ))}
                     </div>
                   </div>
                 </>
@@ -356,7 +427,18 @@ export function ConfigDisplay({ config }: ConfigDisplayProps) {
                             !booleanFeatures.includes(key) &&
                             !miscFeatures.includes(key)
                         )
-                        .map((key) => renderConfigItem(key))}
+                        .map((key) => (
+                          <ConfigItem
+                            key={key}
+                            config={config}
+                            fieldKey={key}
+                            formatPropertyName={formatPropertyName}
+                            getEndpointDescription={getEndpointDescription}
+                            formatArrayValue={formatArrayValue}
+                            formatBooleanValue={formatBooleanValue}
+                            formatEndpoint={formatEndpoint}
+                          />
+                        ))}
                     </div>
                   </div>
                 </>

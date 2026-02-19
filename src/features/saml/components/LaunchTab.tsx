@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { JsonDisplay } from '@/components/common/JsonDisplay'
@@ -73,8 +74,11 @@ export function LaunchTab({
               <>
                 <div className="grid md:grid-cols-2 gap-2 items-center">
                   <div className="grid gap-1">
-                    <label className="text-sm">SigAlg</label>
+                    <Label htmlFor="saml-launch-sigalg" className="text-sm">
+                      SigAlg
+                    </Label>
                     <select
+                      id="saml-launch-sigalg"
                       className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                       value={sigAlg}
                       onChange={(e) => onSigAlgChange(e.target.value as RedirectSigAlg)}
@@ -85,8 +89,11 @@ export function LaunchTab({
                   </div>
                 </div>
                 <div className="grid gap-2 min-w-0">
-                  <label className="text-sm">Private Key (PKCS8 PEM)</label>
+                  <Label htmlFor="saml-launch-private-key" className="text-sm">
+                    Private Key (PKCS8 PEM)
+                  </Label>
                   <Textarea
+                    id="saml-launch-private-key"
                     value={privateKeyPem}
                     onChange={(e) => onPrivateKeyPemChange(e.target.value)}
                     rows={8}
@@ -107,7 +114,9 @@ export function LaunchTab({
                   </Button>
                 </div>
                 <div className="grid gap-2 min-w-0">
-                  <label className="text-sm">Signed Redirect URL</label>
+                  <Label htmlFor="saml-launch-signed-url" className="text-sm">
+                    Signed Redirect URL
+                  </Label>
                   <JsonDisplay data={signedRedirectUrl} language="text" maxHeight="120px" />
                   <div className="flex gap-2">
                     <Button
@@ -132,12 +141,7 @@ export function LaunchTab({
       ) : (
         <form
           method="post"
-          action={destinationForForm}
-          onSubmit={(e) => {
-            if (!isDestinationValid) {
-              e.preventDefault()
-            }
-          }}
+          action={isDestinationValid ? destinationForForm : undefined}
           target="_blank"
           className="grid gap-2 min-w-0"
         >
