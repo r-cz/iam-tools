@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
+import { Label } from '@/components/ui/label'
 
 type FieldOrientation = 'vertical' | 'horizontal' | 'responsive'
 
@@ -48,7 +49,7 @@ export const FieldLabel = React.forwardRef<HTMLLabelElement, FieldLabelProps>(
     const orientation = context?.orientation ?? 'vertical'
 
     return (
-      <label
+      <Label
         ref={ref}
         data-field-label
         className={cn(

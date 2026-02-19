@@ -76,8 +76,8 @@ export function ProviderInfo({
             <div className="mt-4 space-y-2">
               <h4 className="text-sm font-medium">Identification Logic</h4>
               <ItemGroup>
-                {reasons.map((reason, index) => (
-                  <Item key={index} className="border-none bg-muted/30">
+                {reasons.map((reason) => (
+                  <Item key={reason} className="border-none bg-muted/30">
                     <ItemMedia variant="icon" className="bg-primary/10 text-primary">
                       <InfoIcon className="h-4 w-4" />
                     </ItemMedia>

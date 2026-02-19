@@ -38,8 +38,7 @@ const mediaVariants = cva(
 )
 
 export interface EmptyMediaProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof mediaVariants> {}
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof mediaVariants> {}
 
 export const EmptyMedia = React.forwardRef<HTMLDivElement, EmptyMediaProps>(
   ({ className, variant, ...props }, ref) => {
@@ -51,8 +50,12 @@ EmptyMedia.displayName = 'EmptyMedia'
 export interface EmptyTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {}
 
 export const EmptyTitle = React.forwardRef<HTMLHeadingElement, EmptyTitleProps>(
-  ({ className, ...props }, ref) => {
-    return <h3 ref={ref} className={cn('text-lg font-semibold', className)} {...props} />
+  ({ className, children, ...props }, ref) => {
+    return (
+      <h3 ref={ref} className={cn('text-lg font-semibold', className)} {...props}>
+        {children ?? <span className="sr-only">Empty state</span>}
+      </h3>
+    )
   }
 )
 EmptyTitle.displayName = 'EmptyTitle'

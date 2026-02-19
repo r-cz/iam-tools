@@ -120,8 +120,8 @@ export function ValidationResults({ schemaName, validation }: ValidationResultsP
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {validation.missingRequired.map((item, index) => (
-                      <TableRow key={`${item.dn}-${item.objectClass}-${index}`}>
+                    {validation.missingRequired.map((item) => (
+                      <TableRow key={`${item.dn}-${item.objectClass}`}>
                         <TableCell className="font-mono text-xs">{item.dn}</TableCell>
                         <TableCell>{item.objectClass}</TableCell>
                         <TableCell>

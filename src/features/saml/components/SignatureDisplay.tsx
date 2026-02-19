@@ -109,9 +109,9 @@ export function SignatureDisplay({ response }: SignatureDisplayProps) {
         <div className="space-y-2">
           <div className="text-sm font-medium">Verification Results</div>
           <div className="text-sm">Response: {formatResult(result.response)}</div>
-          {result.assertions?.map((a, i) => (
-            <div key={i} className="text-sm">
-              Assertion {a.id ? `(${a.id})` : `#${i + 1}`}: {formatResult(a)}
+          {result.assertions?.map((a, assertionIndex) => (
+            <div key={a.id ?? `${a.present}-${a.valid}-${a.error ?? 'none'}`} className="text-sm">
+              Assertion {a.id ? `(${a.id})` : `#${assertionIndex + 1}`}: {formatResult(a)}
             </div>
           ))}
         </div>

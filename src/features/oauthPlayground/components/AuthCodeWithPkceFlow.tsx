@@ -29,50 +29,71 @@ const clearRedirectState = () => {
 
 export function AuthCodeWithPkceFlow() {
   const location = useLocation()
-  const [activeTab, setActiveTab] = useState<string>('config')
-  const [config, setConfig] = useState<OAuthConfig | null>(null)
-  const [pkce, setPkce] = useState<PkceParams | null>(null)
-  const [authCode, setAuthCode] = useState<string | null>(null)
+  const [flowState, setFlowState] = useState<{
+    activeTab: string
+    config: OAuthConfig | null
+    pkce: PkceParams | null
+    authCode: string | null
+  }>({
+    activeTab: 'config',
+    config: null,
+    pkce: null,
+    authCode: null,
+  })
 
   // Initialize from location state (returning from callback)
   useEffect(() => {
     if (!location.state?.code) return
 
-    setAuthCode(location.state.code)
-
     const redirectState = readRedirectState()
-    if (redirectState) {
-      setConfig(redirectState.config)
-      setPkce(redirectState.pkce)
-      setActiveTab('token')
+    setFlowState((currentState) => {
+      if (!redirectState) {
+        return { ...currentState, authCode: location.state.code }
+      }
+
       clearRedirectState()
-    }
+      return {
+        activeTab: 'token',
+        authCode: location.state.code,
+        config: redirectState.config,
+        pkce: redirectState.pkce,
+      }
+    })
   }, [location.state])
 
   // Handle configuration completion
   const handleConfigComplete = (newConfig: OAuthConfig, newPkce: PkceParams) => {
-    setConfig(newConfig)
-    setPkce(newPkce)
-    setActiveTab('auth')
+    setFlowState((currentState) => ({
+      ...currentState,
+      activeTab: 'auth',
+      config: newConfig,
+      pkce: newPkce,
+    }))
   }
 
   // Handle authorization completion
   const handleAuthorizationComplete = (code: string) => {
-    setAuthCode(code)
-    setActiveTab('token')
+    setFlowState((currentState) => ({
+      ...currentState,
+      activeTab: 'token',
+      authCode: code,
+    }))
   }
 
   // Determine which tabs should be enabled
-  const isAuthTabEnabled = !!config && !!pkce
-  const isTokenTabEnabled = isAuthTabEnabled && !!authCode
+  const isAuthTabEnabled = !!flowState.config && !!flowState.pkce
+  const isTokenTabEnabled = isAuthTabEnabled && !!flowState.authCode
 
   // Save state when tab changes
   const handleTabChange = (value: string) => {
-    setActiveTab(value)
+    setFlowState((currentState) => ({
+      ...currentState,
+      activeTab: value,
+    }))
   }
 
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
+    <Tabs value={flowState.activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
       <TabsList className="grid grid-cols-3 w-full mb-4">
         <TabsTrigger value="config" data-testid="oauth-authcode-tab-config">
           1. Config
@@ -98,18 +119,22 @@ export function AuthCodeWithPkceFlow() {
       </TabsContent>
 
       <TabsContent value="auth">
-        {config && pkce && (
+        {flowState.config && flowState.pkce && (
           <AuthorizationRequest
-            config={config}
-            pkce={pkce}
+            config={flowState.config}
+            pkce={flowState.pkce}
             onAuthorizationComplete={handleAuthorizationComplete}
           />
         )}
       </TabsContent>
 
       <TabsContent value="token">
-        {config && pkce && authCode && (
-          <TokenExchange config={config} pkce={pkce} authorizationCode={authCode} />
+        {flowState.config && flowState.pkce && flowState.authCode && (
+          <TokenExchange
+            config={flowState.config}
+            pkce={flowState.pkce}
+            authorizationCode={flowState.authCode}
+          />
         )}
       </TabsContent>
     </Tabs>

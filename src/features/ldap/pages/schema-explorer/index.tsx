@@ -40,6 +40,18 @@ import { useSavedSchemas } from '../../hooks/useSavedSchemas'
 import { parseLdapSchema, type ParsedObjectClass } from '../../utils/parse-schema'
 import { BUILTIN_SCHEMAS, getCombinedSchema } from '../../data/builtin-schemas'
 
+function withOccurrenceKeys(values: string[]) {
+  const counts = new Map<string, number>()
+  return values.map((value) => {
+    const occurrence = counts.get(value) ?? 0
+    counts.set(value, occurrence + 1)
+    return {
+      key: `${value}-${occurrence}`,
+      value,
+    }
+  })
+}
+
 function highlightSchemaLine(line: string): React.ReactNode {
   // Syntax highlighting for schema definitions
   const trimmed = line.trim()
@@ -54,10 +66,13 @@ function highlightSchemaLine(line: string): React.ReactNode {
     )
     return (
       <>
-        {parts.map((part, i) => {
+        {withOccurrenceKeys(parts).map((entry) => {
+          const part = entry.value
+          const partKey = entry.key
+
           if (['objectClasses:', 'attributeTypes:'].some((k) => part.includes(k))) {
             return (
-              <span key={i} className="text-blue-400 font-semibold">
+              <span key={partKey} className="text-blue-400 font-semibold">
                 {part}
               </span>
             )
@@ -77,7 +92,7 @@ function highlightSchemaLine(line: string): React.ReactNode {
             ].includes(part)
           ) {
             return (
-              <span key={i} className="text-amber-400 font-medium">
+              <span key={partKey} className="text-amber-400 font-medium">
                 {part}
               </span>
             )
@@ -93,19 +108,19 @@ function highlightSchemaLine(line: string): React.ReactNode {
             ].includes(part)
           ) {
             return (
-              <span key={i} className="text-emerald-400 font-medium">
+              <span key={partKey} className="text-emerald-400 font-medium">
                 {part}
               </span>
             )
           }
           if (part === '(' || part === ')') {
             return (
-              <span key={i} className="text-purple-400">
+              <span key={partKey} className="text-purple-400">
                 {part}
               </span>
             )
           }
-          return <span key={i}>{part}</span>
+          return <span key={partKey}>{part}</span>
         })}
       </>
     )
@@ -541,8 +556,8 @@ export default function LdapSchemaExplorerPage() {
             <Info className="h-4 w-4 text-destructive" />
             <AlertTitle>Parsing issues found</AlertTitle>
             <AlertDescription>
-              {parsed.errors.map((message, index) => (
-                <p key={index}>{message}</p>
+              {withOccurrenceKeys(parsed.errors).map((entry) => (
+                <p key={entry.key}>{entry.value}</p>
               ))}
             </AlertDescription>
           </Alert>
@@ -645,10 +660,13 @@ export default function LdapSchemaExplorerPage() {
                         <div className="flex items-center gap-1 flex-wrap text-xs">
                           <span className="font-medium text-muted-foreground">Inherits:</span>
                           <span className="text-primary font-medium">{objectClass.names[0]}</span>
-                          {inheritanceChain.map((sup, i) => (
-                            <span key={i} className="flex items-center gap-1">
+                          {withOccurrenceKeys(inheritanceChain).map((entry) => (
+                            <span
+                              key={`${objectClass.oid}-${entry.key}`}
+                              className="flex items-center gap-1"
+                            >
                               <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">{sup}</span>
+                              <span className="text-muted-foreground">{entry.value}</span>
                             </span>
                           ))}
                         </div>
@@ -674,8 +692,10 @@ export default function LdapSchemaExplorerPage() {
                           Raw definition
                         </summary>
                         <pre className="mt-2 whitespace-pre-wrap break-words text-xs">
-                          {objectClass.raw.split('\n').map((line, i) => (
-                            <div key={i}>{highlightSchemaLine(line)}</div>
+                          {withOccurrenceKeys(objectClass.raw.split('\n')).map((entry) => (
+                            <div key={`${objectClass.oid}-${entry.key}`}>
+                              {highlightSchemaLine(entry.value)}
+                            </div>
                           ))}
                         </pre>
                       </details>
@@ -795,8 +815,10 @@ export default function LdapSchemaExplorerPage() {
                         Raw definition
                       </summary>
                       <pre className="mt-2 whitespace-pre-wrap break-words text-xs">
-                        {attribute.raw.split('\n').map((line, i) => (
-                          <div key={i}>{highlightSchemaLine(line)}</div>
+                        {withOccurrenceKeys(attribute.raw.split('\n')).map((entry) => (
+                          <div key={`${attribute.oid}-${entry.key}`}>
+                            {highlightSchemaLine(entry.value)}
+                          </div>
                         ))}
                       </pre>
                     </details>

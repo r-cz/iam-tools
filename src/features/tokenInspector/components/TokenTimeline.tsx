@@ -7,7 +7,7 @@ interface TokenTimelineProps {
 }
 
 export function TokenTimeline({ payload }: TokenTimelineProps) {
-  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000))
+  const [currentTime, setCurrentTime] = useState(() => Math.floor(Date.now() / 1000))
 
   // Update current time every second
   useEffect(() => {

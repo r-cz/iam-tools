@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Card,
@@ -27,25 +27,21 @@ export function DemoAuthPage() {
 
   // Form state
   const [username, setUsername] = useState('demo-user')
-  const [error, setError] = useState<string | null>(null)
-
-  // Validate parameters
-  useEffect(() => {
-    if (!clientId) {
-      setError('Missing client_id parameter')
-    } else if (!redirectUri) {
-      setError('Missing redirect_uri parameter')
-    } else if (!codeChallenge) {
-      setError('Missing code_challenge parameter')
-    } else if (codeChallengeMethod !== 'S256') {
-      setError('Unsupported code_challenge_method. Only S256 is supported.')
-    }
-  }, [clientId, redirectUri, codeChallenge, codeChallengeMethod])
+  const error = !clientId
+    ? 'Missing client_id parameter'
+    : !redirectUri
+      ? 'Missing redirect_uri parameter'
+      : !codeChallenge
+        ? 'Missing code_challenge parameter'
+        : codeChallengeMethod !== 'S256'
+          ? 'Unsupported code_challenge_method. Only S256 is supported.'
+          : null
 
   // Handle login
   const handleLogin = () => {
+    if (error) return
+
     if (!username.trim()) {
-      setError('Please enter a username')
       return
     }
 

@@ -92,7 +92,7 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
 
                   {relevantResults.length > 0 && (
                     <div className="space-y-2">
-                      {relevantResults.map((result, index) => {
+                      {relevantResults.map((result) => {
                         const variant = result.severity === 'error' ? 'destructive' : 'default'
                         const className =
                           result.severity === 'warning'
@@ -104,7 +104,11 @@ export function TokenHeader({ header, validationResults }: TokenHeaderProps) {
                                 : ''
 
                         return (
-                          <Alert key={index} variant={variant} className={className}>
+                          <Alert
+                            key={`${result.claim}-${result.message}-${result.severity}`}
+                            variant={variant}
+                            className={className}
+                          >
                             <AlertTitle>{result.message}</AlertTitle>
                             {result.details && (
                               <AlertDescription>{result.details}</AlertDescription>

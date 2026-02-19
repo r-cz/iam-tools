@@ -19,9 +19,6 @@ export function OidcExplorer() {
   const { addIssuer } = useIssuerHistory()
 
   // Local state for derived/UI data
-  const [providerName, setProviderName] = useState<string | null>(null)
-  const [detectionReasons, setDetectionReasons] = useState<string[]>([])
-  const [currentIssuerUrl, setCurrentIssuerUrl] = useState<string>('')
   const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('')
 
   // Use a ref to track if we've already added this URL to history
@@ -39,7 +36,6 @@ export function OidcExplorer() {
     }
 
     lastConfigSignatureRef.current = configSignature
-    setCurrentIssuerUrl(config.issuer)
 
     if (
       inputIssuerUrl &&
@@ -50,24 +46,10 @@ export function OidcExplorer() {
       addIssuer(inputIssuerUrl)
     }
 
-    const { name: detectedProvider, reasons } = detectProvider(config.issuer, config)
-    setProviderName(detectedProvider)
-    setDetectionReasons(reasons)
-
     if (config.jwks_uri) {
       fetchJwks(config.jwks_uri)
     }
   }, [addIssuer, fetchJwks, inputIssuerUrl, oidcConfigHook.data])
-
-  // Effect for successful JWKS fetch
-  useEffect(() => {
-    if (jwksData) {
-      toast.success('Successfully fetched JWKS', {
-        description: `Found ${jwksData.keys.length} keys`,
-        duration: 5000,
-      })
-    }
-  }, [jwksData])
 
   // Effect for handling errors from either hook
   useEffect(() => {
@@ -80,8 +62,6 @@ export function OidcExplorer() {
         description: error.message,
         duration: 8000,
       })
-      // Reset provider name on error
-      setProviderName(null)
     }
   }, [jwksError, oidcConfigHook.error])
 
@@ -95,6 +75,12 @@ export function OidcExplorer() {
   const isLoading = oidcConfigHook.isLoading || isJwksLoading
   // Combine error states
   const error = oidcConfigHook.error || jwksError
+  const currentIssuerUrl = oidcConfigHook.data?.issuer ?? ''
+  const detectionResult = oidcConfigHook.data
+    ? detectProvider(currentIssuerUrl, oidcConfigHook.data)
+    : null
+  const providerName = detectionResult?.name ?? null
+  const detectionReasons = detectionResult?.reasons ?? []
 
   return (
     <div className="space-y-6">

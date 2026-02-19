@@ -1,6 +1,6 @@
 // src/features/tokenInspector/components/TokenJwksResolver.tsx
 
-import React, { useState, useEffect } from 'react' // Added useEffect
+import React, { useCallback, useEffect, useState } from 'react'
 import { useJwks } from '@/hooks/data-fetching/useJwks' // Import new hook
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -33,7 +33,40 @@ export function TokenJwksResolver({
   const [lastFetchedUri, setLastFetchedUri] = useState<string | null>(null)
 
   // Only instantiate the JWKS hook since we're receiving OIDC config from parent
-  const { data: jwksData, error: jwksError, fetchJwks, isLoading: isJwksLoading } = useJwks()
+  const { fetchJwks, isLoading: isJwksLoading } = useJwks()
+
+  const fetchAndApplyJwks = useCallback(
+    async (jwksUri: string, forceRefresh = false) => {
+      const resolvedJwks = await fetchJwks(jwksUri, forceRefresh)
+      if (!resolvedJwks) {
+        toast.error(
+          <div>
+            <p>
+              <strong>Error Fetching JWKS</strong>
+            </p>
+            <p>Unable to retrieve keys from {jwksUri}</p>
+          </div>,
+          { id: 'jwks-fetch-error', duration: 8000 }
+        )
+        return
+      }
+
+      onJwksResolved(resolvedJwks)
+      toast.success(
+        <div>
+          <p>
+            <strong>JWKS Fetched Successfully</strong>
+          </p>
+          <p>
+            Found {resolvedJwks.keys.length} keys from {jwksUri}
+          </p>
+        </div>,
+        { id: 'jwks-fetch-success', duration: 3000 }
+      )
+      toast.dismiss('jwks-fetch-error')
+    },
+    [fetchJwks, onJwksResolved]
+  )
 
   // Effect to fetch JWKS when OIDC config is successfully loaded
   useEffect(() => {
@@ -43,55 +76,9 @@ export function TokenJwksResolver({
         console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfig.jwks_uri}`)
       }
       setLastFetchedUri(oidcConfig.jwks_uri)
-      fetchJwks(oidcConfig.jwks_uri)
+      void fetchAndApplyJwks(oidcConfig.jwks_uri)
     }
-  }, [fetchJwks, isJwksLoading, lastFetchedUri, oidcConfig?.jwks_uri]) // Track lastFetchedUri to prevent duplicate fetches
-
-  // Effect to handle successful JWKS fetch
-  useEffect(() => {
-    if (jwksData) {
-      if (import.meta?.env?.DEV) {
-        console.log('JWKS data loaded via hook:', jwksData)
-      }
-      // Assuming hook's JwkSet is compatible or can be cast to JSONWebKeySet
-      onJwksResolved(jwksData as JSONWebKeySet)
-      toast.success(
-        <div>
-          <p>
-            <strong>JWKS Fetched Successfully</strong>
-          </p>
-          <p>
-            Found {jwksData.keys.length} keys from {oidcConfig?.jwks_uri || 'source'}
-          </p>
-        </div>,
-        { id: 'jwks-fetch-success', duration: 3000 }
-      )
-      toast.dismiss('jwks-fetch-error') // Dismiss any previous error toast
-    }
-  }, [jwksData, onJwksResolved, oidcConfig?.jwks_uri]) // Trigger when JWKS data changes
-
-  // Effect to handle errors from JWKS hook
-  useEffect(() => {
-    if (jwksError) {
-      if (import.meta?.env?.DEV) {
-        console.error('Error fetching JWKS:', jwksError)
-      }
-      const errorMessage = jwksError.message || 'Unknown error'
-      // Show more informative error toast
-      toast.error(
-        <div>
-          <p>
-            <strong>Error Fetching JWKS</strong>
-          </p>
-          <p>{errorMessage}</p>
-          {errorMessage.includes('CORS') && (
-            <p className="text-xs mt-1">Try fetching manually or use the Manual Entry tab.</p>
-          )}
-        </div>,
-        { id: 'jwks-fetch-error', duration: 8000 }
-      )
-    }
-  }, [jwksError])
+  }, [fetchAndApplyJwks, isJwksLoading, lastFetchedUri, oidcConfig?.jwks_uri]) // Track lastFetchedUri to prevent duplicate fetches
 
   // Function to initiate the automatic fetching process
   const triggerAutomaticFetch = () => {
@@ -113,7 +100,7 @@ export function TokenJwksResolver({
       if (import.meta?.env?.DEV) {
         console.log(`Fetching JWKS directly from: ${oidcConfig.jwks_uri}`)
       }
-      fetchJwks(oidcConfig.jwks_uri, true) // Force refresh
+      void fetchAndApplyJwks(oidcConfig.jwks_uri, true)
     } else {
       toast.info('OIDC configuration not yet loaded. Please wait...')
     }

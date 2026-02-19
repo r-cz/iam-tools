@@ -23,6 +23,7 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
+import { Label } from '@/components/ui/label'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useSavedSchemas } from '../../hooks/useSavedSchemas'
@@ -288,7 +289,7 @@ export default function LdifBuilderPage() {
                         </div>
                         <div className="max-h-40 overflow-y-auto divide-y">
                           {BUILTIN_SCHEMAS.map((schema) => (
-                            <label
+                            <Label
                               key={schema.id}
                               className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer"
                             >
@@ -302,7 +303,7 @@ export default function LdifBuilderPage() {
                                   {schema.source}
                                 </p>
                               </div>
-                            </label>
+                            </Label>
                           ))}
                         </div>
                       </div>
@@ -320,7 +321,7 @@ export default function LdifBuilderPage() {
                           <div className="max-h-40 overflow-y-auto divide-y">
                             {schemaSummaries.map(
                               ({ schema: schemaEntry, objectClassCount, attributeCount }) => (
-                                <label
+                                <Label
                                   key={schemaEntry.id}
                                   className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer"
                                 >
@@ -336,7 +337,7 @@ export default function LdifBuilderPage() {
                                       {objectClassCount} OC · {attributeCount} AT
                                     </p>
                                   </div>
-                                </label>
+                                </Label>
                               )
                             )}
                           </div>
@@ -432,8 +433,8 @@ export default function LdifBuilderPage() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Issues while parsing LDIF</AlertTitle>
             <AlertDescription>
-              {ldifResult.errors.map((message, index) => (
-                <p key={index}>{message}</p>
+              {ldifResult.errors.map((message) => (
+                <p key={message}>{message}</p>
               ))}
             </AlertDescription>
           </Alert>
@@ -462,7 +463,7 @@ export default function LdifBuilderPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {ldifResult.entries.map((entry, index) => {
+              {ldifResult.entries.map((entry) => {
                 const objectClasses = entry.attributes['objectclass']?.values ?? []
                 const attrCount = Object.values(entry.attributes).reduce(
                   (sum, attr) => sum + attr.values.length,
@@ -471,7 +472,7 @@ export default function LdifBuilderPage() {
 
                 return (
                   <details
-                    key={`${entry.dn}-${index}`}
+                    key={entry.dn}
                     className="rounded-lg border bg-muted/20"
                     open={ldifResult.entries.length <= 3}
                   >
@@ -499,9 +500,9 @@ export default function LdifBuilderPage() {
                               )}
                             </span>
                             <div className="space-y-1">
-                              {attr.values.map((value, i) => (
+                              {attr.values.map((value) => (
                                 <code
-                                  key={i}
+                                  key={`${attr.name}-${value}`}
                                   className="block text-xs bg-muted/60 rounded px-2 py-1 break-all"
                                 >
                                   {value}
