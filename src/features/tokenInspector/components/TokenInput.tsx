@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import Editor from 'react-simple-code-editor'
+import EditorImport from 'react-simple-code-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { InfoIcon, TestTubeDiagonal, RotateCcw, Search } from 'lucide-react'
 import { generateFreshToken } from '../utils/generate-token'
@@ -13,6 +13,9 @@ import {
   InputGroupButton,
   InputGroupText,
 } from '@/components/ui/input-group'
+
+const editorModule = EditorImport as unknown as { default?: typeof EditorImport }
+const Editor = editorModule.default ?? EditorImport
 
 interface TokenInputProps {
   token: string
