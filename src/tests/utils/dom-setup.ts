@@ -22,6 +22,11 @@ if (globalThis.window && !(globalThis as any).location) {
   Object.assign(globalThis, { location: (globalThis as any).window.location })
 }
 
+// happy-dom under Bun can miss window.SyntaxError, which breaks selector APIs.
+if (globalThis.window && !(globalThis.window as any).SyntaxError) {
+  ;(globalThis.window as any).SyntaxError = globalThis.SyntaxError
+}
+
 // Provide a localStorage polyfill only if not present (happy-dom supplies one)
 if (!(globalThis as any).localStorage) {
   let store: Record<string, string> = {}

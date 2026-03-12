@@ -22,8 +22,10 @@ export function ResponseDisplay({ response }: ResponseDisplayProps) {
       const xmlDoc = parser.parseFromString(xml, 'application/xml')
 
       // Check for parsing errors
-      const parserError = xmlDoc.querySelector('parsererror')
-      if (parserError || xmlDoc.documentElement.nodeName === 'parsererror') {
+      if (
+        xmlDoc.documentElement.nodeName === 'parsererror' ||
+        xmlDoc.getElementsByTagName('parsererror').length > 0
+      ) {
         return xml // Return original if parsing fails
       }
 
