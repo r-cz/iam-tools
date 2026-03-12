@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { EndpointPreflightPanel } from '@/features/oauthPlayground/components/EndpointPreflightPanel'
 
 const runOidcEndpointPreflightMock = mock(async () => ({
@@ -103,12 +103,17 @@ describe('EndpointPreflightPanel', () => {
       />
     )
 
-    fireEvent.click(within(view.container).getByTestId('oidc-preflight-run-button'))
+    const runButton = view.container.getElementsByTagName('button').item(0)
+
+    expect(runButton).toBeTruthy()
+    fireEvent.click(runButton as HTMLButtonElement)
 
     await waitFor(() => {
       expect(runOidcEndpointPreflightMock).toHaveBeenCalledTimes(1)
     })
 
-    expect(await within(view.container).findByTestId('oidc-preflight-report')).toBeTruthy()
+    await waitFor(() => {
+      expect(view.container.textContent).toContain('Discovery document')
+    })
   })
 })

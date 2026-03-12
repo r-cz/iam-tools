@@ -32,6 +32,15 @@ async function setupDom() {
 
 await setupDom()
 
+try {
+  const mod: any = await import('happy-dom')
+  for (const WindowLike of [mod.Window, mod.BrowserWindow]) {
+    if (WindowLike?.prototype && !WindowLike.prototype.SyntaxError) {
+      WindowLike.prototype.SyntaxError = globalThis.SyntaxError
+    }
+  }
+} catch {}
+
 // Import from bun:test
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 

@@ -76,8 +76,7 @@ export function decodeSamlResponse(base64Input: string): DecodedSamlResponse {
   const xmlDoc = parser.parseFromString(decodedXml, 'text/xml')
 
   // Check for XML parsing errors
-  const parserError = xmlDoc.querySelector('parsererror')
-  if (parserError) {
+  if (hasXmlParserError(xmlDoc)) {
     throw new Error('Invalid XML format')
   }
 
@@ -111,6 +110,11 @@ export function decodeSamlResponse(base64Input: string): DecodedSamlResponse {
   }
 
   return response
+}
+
+function hasXmlParserError(xmlDoc: Document): boolean {
+  const rootName = xmlDoc.documentElement?.nodeName
+  return rootName === 'parsererror' || xmlDoc.getElementsByTagName('parsererror').length > 0
 }
 
 function extractIssuer(element: Element): string {
