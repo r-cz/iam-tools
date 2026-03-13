@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   APP_STATE: 'iam-tools-app-state',
   TOKEN_HISTORY: 'iam-tools-token-history',
   ISSUER_HISTORY: 'iam-tools-issuer-history',
+  ENVIRONMENT_PROFILES: 'iam-tools-environment-profiles',
   USER_SETTINGS: 'iam-tools-user-settings',
 }
 

@@ -10,7 +10,12 @@ import { generateCodeVerifier, generateCodeChallenge, generateState } from '../u
 import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
 import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import { toast } from 'sonner'
-import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common'
+import {
+  DemoModeToggle,
+  EnvironmentProfileSelector,
+  FormFieldInput,
+  IssuerHistory,
+} from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { Label } from '@/components/ui/label'
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'
@@ -127,6 +132,26 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     void fetchOidcConfig(selectedIssuerUrl)
   }
 
+  const handleSelectEnvironment = (profile: {
+    id: string
+    issuerUrl: string
+    authorizationEndpoint?: string
+    tokenEndpoint?: string
+    jwksEndpoint?: string
+    clientId?: string
+    scopes: string[]
+  }) => {
+    setIsDemoMode(false)
+    setIssuerUrl(profile.issuerUrl)
+    setAuthEndpoint(profile.authorizationEndpoint ?? '')
+    setTokenEndpoint(profile.tokenEndpoint ?? '')
+    setJwksEndpoint(profile.jwksEndpoint ?? '')
+    setClientId(profile.clientId ?? '')
+    setClientSecret('')
+    setScopes(profile.scopes.join(' '))
+    setEndpointsLocked(false)
+  }
+
   const handleSubmit = () => {
     // Validate form
     if (!isDemoMode) {
@@ -223,13 +248,22 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                         >
                           Issuer URL (for Auto-Discovery)
                         </Label>
-                        <IssuerHistory
-                          onSelectIssuer={handleSelectIssuer}
-                          compact
-                          label="Recents"
-                          buttonVariant="input-group"
-                          configLoading={isLoadingDiscovery}
-                        />
+                        <div className="flex items-center gap-2">
+                          <EnvironmentProfileSelector
+                            onSelectProfile={handleSelectEnvironment}
+                            compact
+                            label="Environments"
+                            buttonVariant="input-group"
+                            configLoading={isLoadingDiscovery}
+                          />
+                          <IssuerHistory
+                            onSelectIssuer={handleSelectIssuer}
+                            compact
+                            label="Recents"
+                            buttonVariant="input-group"
+                            configLoading={isLoadingDiscovery}
+                          />
+                        </div>
                       </InputGroupAddon>
                       <div data-slot="input-group-control" className="w-full px-3 pb-3 pt-0">
                         <InputGroupInput
@@ -404,6 +438,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           />
 
           <FormFieldInput
+            id="oauth-scopes"
             label="Scopes"
             placeholder="openid profile email"
             value={scopes}

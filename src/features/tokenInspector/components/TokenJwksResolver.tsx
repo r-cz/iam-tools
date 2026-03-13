@@ -18,6 +18,7 @@ interface TokenJwksResolverProps {
   isCurrentTokenDemo?: boolean // Flag from parent indicating if the current token is a demo one
   oidcConfig?: any // OIDC configuration from parent
   isLoadingOidcConfig?: boolean // OIDC config loading state
+  preferredJwksUri?: string | null
 }
 
 export function TokenJwksResolver({
@@ -27,6 +28,7 @@ export function TokenJwksResolver({
   isCurrentTokenDemo = false, // Default to false if not provided
   oidcConfig,
   isLoadingOidcConfig,
+  preferredJwksUri,
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<'automatic' | 'manual'>('automatic')
   const [manualJwks, setManualJwks] = useState('')
@@ -70,6 +72,15 @@ export function TokenJwksResolver({
 
   // Effect to fetch JWKS when OIDC config is successfully loaded
   useEffect(() => {
+    if (!preferredJwksUri || isJwksLoading || preferredJwksUri === lastFetchedUri) {
+      return
+    }
+
+    setLastFetchedUri(preferredJwksUri)
+    void fetchAndApplyJwks(preferredJwksUri)
+  }, [fetchAndApplyJwks, isJwksLoading, lastFetchedUri, preferredJwksUri])
+
+  useEffect(() => {
     // Only fetch if we have a JWKS URI, aren't currently loading, and haven't already fetched this URI
     if (oidcConfig?.jwks_uri && !isJwksLoading && oidcConfig.jwks_uri !== lastFetchedUri) {
       if (import.meta?.env?.DEV) {
@@ -92,6 +103,11 @@ export function TokenJwksResolver({
     }
     if (!issuerUrl) {
       toast.error('Issuer URL is required for automatic fetching.')
+      return
+    }
+
+    if (preferredJwksUri) {
+      void fetchAndApplyJwks(preferredJwksUri, true)
       return
     }
 

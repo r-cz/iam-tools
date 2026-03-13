@@ -1,5 +1,10 @@
 import { v4 as uuidv4 } from 'uuid'
-import { TokenHistoryItem, IssuerHistoryItem } from './types'
+import {
+  TokenHistoryItem,
+  IssuerHistoryItem,
+  EnvironmentProfile,
+  EnvironmentProfileDraft,
+} from './types'
 import { DEFAULT_MAX_HISTORY_ITEMS } from './constants'
 import { decodeJwtPayload } from '@/lib/jwt/decode-token'
 
@@ -103,6 +108,141 @@ export function addIssuerToHistory(
 
   // Add new item and limit history size
   return [newItem, ...history].slice(0, maxItems)
+}
+
+function normalizeOptionalString(value?: string): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+export function sanitizeEnvironmentProfileDraft(
+  profile: EnvironmentProfileDraft
+): EnvironmentProfileDraft {
+  return {
+    name: profile.name.trim(),
+    issuerUrl: profile.issuerUrl.trim(),
+    authorizationEndpoint: normalizeOptionalString(profile.authorizationEndpoint),
+    tokenEndpoint: normalizeOptionalString(profile.tokenEndpoint),
+    jwksEndpoint: normalizeOptionalString(profile.jwksEndpoint),
+    introspectionEndpoint: normalizeOptionalString(profile.introspectionEndpoint),
+    userInfoEndpoint: normalizeOptionalString(profile.userInfoEndpoint),
+    clientId: normalizeOptionalString(profile.clientId),
+    scopes: profile.scopes.map((scope) => scope.trim()).filter(Boolean),
+  }
+}
+
+export function sortEnvironmentProfiles(profiles: EnvironmentProfile[]): EnvironmentProfile[] {
+  return [...profiles].sort((left, right) => {
+    if (right.lastUsedAt !== left.lastUsedAt) {
+      return right.lastUsedAt - left.lastUsedAt
+    }
+
+    if (right.updatedAt !== left.updatedAt) {
+      return right.updatedAt - left.updatedAt
+    }
+
+    return left.name.localeCompare(right.name)
+  })
+}
+
+export function saveEnvironmentProfile(
+  profiles: EnvironmentProfile[],
+  profile: EnvironmentProfileDraft
+): {
+  profiles: EnvironmentProfile[]
+  savedProfile: EnvironmentProfile
+} {
+  const timestamp = Date.now()
+  const sanitizedProfile = sanitizeEnvironmentProfileDraft(profile)
+  const savedProfile: EnvironmentProfile = {
+    id: generateId(),
+    ...sanitizedProfile,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastUsedAt: timestamp,
+  }
+
+  return {
+    profiles: sortEnvironmentProfiles([savedProfile, ...profiles]),
+    savedProfile,
+  }
+}
+
+export function updateEnvironmentProfile(
+  profiles: EnvironmentProfile[],
+  id: string,
+  updates: Partial<EnvironmentProfileDraft>
+): {
+  profiles: EnvironmentProfile[]
+  updatedProfile: EnvironmentProfile | null
+} {
+  const existingProfile = profiles.find((profile) => profile.id === id)
+  if (!existingProfile) {
+    return { profiles, updatedProfile: null }
+  }
+
+  const timestamp = Date.now()
+  const sanitizedProfile = sanitizeEnvironmentProfileDraft({
+    name: updates.name ?? existingProfile.name,
+    issuerUrl: updates.issuerUrl ?? existingProfile.issuerUrl,
+    authorizationEndpoint: updates.authorizationEndpoint ?? existingProfile.authorizationEndpoint,
+    tokenEndpoint: updates.tokenEndpoint ?? existingProfile.tokenEndpoint,
+    jwksEndpoint: updates.jwksEndpoint ?? existingProfile.jwksEndpoint,
+    introspectionEndpoint: updates.introspectionEndpoint ?? existingProfile.introspectionEndpoint,
+    userInfoEndpoint: updates.userInfoEndpoint ?? existingProfile.userInfoEndpoint,
+    clientId: updates.clientId ?? existingProfile.clientId,
+    scopes: updates.scopes ?? existingProfile.scopes,
+  })
+
+  const updatedProfile: EnvironmentProfile = {
+    ...existingProfile,
+    ...sanitizedProfile,
+    updatedAt: timestamp,
+  }
+
+  return {
+    profiles: sortEnvironmentProfiles(
+      profiles.map((profile) => (profile.id === id ? updatedProfile : profile))
+    ),
+    updatedProfile,
+  }
+}
+
+export function markEnvironmentProfileUsed(
+  profiles: EnvironmentProfile[],
+  id: string
+): {
+  profiles: EnvironmentProfile[]
+  updatedProfile: EnvironmentProfile | null
+} {
+  const existingProfile = profiles.find((profile) => profile.id === id)
+  if (!existingProfile) {
+    return { profiles, updatedProfile: null }
+  }
+
+  const timestamp = Date.now()
+  const updatedProfile: EnvironmentProfile = {
+    ...existingProfile,
+    lastUsedAt: timestamp,
+  }
+
+  return {
+    profiles: sortEnvironmentProfiles(
+      profiles.map((profile) => (profile.id === id ? updatedProfile : profile))
+    ),
+    updatedProfile,
+  }
+}
+
+export function removeEnvironmentProfile(
+  profiles: EnvironmentProfile[],
+  id: string
+): EnvironmentProfile[] {
+  return profiles.filter((profile) => profile.id !== id)
+}
+
+export function clearEnvironmentProfiles(): EnvironmentProfile[] {
+  return []
 }
 
 /**

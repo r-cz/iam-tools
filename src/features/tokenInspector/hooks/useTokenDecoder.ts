@@ -15,7 +15,12 @@ export interface TokenDecoderState {
 }
 
 export interface UseTokenDecoderReturn extends TokenDecoderState {
-  decodeToken: (token: string, jwks: jose.JSONWebKeySet | null, oidcConfig?: any) => Promise<void>
+  decodeToken: (
+    token: string,
+    jwks: jose.JSONWebKeySet | null,
+    oidcConfig?: any,
+    issuerOverride?: string
+  ) => Promise<void>
   resetState: () => void
 }
 
@@ -38,7 +43,12 @@ export function useTokenDecoder(): UseTokenDecoderReturn {
   }, [])
 
   const decodeToken = useCallback(
-    async (token: string, jwks: jose.JSONWebKeySet | null, oidcConfig?: any) => {
+    async (
+      token: string,
+      jwks: jose.JSONWebKeySet | null,
+      oidcConfig?: any,
+      issuerOverride?: string
+    ) => {
       if (!token) {
         resetState()
         return
@@ -64,7 +74,7 @@ export function useTokenDecoder(): UseTokenDecoderReturn {
 
         // Set issuer URL (use demo issuer if it's a demo token)
         const issuerFromPayload = typeof payload.iss === 'string' ? payload.iss : ''
-        const currentIssuer = isLikelyDemo ? demoIssuerUrl : issuerFromPayload
+        const currentIssuer = isLikelyDemo ? demoIssuerUrl : issuerOverride || issuerFromPayload
         setIssuerUrl(currentIssuer)
 
         // Perform signature validation if JWKS are available
@@ -86,11 +96,16 @@ export function useTokenDecoder(): UseTokenDecoderReturn {
               let jwksUri = ''
 
               // Check if we have OIDC config for this issuer
-              if (oidcConfig && oidcConfig.issuer === payload.iss) {
+              if (
+                oidcConfig?.jwks_uri &&
+                (oidcConfig.issuer === currentIssuer ||
+                  oidcConfig.issuer === payload.iss ||
+                  Boolean(issuerOverride))
+              ) {
                 jwksUri = oidcConfig.jwks_uri || ''
-              } else if (payload.iss) {
+              } else if (currentIssuer) {
                 // Fallback: construct the JWKS URI
-                jwksUri = `${payload.iss}/.well-known/jwks`
+                jwksUri = `${currentIssuer}/.well-known/jwks`
               }
 
               const result = await verifySignatureWithRefresh(token, jwksUri, jwks, () => {

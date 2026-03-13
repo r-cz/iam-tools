@@ -1,16 +1,29 @@
 import React, { createContext, useContext, useCallback } from 'react'
 import { useLocalStorage } from '../../hooks/use-local-storage'
-import { TokenHistoryItem, IssuerHistoryItem, UserSettings, initialAppState } from './types'
+import {
+  TokenHistoryItem,
+  IssuerHistoryItem,
+  EnvironmentProfile,
+  EnvironmentProfileDraft,
+  UserSettings,
+  initialAppState,
+} from './types'
 import { STORAGE_KEYS } from './constants'
 import {
   addTokenToHistory,
   addIssuerToHistory,
   updateTokenInHistory,
   updateIssuerInHistory,
+  saveEnvironmentProfile,
+  updateEnvironmentProfile,
+  removeEnvironmentProfile,
+  markEnvironmentProfileUsed,
   removeTokenFromHistory,
   removeIssuerFromHistory,
   clearTokenHistory,
   clearIssuerHistory,
+  clearEnvironmentProfiles,
+  sortEnvironmentProfiles,
 } from './utils'
 
 // Context type
@@ -18,6 +31,7 @@ interface AppStateContextType {
   // State values
   tokenHistory: TokenHistoryItem[]
   issuerHistory: IssuerHistoryItem[]
+  environmentProfiles: EnvironmentProfile[]
   settings: UserSettings
 
   // Token history methods
@@ -32,6 +46,16 @@ interface AppStateContextType {
   removeIssuer: (id: string) => void
   clearIssuers: () => void
 
+  // Environment profile methods
+  saveProfile: (profile: EnvironmentProfileDraft) => EnvironmentProfile
+  updateProfile: (
+    id: string,
+    updates: Partial<EnvironmentProfileDraft>
+  ) => EnvironmentProfile | null
+  removeProfile: (id: string) => void
+  markProfileUsed: (id: string) => EnvironmentProfile | null
+  clearProfiles: () => void
+
   // Settings methods
   updateSettings: (updates: Partial<UserSettings>) => void
   resetSettings: () => void
@@ -42,6 +66,7 @@ const AppStateContext = createContext<AppStateContextType>({
   // Default state
   tokenHistory: initialAppState.tokenHistory,
   issuerHistory: initialAppState.issuerHistory,
+  environmentProfiles: initialAppState.environmentProfiles,
   settings: initialAppState.settings,
 
   // Default no-op functions
@@ -54,6 +79,14 @@ const AppStateContext = createContext<AppStateContextType>({
   updateIssuer: () => {},
   removeIssuer: () => {},
   clearIssuers: () => {},
+
+  saveProfile: () => {
+    throw new Error('saveProfile is unavailable outside AppStateProvider')
+  },
+  updateProfile: () => null,
+  removeProfile: () => {},
+  markProfileUsed: () => null,
+  clearProfiles: () => {},
 
   updateSettings: () => {},
   resetSettings: () => {},
@@ -77,6 +110,11 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   const [issuerHistory, setIssuerHistory] = useLocalStorage<IssuerHistoryItem[]>(
     STORAGE_KEYS.ISSUER_HISTORY,
     initialAppState.issuerHistory
+  )
+
+  const [environmentProfiles, setEnvironmentProfiles] = useLocalStorage<EnvironmentProfile[]>(
+    STORAGE_KEYS.ENVIRONMENT_PROFILES,
+    initialAppState.environmentProfiles
   )
 
   const [settings, setSettings] = useLocalStorage<UserSettings>(
@@ -140,6 +178,45 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     setIssuerHistory(clearIssuerHistory())
   }, [setIssuerHistory])
 
+  // Environment profile methods
+  const saveProfile = useCallback(
+    (profile: EnvironmentProfileDraft) => {
+      const result = saveEnvironmentProfile(environmentProfiles, profile)
+      setEnvironmentProfiles(result.profiles)
+      return result.savedProfile
+    },
+    [environmentProfiles, setEnvironmentProfiles]
+  )
+
+  const updateProfile = useCallback(
+    (id: string, updates: Partial<EnvironmentProfileDraft>) => {
+      const result = updateEnvironmentProfile(environmentProfiles, id, updates)
+      setEnvironmentProfiles(result.profiles)
+      return result.updatedProfile
+    },
+    [environmentProfiles, setEnvironmentProfiles]
+  )
+
+  const removeProfile = useCallback(
+    (id: string) => {
+      setEnvironmentProfiles((currentProfiles) => removeEnvironmentProfile(currentProfiles, id))
+    },
+    [setEnvironmentProfiles]
+  )
+
+  const markProfileUsed = useCallback(
+    (id: string) => {
+      const result = markEnvironmentProfileUsed(environmentProfiles, id)
+      setEnvironmentProfiles(result.profiles)
+      return result.updatedProfile
+    },
+    [environmentProfiles, setEnvironmentProfiles]
+  )
+
+  const clearProfiles = useCallback(() => {
+    setEnvironmentProfiles(clearEnvironmentProfiles())
+  }, [setEnvironmentProfiles])
+
   // Settings methods
   const updateSettings = useCallback(
     (updates: Partial<UserSettings>) => {
@@ -157,6 +234,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     // State
     tokenHistory,
     issuerHistory,
+    environmentProfiles,
     settings,
 
     // Methods
@@ -169,6 +247,12 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     updateIssuer,
     removeIssuer,
     clearIssuers,
+
+    saveProfile,
+    updateProfile,
+    removeProfile,
+    markProfileUsed,
+    clearProfiles,
 
     updateSettings,
     resetSettings,
@@ -217,6 +301,29 @@ export function useIssuerHistory() {
     updateIssuer,
     removeIssuer,
     clearIssuers,
+  }
+}
+
+/**
+ * Hook for saved environment profile operations
+ */
+export function useEnvironmentProfiles() {
+  const {
+    environmentProfiles,
+    saveProfile,
+    updateProfile,
+    removeProfile,
+    markProfileUsed,
+    clearProfiles,
+  } = useAppState()
+
+  return {
+    profiles: sortEnvironmentProfiles(environmentProfiles),
+    saveProfile,
+    updateProfile,
+    removeProfile,
+    markProfileUsed,
+    clearProfiles,
   }
 }
 

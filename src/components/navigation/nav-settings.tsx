@@ -37,7 +37,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useTheme } from '@/components/theme'
-import { useSettings, useTokenHistory, useIssuerHistory } from '@/lib/state'
+import { useEnvironmentProfiles, useSettings, useTokenHistory, useIssuerHistory } from '@/lib/state'
 import { oidcConfigCache } from '@/lib/cache/oidc-config-cache'
 import { jwksCache } from '@/lib/cache/jwks-cache'
 import { getDiagnosticsSnapshot, subscribeDiagnostics } from '@/lib/diagnostics/client-diagnostics'
@@ -49,6 +49,7 @@ export function NavSettings() {
   const { settings, updateSettings, resetSettings } = useSettings()
   const { clearTokens } = useTokenHistory()
   const { clearIssuers } = useIssuerHistory()
+  const { clearProfiles } = useEnvironmentProfiles()
   const appVersion = import.meta.env.APP_VERSION
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -170,10 +171,12 @@ export function NavSettings() {
   const handleClearAllHistory = () => {
     clearTokens()
     clearIssuers()
+    clearProfiles()
     oidcConfigCache.clear()
     jwksCache.clear()
     toast.success('All data cleared', {
-      description: 'Token history, issuer history, and cache have been cleared.',
+      description:
+        'Token history, issuer history, saved environments, and cache have been cleared.',
     })
   }
 

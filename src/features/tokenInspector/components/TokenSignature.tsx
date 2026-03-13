@@ -16,6 +16,7 @@ interface TokenSignatureProps {
   isCurrentTokenDemo?: boolean // Flag indicating if the token being inspected is a demo one
   oidcConfig?: any // OIDC configuration from parent
   isLoadingOidcConfig?: boolean // OIDC config loading state
+  preferredJwksUri?: string | null
 }
 
 export function TokenSignature({
@@ -30,6 +31,7 @@ export function TokenSignature({
   isCurrentTokenDemo, // Use the flag passed from the parent
   oidcConfig,
   isLoadingOidcConfig,
+  preferredJwksUri,
 }: TokenSignatureProps) {
   const parts = token.split('.')
   // Extract the signature part for display (can be empty if token is malformed)
@@ -95,6 +97,7 @@ export function TokenSignature({
             isCurrentTokenDemo={isCurrentTokenDemo}
             oidcConfig={oidcConfig}
             isLoadingOidcConfig={isLoadingOidcConfig}
+            preferredJwksUri={preferredJwksUri}
           />
         </div>
       </div>
