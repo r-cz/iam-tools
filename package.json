@@ -97,7 +97,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "happy-dom": "^20.8.3",
+    "happy-dom": "^20.8.4",
     "node-jose-tools": "^2.0.4",
     "prettier": "^3.8.1",
     "semantic-release": "^25.0.3",
