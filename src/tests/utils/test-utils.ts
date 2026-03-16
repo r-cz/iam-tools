@@ -96,11 +96,26 @@ export function mockConsole() {
   })
 }
 
-// Helper for testing async functions
-export async function waitForCondition(condition: () => boolean, timeout = 1000) {
-  const startTime = Date.now()
-  while (!condition() && Date.now() - startTime < timeout) {
-    await new Promise((r) => setTimeout(r, 50))
+// Use RTL's waitFor so pending React updates are flushed via act() in CI as well as locally.
+export async function waitForCondition(condition: () => boolean, timeout = 3000) {
+  try {
+    await waitFor(
+      () => {
+        let matches = false
+
+        try {
+          matches = condition()
+        } catch {
+          matches = false
+        }
+
+        expect(matches).toBe(true)
+      },
+      { timeout, interval: 50 }
+    )
+
+    return true
+  } catch {
+    return false
   }
-  return condition()
 }
