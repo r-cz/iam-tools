@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { useDebounce } from '@/hooks/use-debounce'
 
 describe('useDebounce', () => {
@@ -160,10 +160,9 @@ describe('useDebounce', () => {
 
     rerender({ value: 'updated' })
 
-    // Even with 0 delay, it still needs to go through useEffect
-    await new Promise((resolve) => setTimeout(resolve, 10))
-
-    expect(result.current).toBe('updated')
+    await waitFor(() => {
+      expect(result.current).toBe('updated')
+    })
   })
 
   it('should preserve reference equality for unchanged values', () => {

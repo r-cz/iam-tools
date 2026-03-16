@@ -17,9 +17,23 @@ import { Label } from '@/components/ui/label'
 interface ConfigInputProps {
   onFetchRequested: (issuerUrl: string) => void // Renamed prop
   isLoading: boolean // Added back isLoading prop
+  issuerUrl?: string
+  onIssuerUrlChange?: (issuerUrl: string) => void
+  actions?: React.ReactNode
 }
 
-export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
+const stripScheme = (value: string) => value.replace(/^https?:\/\//i, '')
+
+const deriveScheme = (value: string): 'https://' | 'http://' =>
+  value.toLowerCase().startsWith('http://') ? 'http://' : 'https://'
+
+export function ConfigInput({
+  onFetchRequested,
+  isLoading,
+  issuerUrl: controlledIssuerUrl = '',
+  onIssuerUrlChange,
+  actions,
+}: ConfigInputProps) {
   const [issuerUrl, setIssuerUrl] = useState('')
   const [scheme, setScheme] = useState<'https://' | 'http://'>('https://')
   // Removed hook instantiation
@@ -29,13 +43,8 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   const normalizedIssuer = issuerUrl.trim()
   const fullIssuerUrl = normalizedIssuer ? `${scheme}${normalizedIssuer}` : ''
 
-  const stripScheme = (value: string) => value.replace(/^https?:\/\//i, '')
-
-  const deriveScheme = (value: string): 'https://' | 'http://' =>
-    value.toLowerCase().startsWith('http://') ? 'http://' : 'https://'
-
-  const updateIssuerValue = (value: string) => {
-    const trimmed = value.trim()
+  React.useEffect(() => {
+    const trimmed = controlledIssuerUrl.trim()
 
     if (!trimmed) {
       setIssuerUrl('')
@@ -44,13 +53,41 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
     }
 
     if (/^https?:\/\//i.test(trimmed)) {
-      const nextScheme = deriveScheme(trimmed)
-      setScheme(nextScheme)
+      setScheme(deriveScheme(trimmed))
       setIssuerUrl(stripScheme(trimmed))
       return
     }
 
     setIssuerUrl(trimmed)
+  }, [controlledIssuerUrl])
+
+  const updateIssuerValue = (value: string, shouldNotify = false) => {
+    const trimmed = value.trim()
+
+    if (!trimmed) {
+      setIssuerUrl('')
+      setScheme('https://')
+      if (shouldNotify) {
+        onIssuerUrlChange?.('')
+      }
+      return
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+      const nextScheme = deriveScheme(trimmed)
+      const nextIssuerUrl = stripScheme(trimmed)
+      setScheme(nextScheme)
+      setIssuerUrl(nextIssuerUrl)
+      if (shouldNotify) {
+        onIssuerUrlChange?.(`${nextScheme}${nextIssuerUrl}`)
+      }
+      return
+    }
+
+    setIssuerUrl(trimmed)
+    if (shouldNotify) {
+      onIssuerUrlChange?.(`${scheme}${trimmed}`)
+    }
   }
 
   const handleFetchConfig = () => {
@@ -94,9 +131,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   const handleRandomExample = () => {
     const randomIndex = Math.floor(Math.random() * realWorldIssuers.length)
     const selectedIssuer = realWorldIssuers[randomIndex]
-    const nextScheme = deriveScheme(selectedIssuer.url)
-    setScheme(nextScheme)
-    setIssuerUrl(stripScheme(selectedIssuer.url))
+    updateIssuerValue(selectedIssuer.url, true)
     toast.info(
       <div>
         <p>
@@ -113,9 +148,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
   }
 
   const handleSelectIssuerFromHistory = (url: string) => {
-    const nextScheme = deriveScheme(url)
-    setScheme(nextScheme)
-    setIssuerUrl(stripScheme(url))
+    updateIssuerValue(url, true)
     onFetchRequested(url)
   }
 
@@ -149,6 +182,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
             </Popover>
           </div>
           <div className="flex items-center gap-2">
+            {actions}
             <IssuerHistory
               onSelectIssuer={handleSelectIssuerFromHistory}
               compact
@@ -186,7 +220,7 @@ export function ConfigInput({ onFetchRequested, isLoading }: ConfigInputProps) {
               value={issuerUrl}
               data-full-url={fullIssuerUrl || undefined}
               data-testid="oidc-explorer-issuer-input"
-              onChange={(e) => updateIssuerValue(e.target.value)}
+              onChange={(e) => updateIssuerValue(e.target.value, true)}
               onKeyDown={handleKeyDown}
               placeholder="issuer.example.com"
               autoComplete="off"

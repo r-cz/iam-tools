@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as jose from 'jose'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Key } from 'lucide-react'
+import { EnvironmentProfileSelector } from '@/components/common'
 
 import {
   TokenInput,
@@ -22,6 +23,7 @@ import {
 import { useTokenDecoder } from './hooks/useTokenDecoder'
 import { useTokenHistory } from '../../lib/state'
 import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig'
+import type { EnvironmentProfile } from '@/lib/state'
 
 interface TokenInspectorProps {
   initialToken?: string | null
@@ -32,6 +34,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null) // Holds the currently loaded JWKS
   const [activeTab, setActiveTab] = useState('payload')
   const [manualIssuerUrl, setManualIssuerUrl] = useState('') // Manual issuer URL override
+  const [selectedEnvironment, setSelectedEnvironment] = useState<EnvironmentProfile | null>(null)
 
   // Token decoder hook for decoding and validation logic
   const {
@@ -44,9 +47,6 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     resetState,
   } = useTokenDecoder()
 
-  // Use manual issuer if set, otherwise use auto-detected issuer from hook
-  const issuerUrl = manualIssuerUrl || autoIssuerUrl
-
   // Token history state from the app state provider
   const { addToken } = useTokenHistory()
 
@@ -57,6 +57,20 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     isLoading: isOidcConfigLoading,
     fetchConfig: fetchOidcConfig,
   } = useOidcConfig()
+
+  // Use manual issuer if set, otherwise use auto-detected issuer from hook
+  const issuerUrl = manualIssuerUrl || selectedEnvironment?.issuerUrl || autoIssuerUrl
+  const effectiveOidcConfig = useMemo(() => {
+    if (!selectedEnvironment?.jwksEndpoint) {
+      return oidcConfig
+    }
+
+    return {
+      ...(oidcConfig ?? {}),
+      issuer: issuerUrl || oidcConfig?.issuer || selectedEnvironment.issuerUrl,
+      jwks_uri: selectedEnvironment.jwksEndpoint,
+    }
+  }, [issuerUrl, oidcConfig, selectedEnvironment])
 
   // Effect to handle initial token from URL
   useEffect(() => {
@@ -79,12 +93,19 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     if (import.meta?.env?.DEV) {
       console.log('Token state changed, attempting decode...')
     }
-    decodeToken(token, jwks, oidcConfig) // Attempt decode with current token and JWKS state
-  }, [token, decodeToken, jwks, oidcConfig]) // Rerun when the main token string changes
+    decodeToken(token, jwks, effectiveOidcConfig, manualIssuerUrl || selectedEnvironment?.issuerUrl) // Attempt decode with current token and JWKS state
+  }, [
+    token,
+    decodeToken,
+    effectiveOidcConfig,
+    jwks,
+    manualIssuerUrl,
+    selectedEnvironment?.issuerUrl,
+  ]) // Rerun when the main token string changes
 
   // Effect to fetch OIDC config when issuer changes
   useEffect(() => {
-    if (!issuerUrl || isDemoToken) {
+    if (!issuerUrl || isDemoToken || selectedEnvironment?.jwksEndpoint) {
       return
     }
 
@@ -103,6 +124,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     issuerUrl,
     oidcConfig?.issuer,
     oidcConfigIssuer,
+    selectedEnvironment?.jwksEndpoint,
   ])
 
   const handleReset = () => {
@@ -113,6 +135,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     setActiveTab('payload')
     setJwks(null) // Reset loaded JWKS
     setManualIssuerUrl('') // Clear manual issuer override
+    setSelectedEnvironment(null)
     resetState() // Call hook's reset function
     // Clear token from URL if it was present
     if (initialToken) {
@@ -155,13 +178,24 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       if (import.meta?.env?.DEV) {
         console.log('Re-running decode/validation with newly resolved JWKS...')
       }
-      await decodeToken(token, resolvedJwks, oidcConfig) // Pass current token and new JWKS
+      await decodeToken(
+        token,
+        resolvedJwks,
+        effectiveOidcConfig,
+        manualIssuerUrl || selectedEnvironment?.issuerUrl
+      ) // Pass current token and new JWKS
     }
   }
 
   // Handle token selection from history
   const handleSelectToken = (selectedToken: string) => {
     setToken(selectedToken)
+  }
+
+  const handleSelectEnvironment = (profile: EnvironmentProfile) => {
+    setSelectedEnvironment(profile)
+    setManualIssuerUrl(profile.issuerUrl)
+    setJwks(null)
   }
 
   return (
@@ -173,11 +207,28 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
           <TokenInput
             token={token}
             setToken={setToken} // Let input component update token state
-            onDecode={() => decodeToken(token, jwks, oidcConfig)} // Explicitly trigger decode on button click
+            onDecode={() =>
+              decodeToken(
+                token,
+                jwks,
+                effectiveOidcConfig,
+                manualIssuerUrl || selectedEnvironment?.issuerUrl
+              )
+            } // Explicitly trigger decode on button click
             onReset={handleReset}
             onJwksResolved={handleJwksFromExample} // For auto-loading JWKS from example btn
             initialToken={initialToken} // Pass initial token if present
             onSelectTokenFromHistory={handleSelectToken} // Pass the callback for history selection
+            environmentAction={
+              <EnvironmentProfileSelector
+                onSelectProfile={handleSelectEnvironment}
+                compact
+                label="Environments"
+                buttonVariant="input-group"
+                configLoading={isOidcConfigLoading}
+                disabled={isDemoToken}
+              />
+            }
           />
         </CardContent>
       </Card>
@@ -284,11 +335,17 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
                   signatureValid={decodedToken.signature.valid}
                   jwks={jwks} // Pass current JWKS state
                   issuerUrl={issuerUrl} // Pass current issuer state
-                  setIssuerUrl={setManualIssuerUrl} // Allow resolver to update issuer
+                  setIssuerUrl={(nextIssuerUrl) => {
+                    setManualIssuerUrl(nextIssuerUrl)
+                    if (selectedEnvironment && selectedEnvironment.issuerUrl !== nextIssuerUrl) {
+                      setSelectedEnvironment(null)
+                    }
+                  }} // Allow resolver to update issuer
                   onJwksResolved={handleJwksResolved} // Function to call when JWKS are resolved/loaded
                   isCurrentTokenDemo={isDemoToken} // Pass the flag indicating if CURRENT token is demo
-                  oidcConfig={oidcConfig} // Pass OIDC config data
+                  oidcConfig={effectiveOidcConfig} // Pass OIDC config data
                   isLoadingOidcConfig={isOidcConfigLoading} // Pass loading state
+                  preferredJwksUri={selectedEnvironment?.jwksEndpoint ?? null}
                 />
               </TabsContent>
 

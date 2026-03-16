@@ -25,6 +25,7 @@ interface TokenInputProps {
   onJwksResolved?: (jwks: any) => void // Optional callback for JWKS
   initialToken?: string | null // Token from URL parameter
   onSelectTokenFromHistory?: (token: string) => void // Callback for when a token is selected from history
+  environmentAction?: React.ReactNode
 }
 
 // Highlighting function for JWT parts
@@ -54,6 +55,7 @@ export function TokenInput({
   onJwksResolved,
   initialToken,
   onSelectTokenFromHistory,
+  environmentAction,
 }: TokenInputProps) {
   const [isLoadingExample, setIsLoadingExample] = useState(false)
   const [isExampleToken, setIsExampleToken] = useState(false)
@@ -151,6 +153,7 @@ export function TokenInput({
         >
           <span className="text-sm font-medium text-foreground">OAuth/OIDC Token</span>
           <div className="flex items-center gap-1.5">
+            {environmentAction}
             <TokenHistory
               onSelectToken={handleSelectTokenFromHistory}
               compact

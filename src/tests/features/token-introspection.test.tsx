@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import { setupApiMocks } from '../utils/test-api-mocks'
 import { IntrospectionResponse } from '@/features/oauthPlayground/components/TokenIntrospection'
 
 /**
@@ -7,9 +6,6 @@ import { IntrospectionResponse } from '@/features/oauthPlayground/components/Tok
  * These tests cover the core introspection logic and demo mode behavior.
  */
 describe('Token Introspection Core Functionality', () => {
-  // Setup API mocks
-  const apiMocks = setupApiMocks()
-
   const sampleToken = [
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
     'eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyNDI2MjIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwifQ',

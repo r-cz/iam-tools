@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { TokenInspector } from '@/features/tokenInspector'
-import { setupApiMocks, sampleJwt } from '../utils/test-api-mocks'
+import { sampleJwt } from '../utils/test-api-mocks'
 
 /**
  * Basic tests for the token inspector functionality.
@@ -8,9 +8,6 @@ import { setupApiMocks, sampleJwt } from '../utils/test-api-mocks'
  * until we have a more robust DOM testing environment.
  */
 describe('Token Inspector Core Functionality', () => {
-  // Setup API mocks
-  const apiMocks = setupApiMocks()
-
   test('should properly parse JWT components', () => {
     // Sample JWT from our mocks
     const jwt = sampleJwt

@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import { KeyRound } from 'lucide-react'
 import type { JSONWebKeySet } from 'jose' // Import type
+import type { OidcFetchFunction } from '@/features/oauthPlayground/utils/oidc-preflight'
 
 interface TokenJwksResolverProps {
   issuerUrl: string
@@ -18,6 +19,8 @@ interface TokenJwksResolverProps {
   isCurrentTokenDemo?: boolean // Flag from parent indicating if the current token is a demo one
   oidcConfig?: any // OIDC configuration from parent
   isLoadingOidcConfig?: boolean // OIDC config loading state
+  preferredJwksUri?: string | null
+  jwksFetcher?: OidcFetchFunction
 }
 
 export function TokenJwksResolver({
@@ -27,13 +30,15 @@ export function TokenJwksResolver({
   isCurrentTokenDemo = false, // Default to false if not provided
   oidcConfig,
   isLoadingOidcConfig,
+  preferredJwksUri,
+  jwksFetcher,
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<'automatic' | 'manual'>('automatic')
   const [manualJwks, setManualJwks] = useState('')
   const [lastFetchedUri, setLastFetchedUri] = useState<string | null>(null)
 
   // Only instantiate the JWKS hook since we're receiving OIDC config from parent
-  const { fetchJwks, isLoading: isJwksLoading } = useJwks()
+  const { fetchJwks, isLoading: isJwksLoading } = useJwks(jwksFetcher)
 
   const fetchAndApplyJwks = useCallback(
     async (jwksUri: string, forceRefresh = false) => {
@@ -70,6 +75,15 @@ export function TokenJwksResolver({
 
   // Effect to fetch JWKS when OIDC config is successfully loaded
   useEffect(() => {
+    if (!preferredJwksUri || isJwksLoading || preferredJwksUri === lastFetchedUri) {
+      return
+    }
+
+    setLastFetchedUri(preferredJwksUri)
+    void fetchAndApplyJwks(preferredJwksUri)
+  }, [fetchAndApplyJwks, isJwksLoading, lastFetchedUri, preferredJwksUri])
+
+  useEffect(() => {
     // Only fetch if we have a JWKS URI, aren't currently loading, and haven't already fetched this URI
     if (oidcConfig?.jwks_uri && !isJwksLoading && oidcConfig.jwks_uri !== lastFetchedUri) {
       if (import.meta?.env?.DEV) {
@@ -92,6 +106,11 @@ export function TokenJwksResolver({
     }
     if (!issuerUrl) {
       toast.error('Issuer URL is required for automatic fetching.')
+      return
+    }
+
+    if (preferredJwksUri) {
+      void fetchAndApplyJwks(preferredJwksUri, true)
       return
     }
 

@@ -3,6 +3,7 @@ import { TokenJwksResolver } from './TokenJwksResolver'
 import { CodeBlock } from '@/components/ui/code-block'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { ShieldAlert, ShieldCheck, Info, AlertCircle } from 'lucide-react'
+import type { OidcFetchFunction } from '@/features/oauthPlayground/utils/oidc-preflight'
 
 interface TokenSignatureProps {
   token: string // The raw token string
@@ -16,6 +17,8 @@ interface TokenSignatureProps {
   isCurrentTokenDemo?: boolean // Flag indicating if the token being inspected is a demo one
   oidcConfig?: any // OIDC configuration from parent
   isLoadingOidcConfig?: boolean // OIDC config loading state
+  preferredJwksUri?: string | null
+  jwksFetcher?: OidcFetchFunction
 }
 
 export function TokenSignature({
@@ -30,6 +33,8 @@ export function TokenSignature({
   isCurrentTokenDemo, // Use the flag passed from the parent
   oidcConfig,
   isLoadingOidcConfig,
+  preferredJwksUri,
+  jwksFetcher,
 }: TokenSignatureProps) {
   const parts = token.split('.')
   // Extract the signature part for display (can be empty if token is malformed)
@@ -95,6 +100,8 @@ export function TokenSignature({
             isCurrentTokenDemo={isCurrentTokenDemo}
             oidcConfig={oidcConfig}
             isLoadingOidcConfig={isLoadingOidcConfig}
+            preferredJwksUri={preferredJwksUri}
+            jwksFetcher={jwksFetcher}
           />
         </div>
       </div>

@@ -23,6 +23,36 @@ export interface IssuerHistoryItem {
   lastUsedAt: number
 }
 
+// Saved OAuth/OIDC environment profile
+export interface EnvironmentProfile {
+  id: string
+  name: string
+  issuerUrl: string
+  authorizationEndpoint?: string
+  tokenEndpoint?: string
+  jwksEndpoint?: string
+  introspectionEndpoint?: string
+  userInfoEndpoint?: string
+  clientId?: string
+  scopes: string[]
+  createdAt: number
+  updatedAt: number
+  lastUsedAt: number
+}
+
+// Input used for creating or updating environment profiles
+export interface EnvironmentProfileDraft {
+  name: string
+  issuerUrl: string
+  authorizationEndpoint?: string
+  tokenEndpoint?: string
+  jwksEndpoint?: string
+  introspectionEndpoint?: string
+  userInfoEndpoint?: string
+  clientId?: string
+  scopes: string[]
+}
+
 // User settings
 export interface UserSettings {
   maxHistoryItems: number
@@ -35,6 +65,7 @@ export interface UserSettings {
 export interface AppState {
   tokenHistory: TokenHistoryItem[]
   issuerHistory: IssuerHistoryItem[]
+  environmentProfiles: EnvironmentProfile[]
   settings: UserSettings
 }
 
@@ -42,6 +73,7 @@ export interface AppState {
 export const initialAppState: AppState = {
   tokenHistory: [],
   issuerHistory: [],
+  environmentProfiles: [],
   settings: {
     maxHistoryItems: 10,
     tokenDisplayFormat: 'decoded',

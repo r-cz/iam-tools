@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig'
 import { useJwks } from '@/hooks/data-fetching/useJwks'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -6,20 +6,57 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Spinner } from '@/components/ui/spinner'
+import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
 import { ConfigInput, ConfigDisplay, JwksDisplay, ProviderInfo } from './components'
 import { detectProvider } from './utils/config-helpers'
-import { useIssuerHistory } from '../../lib/state'
+import { useEnvironmentProfiles, useIssuerHistory } from '../../lib/state'
+import { EnvironmentProfileDialog, EnvironmentProfileSelector } from '@/components/common'
+import type { EnvironmentProfile, EnvironmentProfileDraft } from '@/lib/state'
+import { extractDiscoveredEndpoints } from '@/features/oauthPlayground/utils/oidc-preflight'
+
+function getDefaultProfileName(issuerUrl: string): string {
+  try {
+    return new URL(issuerUrl).hostname
+  } catch {
+    return issuerUrl
+  }
+}
+
+function buildEnvironmentProfileDraft(
+  config: Parameters<typeof extractDiscoveredEndpoints>[0] | null,
+  issuerUrl: string,
+  existingProfile: EnvironmentProfile | null
+): EnvironmentProfileDraft {
+  const endpoints = config ? extractDiscoveredEndpoints(config) : {}
+
+  return {
+    name: existingProfile?.name ?? getDefaultProfileName(issuerUrl),
+    issuerUrl,
+    authorizationEndpoint:
+      endpoints.authorizationEndpoint ?? existingProfile?.authorizationEndpoint,
+    tokenEndpoint: endpoints.tokenEndpoint ?? existingProfile?.tokenEndpoint,
+    jwksEndpoint: endpoints.jwksEndpoint ?? existingProfile?.jwksEndpoint,
+    introspectionEndpoint:
+      endpoints.introspectionEndpoint ?? existingProfile?.introspectionEndpoint,
+    userInfoEndpoint: endpoints.userInfoEndpoint ?? existingProfile?.userInfoEndpoint,
+    clientId: existingProfile?.clientId,
+    scopes: existingProfile?.scopes ?? [],
+  }
+}
 
 export function OidcExplorer() {
   // Instantiate hooks
   const oidcConfigHook = useOidcConfig()
   const { data: jwksData, error: jwksError, fetchJwks, isLoading: isJwksLoading } = useJwks()
   const { addIssuer } = useIssuerHistory()
+  const { profiles, saveProfile, updateProfile } = useEnvironmentProfiles()
 
   // Local state for derived/UI data
   const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('')
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
 
   // Use a ref to track if we've already added this URL to history
   const processedUrls = useRef<Set<string>>(new Set())
@@ -71,11 +108,35 @@ export function OidcExplorer() {
     oidcConfigHook.fetchConfig(issuerUrl)
   }
 
+  const currentIssuerUrl = oidcConfigHook.data?.issuer ?? inputIssuerUrl
+  const matchedProfile = useMemo(() => {
+    if (!currentIssuerUrl) {
+      return null
+    }
+
+    const selectedProfile = selectedProfileId
+      ? (profiles.find((profile) => profile.id === selectedProfileId) ?? null)
+      : null
+
+    if (selectedProfile?.issuerUrl === currentIssuerUrl) {
+      return selectedProfile
+    }
+
+    return profiles.find((profile) => profile.issuerUrl === currentIssuerUrl) ?? null
+  }, [currentIssuerUrl, profiles, selectedProfileId])
+
+  const currentProfileDraft = useMemo(() => {
+    if (!currentIssuerUrl) {
+      return null
+    }
+
+    return buildEnvironmentProfileDraft(oidcConfigHook.data, currentIssuerUrl, matchedProfile)
+  }, [currentIssuerUrl, matchedProfile, oidcConfigHook.data])
+
   // Combine loading states
   const isLoading = oidcConfigHook.isLoading || isJwksLoading
   // Combine error states
   const error = oidcConfigHook.error || jwksError
-  const currentIssuerUrl = oidcConfigHook.data?.issuer ?? ''
   const detectionResult = oidcConfigHook.data
     ? detectProvider(currentIssuerUrl, oidcConfigHook.data)
     : null
@@ -86,7 +147,47 @@ export function OidcExplorer() {
     <div className="space-y-6">
       {/* Configuration Input */}
       {/* Config Input Component */}
-      <ConfigInput onFetchRequested={handleFetchConfig} isLoading={isLoading} />
+      <ConfigInput
+        issuerUrl={inputIssuerUrl}
+        onIssuerUrlChange={(issuerUrl) => {
+          setInputIssuerUrl(issuerUrl)
+
+          const selectedProfile = selectedProfileId
+            ? (profiles.find((profile) => profile.id === selectedProfileId) ?? null)
+            : null
+
+          if (selectedProfile && selectedProfile.issuerUrl !== issuerUrl) {
+            setSelectedProfileId(null)
+          }
+        }}
+        onFetchRequested={handleFetchConfig}
+        isLoading={isLoading}
+        actions={
+          <EnvironmentProfileSelector
+            onSelectProfile={(profile) => {
+              setSelectedProfileId(profile.id)
+              handleFetchConfig(profile.issuerUrl)
+            }}
+            configLoading={isLoading}
+            compact
+            label="Environments"
+            buttonVariant="input-group"
+          />
+        }
+      />
+
+      {!isLoading && currentProfileDraft && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsProfileDialogOpen(true)}
+            data-testid="oidc-explorer-save-environment-button"
+          >
+            {matchedProfile ? 'Update Environment' : 'Save Environment'}
+          </Button>
+        </div>
+      )}
 
       {/* Loading state */}
       {isLoading && (
@@ -167,6 +268,29 @@ export function OidcExplorer() {
           )}
         </Tabs>
       )}
+
+      <EnvironmentProfileDialog
+        open={isProfileDialogOpen}
+        onOpenChange={setIsProfileDialogOpen}
+        initialProfile={currentProfileDraft}
+        title={matchedProfile ? 'Update environment' : 'Save environment'}
+        description="Save the current issuer and discovered endpoints for quick reuse across OAuth and OIDC tools."
+        submitLabel={matchedProfile ? 'Update Environment' : 'Save Environment'}
+        onSave={(profile) => {
+          if (matchedProfile) {
+            const updatedProfile = updateProfile(matchedProfile.id, profile)
+            if (updatedProfile) {
+              setSelectedProfileId(updatedProfile.id)
+              toast.success('Environment updated')
+            }
+            return
+          }
+
+          const savedProfile = saveProfile(profile)
+          setSelectedProfileId(savedProfile.id)
+          toast.success('Environment saved')
+        }}
+      />
     </div>
   )
 }

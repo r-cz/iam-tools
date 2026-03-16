@@ -1,5 +1,12 @@
 import { Mock, mock } from 'bun:test'
 
+const ORIGINAL_FETCH_SYMBOL = Symbol.for('iam-tools.tests.originalFetch')
+
+if (!(globalThis as Record<symbol, typeof fetch | undefined>)[ORIGINAL_FETCH_SYMBOL]) {
+  ;(globalThis as Record<symbol, typeof fetch | undefined>)[ORIGINAL_FETCH_SYMBOL] =
+    globalThis.fetch
+}
+
 /**
  * Mock API response types
  */
@@ -18,7 +25,9 @@ export interface MockedResponse<T = any> {
  * @returns A utility object with methods to mock API responses
  */
 export function setupApiMocks() {
-  const originalFetch = globalThis.fetch
+  const originalFetch = (globalThis as Record<symbol, typeof fetch | undefined>)[
+    ORIGINAL_FETCH_SYMBOL
+  ]
   let mockedResponses: Record<string, MockedResponse> = {}
 
   // Mock global fetch
@@ -103,7 +112,9 @@ export function setupApiMocks() {
      * Restore the original fetch implementation
      */
     restore: () => {
-      globalThis.fetch = originalFetch
+      if (originalFetch) {
+        globalThis.fetch = originalFetch
+      }
     },
 
     /**

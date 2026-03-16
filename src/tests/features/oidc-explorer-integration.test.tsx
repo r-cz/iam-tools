@@ -1,9 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  setupApiMocks,
-  sampleOidcConfigResponse,
-  sampleJwksResponse,
-} from '../utils/test-api-mocks'
+import { sampleOidcConfigResponse, sampleJwksResponse } from '../utils/test-api-mocks'
 
 /**
  * Basic tests for the OIDC Explorer functionality.
@@ -11,9 +7,6 @@ import {
  * until we have a more robust DOM testing environment.
  */
 describe('OIDC Explorer Core Functionality', () => {
-  // Setup API mocks
-  const apiMocks = setupApiMocks()
-
   test('should process OIDC issuer information', () => {
     // Test issuer URL parsing by checking that our sample has the expected properties
     const issuerUrl = sampleOidcConfigResponse.issuer

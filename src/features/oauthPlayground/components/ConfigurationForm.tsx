@@ -10,12 +10,18 @@ import { generateCodeVerifier, generateCodeChallenge, generateState } from '../u
 import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
 import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 import { toast } from 'sonner'
-import { IssuerHistory, FormFieldInput, DemoModeToggle } from '@/components/common'
+import {
+  DemoModeToggle,
+  EnvironmentProfileSelector,
+  FormFieldInput,
+  IssuerHistory,
+} from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { Label } from '@/components/ui/label'
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'
 import EndpointPreflightPanel from './EndpointPreflightPanel'
 import {
+  type OidcFetchFunction,
   extractDiscoveredEndpoints,
   fetchOidcDiscoveryConfiguration,
   hasUsableDiscoveredEndpoints,
@@ -23,9 +29,15 @@ import {
 
 interface ConfigurationFormProps {
   onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void
+  discoveryFetcher?: OidcFetchFunction
+  showPreflightPanel?: boolean
 }
 
-export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) {
+export function ConfigurationForm({
+  onConfigComplete,
+  discoveryFetcher,
+  showPreflightPanel = true,
+}: ConfigurationFormProps) {
   // Removed flowType state
   const [issuerUrl, setIssuerUrl] = useState<string>('')
   const [authEndpoint, setAuthEndpoint] = useState<string>('')
@@ -100,7 +112,10 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
 
     setIsLoadingDiscovery(true)
     try {
-      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(targetIssuer)
+      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(
+        targetIssuer,
+        discoveryFetcher
+      )
       const hasUsableEndpoints = applyDiscoveredConfiguration(config, normalizedIssuerUrl)
 
       if (hasUsableEndpoints) {
@@ -125,6 +140,26 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
     setIssuerUrl(selectedIssuerUrl)
     clearDiscoveredEndpoints()
     void fetchOidcConfig(selectedIssuerUrl)
+  }
+
+  const handleSelectEnvironment = (profile: {
+    id: string
+    issuerUrl: string
+    authorizationEndpoint?: string
+    tokenEndpoint?: string
+    jwksEndpoint?: string
+    clientId?: string
+    scopes: string[]
+  }) => {
+    setIsDemoMode(false)
+    setIssuerUrl(profile.issuerUrl)
+    setAuthEndpoint(profile.authorizationEndpoint ?? '')
+    setTokenEndpoint(profile.tokenEndpoint ?? '')
+    setJwksEndpoint(profile.jwksEndpoint ?? '')
+    setClientId(profile.clientId ?? '')
+    setClientSecret('')
+    setScopes(profile.scopes.join(' '))
+    setEndpointsLocked(false)
   }
 
   const handleSubmit = () => {
@@ -223,13 +258,22 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                         >
                           Issuer URL (for Auto-Discovery)
                         </Label>
-                        <IssuerHistory
-                          onSelectIssuer={handleSelectIssuer}
-                          compact
-                          label="Recents"
-                          buttonVariant="input-group"
-                          configLoading={isLoadingDiscovery}
-                        />
+                        <div className="flex items-center gap-2">
+                          <EnvironmentProfileSelector
+                            onSelectProfile={handleSelectEnvironment}
+                            compact
+                            label="Environments"
+                            buttonVariant="input-group"
+                            configLoading={isLoadingDiscovery}
+                          />
+                          <IssuerHistory
+                            onSelectIssuer={handleSelectIssuer}
+                            compact
+                            label="Recents"
+                            buttonVariant="input-group"
+                            configLoading={isLoadingDiscovery}
+                          />
+                        </div>
                       </InputGroupAddon>
                       <div data-slot="input-group-control" className="w-full px-3 pb-3 pt-0">
                         <InputGroupInput
@@ -340,27 +384,29 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                     }
                   />
                 </FieldSet>
-                <EndpointPreflightPanel
-                  issuerUrl={issuerUrl}
-                  onIssuerUrlChange={(value) => {
-                    setIssuerUrl(value)
-                    clearDiscoveredEndpoints()
-                  }}
-                  autoRunTrigger={preflightAutoRunTrigger}
-                  showIssuerInput={false}
-                  description="Run endpoint probes with the issuer URL above before starting the flow."
-                  onConfigResolved={(config, normalizedIssuerUrl) => {
-                    const hasUsableEndpoints = applyDiscoveredConfiguration(
-                      config,
-                      normalizedIssuerUrl
-                    )
-                    if (!hasUsableEndpoints) {
-                      toast.warning(
-                        'Preflight completed, but discovery returned no usable endpoints'
+                {showPreflightPanel && (
+                  <EndpointPreflightPanel
+                    issuerUrl={issuerUrl}
+                    onIssuerUrlChange={(value) => {
+                      setIssuerUrl(value)
+                      clearDiscoveredEndpoints()
+                    }}
+                    autoRunTrigger={preflightAutoRunTrigger}
+                    showIssuerInput={false}
+                    description="Run endpoint probes with the issuer URL above before starting the flow."
+                    onConfigResolved={(config, normalizedIssuerUrl) => {
+                      const hasUsableEndpoints = applyDiscoveredConfiguration(
+                        config,
+                        normalizedIssuerUrl
                       )
-                    }
-                  }}
-                />
+                      if (!hasUsableEndpoints) {
+                        toast.warning(
+                          'Preflight completed, but discovery returned no usable endpoints'
+                        )
+                      }
+                    }}
+                  />
+                )}
               </>
             ) : // Removed the empty div that previously held the static message
             null // Or simply remove the entire else block if nothing else goes here
@@ -404,6 +450,7 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
           />
 
           <FormFieldInput
+            id="oauth-scopes"
             label="Scopes"
             placeholder="openid profile email"
             value={scopes}

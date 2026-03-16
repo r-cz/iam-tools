@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import { setupApiMocks } from '../utils/test-api-mocks'
 import { OAuthFlowType } from '@/features/oauthPlayground/utils/types'
 
 /**
@@ -8,9 +7,6 @@ import { OAuthFlowType } from '@/features/oauthPlayground/utils/types'
  * until we have a more robust DOM testing environment.
  */
 describe('OAuth Playground Core Functionality', () => {
-  // Setup API mocks
-  const apiMocks = setupApiMocks()
-
   test('should have valid OAuth configuration types', () => {
     // Test basic structure of OAuth config types from the playground
     const validFlowTypes = [

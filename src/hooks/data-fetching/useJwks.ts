@@ -3,6 +3,8 @@ import { proxyFetch } from '@/lib/proxy-fetch'
 import { jwksCache } from '@/lib/cache/jwks-cache'
 import { JSONWebKeySet } from 'jose'
 
+type ResourceFetchFunction = (url: string, options?: RequestInit) => Promise<Response>
+
 interface UseJwksResult {
   data: JSONWebKeySet | null
   isLoading: boolean
@@ -14,128 +16,131 @@ interface UseJwksResult {
  * Hook to fetch a JSON Web Key Set (JWKS) from a given URI.
  * Handles fetching via proxy if necessary and integrates with cache.
  */
-export function useJwks(): UseJwksResult {
+export function useJwks(fetchResource: ResourceFetchFunction = proxyFetch): UseJwksResult {
   const [data, setData] = useState<JSONWebKeySet | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const fetchJwks = useCallback(async (jwksUri: string, forceRefresh = false) => {
-    if (!jwksUri) {
-      setData(null)
-      setError(null)
-      setIsLoading(false)
-      return null
-    }
-
-    // Validate URL format
-    try {
-      new URL(jwksUri)
-    } catch {
-      setError(new Error('Invalid JWKS URI format.'))
-      setData(null)
-      setIsLoading(false)
-      return null
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // Try to get from cache first, unless forceRefresh is true
-      if (!forceRefresh) {
-        const cachedJwks = jwksCache.get(jwksUri)
-        if (cachedJwks) {
-          if (import.meta.env.DEV) {
-            console.log(`[useJwks] JWKS found in cache for: ${jwksUri}`)
-          }
-          setData(cachedJwks)
-          setIsLoading(false)
-          return cachedJwks
-        }
-
-        // Check if there's already a pending request
-        const pendingRequest = jwksCache.getPendingRequest(jwksUri)
-        if (pendingRequest) {
-          if (import.meta.env.DEV) {
-            console.log(
-              `[useJwks] Found pending request for: ${jwksUri}, waiting for it to complete`
-            )
-          }
-          const jwksData = await pendingRequest
-          setData(jwksData)
-          setIsLoading(false)
-          return jwksData
-        }
-
-        if (import.meta.env.DEV) {
-          console.log(`[useJwks] No cached JWKS found for: ${jwksUri}, fetching from network`)
-        }
-      } else {
-        if (import.meta.env.DEV) {
-          console.log(`[useJwks] Force refreshing JWKS for: ${jwksUri}`)
-        }
-        // Remove from cache to ensure fresh fetch
-        jwksCache.remove(jwksUri)
+  const fetchJwks = useCallback(
+    async (jwksUri: string, forceRefresh = false) => {
+      if (!jwksUri) {
+        setData(null)
+        setError(null)
+        setIsLoading(false)
+        return null
       }
 
-      // Create the network request promise
-      const fetchPromise = (async () => {
-        if (import.meta.env.DEV) {
-          console.log(`[useJwks] Making network request for JWKS: ${jwksUri}`)
-        }
-        const response = await proxyFetch(jwksUri)
+      // Validate URL format
+      try {
+        new URL(jwksUri)
+      } catch {
+        setError(new Error('Invalid JWKS URI format.'))
+        setData(null)
+        setIsLoading(false)
+        return null
+      }
 
-        if (!response.ok) {
-          let errorMsg = `Failed to fetch JWKS: ${response.status} ${response.statusText}`
-          try {
-            const errorBody = await response.json()
-            errorMsg += ` - ${JSON.stringify(errorBody)}`
-          } catch {
-            /* Ignore if response body is not JSON */
-          }
-          throw new Error(errorMsg)
-        }
-
-        const jwksData: JSONWebKeySet = await response.json()
-
-        // Basic validation: Check if it has a 'keys' array
-        if (!jwksData || !Array.isArray(jwksData.keys)) {
-          throw new Error('Invalid JWKS format: Missing "keys" array.')
-        }
-
-        // Cache the successful response
-        jwksCache.set(jwksUri, jwksData)
-        if (import.meta.env.DEV) {
-          console.log(`[useJwks] JWKS cached for: ${jwksUri}`)
-        }
-
-        return jwksData
-      })()
-
-      // Store the pending request
-      jwksCache.setPendingRequest(jwksUri, fetchPromise)
+      setIsLoading(true)
+      setError(null)
 
       try {
-        const jwksData = await fetchPromise
-        setData(jwksData)
-        return jwksData
+        // Try to get from cache first, unless forceRefresh is true
+        if (!forceRefresh) {
+          const cachedJwks = jwksCache.get(jwksUri)
+          if (cachedJwks) {
+            if (import.meta.env.DEV) {
+              console.log(`[useJwks] JWKS found in cache for: ${jwksUri}`)
+            }
+            setData(cachedJwks)
+            setIsLoading(false)
+            return cachedJwks
+          }
+
+          // Check if there's already a pending request
+          const pendingRequest = jwksCache.getPendingRequest(jwksUri)
+          if (pendingRequest) {
+            if (import.meta.env.DEV) {
+              console.log(
+                `[useJwks] Found pending request for: ${jwksUri}, waiting for it to complete`
+              )
+            }
+            const jwksData = await pendingRequest
+            setData(jwksData)
+            setIsLoading(false)
+            return jwksData
+          }
+
+          if (import.meta.env.DEV) {
+            console.log(`[useJwks] No cached JWKS found for: ${jwksUri}, fetching from network`)
+          }
+        } else {
+          if (import.meta.env.DEV) {
+            console.log(`[useJwks] Force refreshing JWKS for: ${jwksUri}`)
+          }
+          // Remove from cache to ensure fresh fetch
+          jwksCache.remove(jwksUri)
+        }
+
+        // Create the network request promise
+        const fetchPromise = (async () => {
+          if (import.meta.env.DEV) {
+            console.log(`[useJwks] Making network request for JWKS: ${jwksUri}`)
+          }
+          const response = await fetchResource(jwksUri)
+
+          if (!response.ok) {
+            let errorMsg = `Failed to fetch JWKS: ${response.status} ${response.statusText}`
+            try {
+              const errorBody = await response.json()
+              errorMsg += ` - ${JSON.stringify(errorBody)}`
+            } catch {
+              /* Ignore if response body is not JSON */
+            }
+            throw new Error(errorMsg)
+          }
+
+          const jwksData: JSONWebKeySet = await response.json()
+
+          // Basic validation: Check if it has a 'keys' array
+          if (!jwksData || !Array.isArray(jwksData.keys)) {
+            throw new Error('Invalid JWKS format: Missing "keys" array.')
+          }
+
+          // Cache the successful response
+          jwksCache.set(jwksUri, jwksData)
+          if (import.meta.env.DEV) {
+            console.log(`[useJwks] JWKS cached for: ${jwksUri}`)
+          }
+
+          return jwksData
+        })()
+
+        // Store the pending request
+        jwksCache.setPendingRequest(jwksUri, fetchPromise)
+
+        try {
+          const jwksData = await fetchPromise
+          setData(jwksData)
+          return jwksData
+        } finally {
+          // Always remove the pending request when done
+          jwksCache.removePendingRequest(jwksUri)
+        }
+      } catch (err) {
+        if (import.meta?.env?.DEV) {
+          console.error('Error fetching JWKS:', err)
+        }
+        setError(
+          err instanceof Error ? err : new Error('An unknown error occurred while fetching JWKS')
+        )
+        setData(null)
+        return null
       } finally {
-        // Always remove the pending request when done
-        jwksCache.removePendingRequest(jwksUri)
+        setIsLoading(false)
       }
-    } catch (err) {
-      if (import.meta?.env?.DEV) {
-        console.error('Error fetching JWKS:', err)
-      }
-      setError(
-        err instanceof Error ? err : new Error('An unknown error occurred while fetching JWKS')
-      )
-      setData(null)
-      return null
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+    },
+    [fetchResource]
+  )
 
   // Provide a function to trigger fetching manually
   return { data, isLoading, error, fetchJwks }
