@@ -1,5 +1,5 @@
 import React from 'react'
-import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import ConfigurationForm from '@/features/oauthPlayground/components/ConfigurationForm'
 import { TokenSignature } from '@/features/tokenInspector/components/TokenSignature'
@@ -19,8 +19,6 @@ import {
   setupApiMocks,
 } from '../utils/test-api-mocks'
 
-const apiMocks = setupApiMocks()
-
 const savedEnvironment = {
   id: 'example-environment',
   name: 'Example Environment',
@@ -36,13 +34,14 @@ const savedEnvironment = {
 }
 
 describe('saved environments integrations', () => {
+  let apiMocks: ReturnType<typeof setupApiMocks>
+
   beforeEach(() => {
+    apiMocks = setupApiMocks()
     cleanup()
     window.localStorage.clear()
     oidcConfigCache.clear()
     jwksCache.clear()
-    apiMocks.reset()
-    apiMocks.getMockedFetch().mockClear()
     window.localStorage.setItem(
       STORAGE_KEYS.ENVIRONMENT_PROFILES,
       JSON.stringify([savedEnvironment])
@@ -54,11 +53,6 @@ describe('saved environments integrations', () => {
     window.localStorage.clear()
     oidcConfigCache.clear()
     jwksCache.clear()
-    apiMocks.reset()
-    apiMocks.getMockedFetch().mockClear()
-  })
-
-  afterAll(() => {
     apiMocks.restore()
   })
 

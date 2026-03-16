@@ -1,5 +1,5 @@
 import React from 'react'
-import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { cleanup, fireEvent } from '@testing-library/react'
 import { OidcExplorer } from '@/features/oidcExplorer'
 import { STORAGE_KEYS } from '@/lib/state/constants'
@@ -18,15 +18,15 @@ import {
   setupApiMocks,
 } from '../utils/test-api-mocks'
 
-const apiMocks = setupApiMocks()
-
 describe('OIDC Explorer saved environments', () => {
+  let apiMocks: ReturnType<typeof setupApiMocks>
+
   beforeEach(() => {
+    apiMocks = setupApiMocks()
     cleanup()
     window.localStorage.clear()
     oidcConfigCache.clear()
     jwksCache.clear()
-    apiMocks.reset()
     apiMocks
       .mockSuccess('openid-configuration', sampleOidcConfigResponse)
       .mockSuccess('jwks', sampleJwksResponse)
@@ -37,10 +37,6 @@ describe('OIDC Explorer saved environments', () => {
     window.localStorage.clear()
     oidcConfigCache.clear()
     jwksCache.clear()
-    apiMocks.reset()
-  })
-
-  afterAll(() => {
     apiMocks.restore()
   })
 
