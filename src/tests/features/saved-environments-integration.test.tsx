@@ -12,12 +12,8 @@ import {
   renderWithProviders,
   waitForCondition,
 } from '../utils/test-utils'
-import {
-  sampleJwksResponse,
-  sampleJwt,
-  sampleOidcConfigResponse,
-  setupApiMocks,
-} from '../utils/test-api-mocks'
+import { sampleJwksResponse, sampleJwt, sampleOidcConfigResponse } from '../utils/test-api-mocks'
+import type { OidcFetchFunction } from '@/features/oauthPlayground/utils/oidc-preflight'
 
 const savedEnvironment = {
   id: 'example-environment',
@@ -34,10 +30,7 @@ const savedEnvironment = {
 }
 
 describe('saved environments integrations', () => {
-  let apiMocks: ReturnType<typeof setupApiMocks>
-
   beforeEach(() => {
-    apiMocks = setupApiMocks()
     cleanup()
     window.localStorage.clear()
     oidcConfigCache.clear()
@@ -53,15 +46,27 @@ describe('saved environments integrations', () => {
     window.localStorage.clear()
     oidcConfigCache.clear()
     jwksCache.clear()
-    apiMocks.restore()
   })
 
   test('prefills the auth code configuration form and keeps fields editable', async () => {
-    apiMocks
-      .mockSuccess('openid-configuration', sampleOidcConfigResponse)
-      .mockSuccess('jwks', sampleJwksResponse)
+    const discoveryCalls: string[] = []
+    const discoveryFetcher: OidcFetchFunction = async (url) => {
+      discoveryCalls.push(url)
 
-    const view = renderWithProviders(<ConfigurationForm onConfigComplete={() => {}} />)
+      if (String(url).includes('openid-configuration')) {
+        return createJsonResponse(sampleOidcConfigResponse)
+      }
+
+      return createJsonResponse({ error: 'No mock defined for this URL' }, 404, 'Not Found')
+    }
+
+    const view = renderWithProviders(
+      <ConfigurationForm
+        onConfigComplete={() => {}}
+        discoveryFetcher={discoveryFetcher}
+        showPreflightPanel={false}
+      />
+    )
 
     fireEvent.click(findButtonByName('Environments', view.container)!)
     expect(
@@ -118,11 +123,20 @@ describe('saved environments integrations', () => {
             .value === sampleOidcConfigResponse.authorization_endpoint
       )
     ).toBe(true)
+    expect(discoveryCalls.some((url) => url.includes('openid-configuration'))).toBe(true)
   })
 
   test('uses a saved JWKS endpoint in token signature resolution without falling back to discovery', async () => {
-    apiMocks.mockSuccess('jwks\\.json', sampleJwksResponse)
-    const fetchMock = apiMocks.getMockedFetch()
+    const fetchCalls: string[] = []
+    const jwksFetcher: OidcFetchFunction = async (url) => {
+      fetchCalls.push(String(url))
+
+      if (String(url).includes(savedEnvironment.jwksEndpoint)) {
+        return createJsonResponse(sampleJwksResponse)
+      }
+
+      return createJsonResponse({ error: 'No mock defined for this URL' }, 404, 'Not Found')
+    }
     const tokenHeader = JSON.parse(Buffer.from(sampleJwt.split('.')[0], 'base64').toString())
 
     render(
@@ -138,13 +152,13 @@ describe('saved environments integrations', () => {
           jwks_uri: savedEnvironment.jwksEndpoint,
         }}
         preferredJwksUri={savedEnvironment.jwksEndpoint}
+        jwksFetcher={jwksFetcher}
       />
     )
 
     expect(
       await waitForCondition(() => {
-        const fetchUrls = fetchMock.mock.calls.map((call: unknown[]) => String(call[0]))
-        return fetchUrls.some(
+        return fetchCalls.some(
           (url) =>
             url.includes(savedEnvironment.jwksEndpoint) ||
             url.includes(encodeURIComponent(savedEnvironment.jwksEndpoint))
@@ -152,7 +166,18 @@ describe('saved environments integrations', () => {
       })
     ).toBe(true)
 
-    const fetchUrls = fetchMock.mock.calls.map((call: unknown[]) => String(call[0]))
-    expect(fetchUrls.some((url) => url.includes('openid-configuration'))).toBe(false)
+    expect(fetchCalls.some((url) => url.includes('openid-configuration'))).toBe(false)
   })
 })
+
+function createJsonResponse<T>(payload: T, status = 200, statusText = 'OK'): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: async () => payload,
+    text: async () => JSON.stringify(payload),
+    blob: async () => new Blob([JSON.stringify(payload)]),
+  } as unknown as Response
+}

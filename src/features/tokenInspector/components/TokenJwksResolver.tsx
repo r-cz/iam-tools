@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { DEMO_JWKS } from '@/lib/jwt/demo-key'
 import { KeyRound } from 'lucide-react'
 import type { JSONWebKeySet } from 'jose' // Import type
+import type { OidcFetchFunction } from '@/features/oauthPlayground/utils/oidc-preflight'
 
 interface TokenJwksResolverProps {
   issuerUrl: string
@@ -19,6 +20,7 @@ interface TokenJwksResolverProps {
   oidcConfig?: any // OIDC configuration from parent
   isLoadingOidcConfig?: boolean // OIDC config loading state
   preferredJwksUri?: string | null
+  jwksFetcher?: OidcFetchFunction
 }
 
 export function TokenJwksResolver({
@@ -29,13 +31,14 @@ export function TokenJwksResolver({
   oidcConfig,
   isLoadingOidcConfig,
   preferredJwksUri,
+  jwksFetcher,
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<'automatic' | 'manual'>('automatic')
   const [manualJwks, setManualJwks] = useState('')
   const [lastFetchedUri, setLastFetchedUri] = useState<string | null>(null)
 
   // Only instantiate the JWKS hook since we're receiving OIDC config from parent
-  const { fetchJwks, isLoading: isJwksLoading } = useJwks()
+  const { fetchJwks, isLoading: isJwksLoading } = useJwks(jwksFetcher)
 
   const fetchAndApplyJwks = useCallback(
     async (jwksUri: string, forceRefresh = false) => {

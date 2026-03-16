@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label'
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'
 import EndpointPreflightPanel from './EndpointPreflightPanel'
 import {
+  type OidcFetchFunction,
   extractDiscoveredEndpoints,
   fetchOidcDiscoveryConfiguration,
   hasUsableDiscoveredEndpoints,
@@ -28,9 +29,15 @@ import {
 
 interface ConfigurationFormProps {
   onConfigComplete: (config: OAuthConfig, pkce: PkceParams) => void
+  discoveryFetcher?: OidcFetchFunction
+  showPreflightPanel?: boolean
 }
 
-export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) {
+export function ConfigurationForm({
+  onConfigComplete,
+  discoveryFetcher,
+  showPreflightPanel = true,
+}: ConfigurationFormProps) {
   // Removed flowType state
   const [issuerUrl, setIssuerUrl] = useState<string>('')
   const [authEndpoint, setAuthEndpoint] = useState<string>('')
@@ -105,7 +112,10 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
 
     setIsLoadingDiscovery(true)
     try {
-      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(targetIssuer)
+      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(
+        targetIssuer,
+        discoveryFetcher
+      )
       const hasUsableEndpoints = applyDiscoveredConfiguration(config, normalizedIssuerUrl)
 
       if (hasUsableEndpoints) {
@@ -374,27 +384,29 @@ export function ConfigurationForm({ onConfigComplete }: ConfigurationFormProps) 
                     }
                   />
                 </FieldSet>
-                <EndpointPreflightPanel
-                  issuerUrl={issuerUrl}
-                  onIssuerUrlChange={(value) => {
-                    setIssuerUrl(value)
-                    clearDiscoveredEndpoints()
-                  }}
-                  autoRunTrigger={preflightAutoRunTrigger}
-                  showIssuerInput={false}
-                  description="Run endpoint probes with the issuer URL above before starting the flow."
-                  onConfigResolved={(config, normalizedIssuerUrl) => {
-                    const hasUsableEndpoints = applyDiscoveredConfiguration(
-                      config,
-                      normalizedIssuerUrl
-                    )
-                    if (!hasUsableEndpoints) {
-                      toast.warning(
-                        'Preflight completed, but discovery returned no usable endpoints'
+                {showPreflightPanel && (
+                  <EndpointPreflightPanel
+                    issuerUrl={issuerUrl}
+                    onIssuerUrlChange={(value) => {
+                      setIssuerUrl(value)
+                      clearDiscoveredEndpoints()
+                    }}
+                    autoRunTrigger={preflightAutoRunTrigger}
+                    showIssuerInput={false}
+                    description="Run endpoint probes with the issuer URL above before starting the flow."
+                    onConfigResolved={(config, normalizedIssuerUrl) => {
+                      const hasUsableEndpoints = applyDiscoveredConfiguration(
+                        config,
+                        normalizedIssuerUrl
                       )
-                    }
-                  }}
-                />
+                      if (!hasUsableEndpoints) {
+                        toast.warning(
+                          'Preflight completed, but discovery returned no usable endpoints'
+                        )
+                      }
+                    }}
+                  />
+                )}
               </>
             ) : // Removed the empty div that previously held the static message
             null // Or simply remove the entire else block if nothing else goes here
