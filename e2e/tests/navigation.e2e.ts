@@ -12,21 +12,24 @@ test.describe('Navigation and Homepage', () => {
 
   test('should load homepage', async ({ page }) => {
     await expect(page).toHaveTitle(/iam\.tools/)
-    await expect(page.locator('text=Welcome to IAM Tools')).toBeVisible()
-    await expect(page.locator('text=A collection of specialized tools')).toBeVisible()
+    await expect(page.locator('text=IAM Tools')).toBeVisible()
+    await expect(page.locator('text=A focused workbench')).toBeVisible()
   })
 
   test('should display all tool cards on homepage', async ({ page }) => {
     // Token Inspector card
-    await expect(page.locator(selectors.home.tokenInspector)).toBeVisible()
-    await expect(page.locator('text=Analyze JWT tokens')).toBeVisible()
+    const tokenInspectorCard = page.locator(selectors.home.tokenInspector)
+    await expect(tokenInspectorCard).toBeVisible()
+    await expect(tokenInspectorCard).toContainText('Decode JWTs, validate signatures')
 
     // OIDC Explorer card
-    await expect(page.locator(selectors.home.oidcExplorer)).toBeVisible()
-    await expect(page.locator('text=Explore OpenID Connect discovery documents')).toBeVisible()
+    const oidcExplorerCard = page.locator(selectors.home.oidcExplorer)
+    await expect(oidcExplorerCard).toBeVisible()
+    await expect(oidcExplorerCard).toContainText('Fetch discovery documents')
 
-    await expect(page.locator(selectors.home.oauthPlayground)).toBeVisible()
-    await expect(page.locator('text=Test and explore OAuth 2.0 flows')).toBeVisible()
+    const oauthPlaygroundCard = page.locator(selectors.home.oauthPlayground)
+    await expect(oauthPlaygroundCard).toBeVisible()
+    await expect(oauthPlaygroundCard).toContainText('Exercise auth code with PKCE')
   })
 
   test('should navigate to Token Inspector', async ({ page }) => {

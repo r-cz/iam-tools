@@ -174,17 +174,25 @@ export function IssuerHistory({
                     onChange={(e) => setEditName(e.target.value)}
                     className="flex-1 px-2 py-1 text-sm border rounded"
                     placeholder="Issuer name"
+                    aria-label={`Name for ${issuer.url}`}
                   />
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
+                      aria-label={`Save name for ${issuer.url}`}
                       onClick={() => saveEdit(issuer.id)}
                     >
                       <Check size={14} />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelEdit}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      aria-label="Cancel editing issuer name"
+                      onClick={cancelEdit}
+                    >
                       <Trash2 size={14} />
                     </Button>
                   </div>
@@ -221,6 +229,7 @@ export function IssuerHistory({
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
+                      aria-label={`Rename ${issuer.name || issuer.url}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         startEditing(issuer.id, issuer.name)
@@ -232,6 +241,7 @@ export function IssuerHistory({
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
+                      aria-label={`Delete ${issuer.name || issuer.url}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         removeIssuer(issuer.id)

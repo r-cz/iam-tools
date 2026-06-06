@@ -236,53 +236,53 @@ export async function runOidcEndpointPreflight(
 
   const keysToCheck = resolveEndpointsToProbe(requiredEndpoints, includeOptionalEndpoints)
 
-  for (const key of keysToCheck) {
-    const endpointRequired = requiredSet.has(key)
-    const endpointUrl = getStringValue(discoveryResult.config[key])
-    if (!endpointUrl) {
-      endpoints.push({
-        endpoint: key,
-        label: ENDPOINT_LABELS[key],
-        method: ENDPOINT_METHODS[key],
-        status: endpointRequired ? 'fail' : 'warn',
-        required: endpointRequired,
-        reasonCode: 'missing_or_unavailable',
-        message: endpointRequired
-          ? `${ENDPOINT_LABELS[key]} is required but missing in discovery`
-          : 'Optional endpoint unavailable',
-      })
-      continue
-    }
+  const endpointProbeResults = await Promise.all(
+    keysToCheck.map(async (key) => {
+      const endpointRequired = requiredSet.has(key)
+      const endpointUrl = getStringValue(discoveryResult.config[key])
+      if (!endpointUrl) {
+        return {
+          endpoint: key,
+          label: ENDPOINT_LABELS[key],
+          method: ENDPOINT_METHODS[key],
+          status: endpointRequired ? 'fail' : 'warn',
+          required: endpointRequired,
+          reasonCode: 'missing_or_unavailable',
+          message: endpointRequired
+            ? `${ENDPOINT_LABELS[key]} is required but missing in discovery`
+            : 'Optional endpoint unavailable',
+        } satisfies OidcEndpointPreflightResult
+      }
 
-    if (!isValidAbsoluteUrl(endpointUrl)) {
-      endpoints.push({
+      if (!isValidAbsoluteUrl(endpointUrl)) {
+        return {
+          endpoint: key,
+          label: ENDPOINT_LABELS[key],
+          method: ENDPOINT_METHODS[key],
+          status: endpointRequired ? 'fail' : 'warn',
+          required: endpointRequired,
+          reasonCode: 'invalid_url',
+          url: endpointUrl,
+          message: endpointRequired
+            ? `${ENDPOINT_LABELS[key]} is required but has an invalid URL`
+            : `${ENDPOINT_LABELS[key]} has an invalid URL`,
+        } satisfies OidcEndpointPreflightResult
+      }
+
+      return probeEndpoint({
         endpoint: key,
-        label: ENDPOINT_LABELS[key],
-        method: ENDPOINT_METHODS[key],
-        status: endpointRequired ? 'fail' : 'warn',
         required: endpointRequired,
-        reasonCode: 'invalid_url',
         url: endpointUrl,
-        message: endpointRequired
-          ? `${ENDPOINT_LABELS[key]} is required but has an invalid URL`
-          : `${ENDPOINT_LABELS[key]} has an invalid URL`,
+        method: ENDPOINT_METHODS[key],
+        timeoutMs,
+        fetcher,
+        enableServerAssistedProbes,
+        serverAssistedProbeFetcher,
       })
-      continue
-    }
-
-    const probeResult = await probeEndpoint({
-      endpoint: key,
-      required: endpointRequired,
-      url: endpointUrl,
-      method: ENDPOINT_METHODS[key],
-      timeoutMs,
-      fetcher,
-      enableServerAssistedProbes,
-      serverAssistedProbeFetcher,
     })
+  )
 
-    endpoints.push(probeResult)
-  }
+  endpoints.push(...endpointProbeResults)
 
   return {
     issuerUrl: request.issuerUrl,

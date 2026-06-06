@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as jose from 'jose'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -31,6 +31,7 @@ interface TokenInspectorProps {
 
 export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   const [token, setToken] = useState(initialToken || '')
+  const lastInitialTokenRef = useRef(initialToken)
   const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null) // Holds the currently loaded JWKS
   const [activeTab, setActiveTab] = useState('payload')
   const [manualIssuerUrl, setManualIssuerUrl] = useState('') // Manual issuer URL override
@@ -72,21 +73,12 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     }
   }, [issuerUrl, oidcConfig, selectedEnvironment])
 
-  // Effect to handle initial token from URL
-  useEffect(() => {
-    if (initialToken && token !== initialToken) {
-      // Process only if initialToken exists and hasn't been processed
-      if (import.meta?.env?.DEV) {
-        console.log(
-          'Processing initial token from URL parameter:',
-          initialToken.substring(0, 10) + '...'
-        )
-      }
-      setToken(initialToken) // Set the token state
-      // Decode will happen via the useEffect watching `token` state below
+  if (initialToken !== lastInitialTokenRef.current) {
+    lastInitialTokenRef.current = initialToken
+    if (initialToken) {
+      setToken(initialToken)
     }
-    // Intentionally run only when initialToken prop changes
-  }, [initialToken])
+  }
 
   // Effect to decode token whenever the 'token' state changes
   useEffect(() => {

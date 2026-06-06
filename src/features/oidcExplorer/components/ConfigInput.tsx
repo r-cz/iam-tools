@@ -27,6 +27,44 @@ const stripScheme = (value: string) => value.replace(/^https?:\/\//i, '')
 const deriveScheme = (value: string): 'https://' | 'http://' =>
   value.toLowerCase().startsWith('http://') ? 'http://' : 'https://'
 
+interface IssuerInputState {
+  issuerUrl: string
+  scheme: 'https://' | 'http://'
+  lastControlledIssuerUrl: string
+}
+
+function parseIssuerValue(value: string): Pick<IssuerInputState, 'issuerUrl' | 'scheme'> {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return { issuerUrl: '', scheme: 'https://' }
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return {
+      issuerUrl: stripScheme(trimmed),
+      scheme: deriveScheme(trimmed),
+    }
+  }
+
+  return { issuerUrl: trimmed, scheme: 'https://' }
+}
+
+const realWorldIssuers = [
+  { name: 'Chick-fil-A', url: 'https://login.my.chick-fil-a.com' },
+  { name: 'Southwest', url: 'https://secure.southwest.com' },
+  { name: 'FedEx', url: 'https://auth.fedex.com' },
+  { name: 'Delta Airlines', url: 'https://signin.delta.com' },
+  { name: 'Google', url: 'https://accounts.google.com' },
+  { name: 'Microsoft', url: 'https://login.microsoftonline.com/common' },
+  { name: 'GitHub', url: 'https://token.actions.githubusercontent.com' },
+  { name: 'Auth0 Demo', url: 'https://samples.auth0.com' },
+  { name: 'Salesforce', url: 'https://login.salesforce.com' },
+  { name: 'Spotify', url: 'https://accounts.spotify.com' },
+  { name: 'Discord', url: 'https://discord.com' },
+  { name: 'Apple', url: 'https://appleid.apple.com' },
+]
+
 export function ConfigInput({
   onFetchRequested,
   isLoading,
@@ -34,59 +72,32 @@ export function ConfigInput({
   onIssuerUrlChange,
   actions,
 }: ConfigInputProps) {
-  const [issuerUrl, setIssuerUrl] = useState('')
-  const [scheme, setScheme] = useState<'https://' | 'http://'>('https://')
-  // Removed hook instantiation
+  const [inputState, setInputState] = useState<IssuerInputState>(() => ({
+    ...parseIssuerValue(controlledIssuerUrl),
+    lastControlledIssuerUrl: controlledIssuerUrl,
+  }))
 
-  // Removed useEffect hooks
+  if (controlledIssuerUrl !== inputState.lastControlledIssuerUrl) {
+    setInputState({
+      ...parseIssuerValue(controlledIssuerUrl),
+      lastControlledIssuerUrl: controlledIssuerUrl,
+    })
+  }
 
+  const { issuerUrl, scheme } = inputState
   const normalizedIssuer = issuerUrl.trim()
   const fullIssuerUrl = normalizedIssuer ? `${scheme}${normalizedIssuer}` : ''
 
-  React.useEffect(() => {
-    const trimmed = controlledIssuerUrl.trim()
-
-    if (!trimmed) {
-      setIssuerUrl('')
-      setScheme('https://')
-      return
-    }
-
-    if (/^https?:\/\//i.test(trimmed)) {
-      setScheme(deriveScheme(trimmed))
-      setIssuerUrl(stripScheme(trimmed))
-      return
-    }
-
-    setIssuerUrl(trimmed)
-  }, [controlledIssuerUrl])
-
   const updateIssuerValue = (value: string, shouldNotify = false) => {
-    const trimmed = value.trim()
+    const nextValue = parseIssuerValue(value)
+    const nextFullIssuerUrl = nextValue.issuerUrl ? `${nextValue.scheme}${nextValue.issuerUrl}` : ''
 
-    if (!trimmed) {
-      setIssuerUrl('')
-      setScheme('https://')
-      if (shouldNotify) {
-        onIssuerUrlChange?.('')
-      }
-      return
-    }
-
-    if (/^https?:\/\//i.test(trimmed)) {
-      const nextScheme = deriveScheme(trimmed)
-      const nextIssuerUrl = stripScheme(trimmed)
-      setScheme(nextScheme)
-      setIssuerUrl(nextIssuerUrl)
-      if (shouldNotify) {
-        onIssuerUrlChange?.(`${nextScheme}${nextIssuerUrl}`)
-      }
-      return
-    }
-
-    setIssuerUrl(trimmed)
+    setInputState((currentState) => ({
+      ...nextValue,
+      lastControlledIssuerUrl: currentState.lastControlledIssuerUrl,
+    }))
     if (shouldNotify) {
-      onIssuerUrlChange?.(`${scheme}${trimmed}`)
+      onIssuerUrlChange?.(nextFullIssuerUrl)
     }
   }
 
@@ -104,29 +115,6 @@ export function ConfigInput({
       handleFetchConfig()
     }
   }
-
-  // Removed exampleIssuers array
-
-  // Real-world public issuers for the random button
-  const realWorldIssuers = [
-    // Original examples
-    { name: 'Chick-fil-A', url: 'https://login.my.chick-fil-a.com' },
-    { name: 'Southwest', url: 'https://secure.southwest.com' },
-    { name: 'FedEx', url: 'https://auth.fedex.com' },
-    { name: 'Delta Airlines', url: 'https://signin.delta.com' },
-
-    // Popular identity providers
-    { name: 'Google', url: 'https://accounts.google.com' },
-    { name: 'Microsoft', url: 'https://login.microsoftonline.com/common' },
-    { name: 'GitHub', url: 'https://token.actions.githubusercontent.com' },
-    { name: 'Auth0 Demo', url: 'https://samples.auth0.com' },
-    { name: 'Salesforce', url: 'https://login.salesforce.com' },
-    { name: 'Spotify', url: 'https://accounts.spotify.com' },
-    { name: 'Discord', url: 'https://discord.com' },
-    { name: 'Apple', url: 'https://appleid.apple.com' },
-  ]
-
-  // Removed handleExampleClick function
 
   const handleRandomExample = () => {
     const randomIndex = Math.floor(Math.random() * realWorldIssuers.length)

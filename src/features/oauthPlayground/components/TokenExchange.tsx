@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Card,
@@ -24,6 +24,57 @@ interface TokenExchangeProps {
   onTokenExchangeComplete?: (tokenResponse: TokenResponse) => void
 }
 
+function appendSharedTokenPayloadParams(
+  payload: URLSearchParams,
+  config: OAuthConfig,
+  claimsValue?: string
+) {
+  if (config.clientSecret) {
+    payload.append('client_secret', config.clientSecret)
+  }
+
+  if (config.scopes?.length) {
+    payload.append('scope', config.scopes.join(' '))
+  }
+
+  if (claimsValue) {
+    payload.append('claims', claimsValue)
+  }
+}
+
+function createAuthorizationCodeTokenPayload(
+  config: OAuthConfig,
+  pkce: PkceParams,
+  authorizationCode: string,
+  claimsValue?: string
+) {
+  const payload = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: authorizationCode,
+    redirect_uri: config.redirectUri,
+    client_id: config.clientId,
+    code_verifier: pkce.codeVerifier,
+  })
+
+  appendSharedTokenPayloadParams(payload, config, claimsValue)
+  return payload
+}
+
+function createRefreshTokenPayload(
+  config: OAuthConfig,
+  refreshToken: string,
+  claimsValue?: string
+) {
+  const payload = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+    client_id: config.clientId,
+  })
+
+  appendSharedTokenPayloadParams(payload, config, claimsValue)
+  return payload
+}
+
 export function TokenExchange({
   config,
   pkce,
@@ -34,78 +85,20 @@ export function TokenExchange({
   const [isExchanging, setIsExchanging] = useState<boolean>(false)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null)
-  const [tokenRequestPayload, setTokenRequestPayload] = useState<string>('')
   const [customClaims, setCustomClaims] = useState<string>('')
   const [customClaimsError, setCustomClaimsError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState<string>('')
   const [refreshResponse, setRefreshResponse] = useState<TokenResponse | null>(null)
-  const [refreshRequestPayload, setRefreshRequestPayload] = useState<string>('')
-
-  // Create token request payload
-  useEffect(() => {
-    const payload = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code: authorizationCode,
-      redirect_uri: config.redirectUri,
-      client_id: config.clientId,
-      code_verifier: pkce.codeVerifier,
-    })
-
-    if (config.clientSecret) {
-      payload.append('client_secret', config.clientSecret)
-    }
-
-    if (config.scopes?.length) {
-      payload.append('scope', config.scopes.join(' '))
-    }
-
-    if (customClaims.trim()) {
-      payload.append('claims', customClaims.trim())
-    }
-
-    setTokenRequestPayload(payload.toString())
-  }, [
+  const customClaimsValue = customClaims.trim()
+  const tokenRequestPayload = createAuthorizationCodeTokenPayload(
+    config,
+    pkce,
     authorizationCode,
-    config.clientId,
-    config.clientSecret,
-    config.redirectUri,
-    config.scopes,
-    customClaims,
-    pkce.codeVerifier,
-  ])
-
-  useEffect(() => {
-    if (tokenResponse?.refresh_token) {
-      setRefreshToken(tokenResponse.refresh_token)
-    }
-  }, [tokenResponse?.refresh_token])
-
-  useEffect(() => {
-    if (!refreshToken) {
-      setRefreshRequestPayload('')
-      return
-    }
-
-    const payload = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: config.clientId,
-    })
-
-    if (config.clientSecret) {
-      payload.append('client_secret', config.clientSecret)
-    }
-
-    if (config.scopes?.length) {
-      payload.append('scope', config.scopes.join(' '))
-    }
-
-    if (customClaims.trim()) {
-      payload.append('claims', customClaims.trim())
-    }
-
-    setRefreshRequestPayload(payload.toString())
-  }, [refreshToken, config.clientId, config.clientSecret, config.scopes, customClaims])
+    customClaimsValue
+  ).toString()
+  const refreshRequestPayload = refreshToken
+    ? createRefreshTokenPayload(config, refreshToken, customClaimsValue).toString()
+    : ''
 
   const validateClaims = () => {
     if (!customClaims.trim()) {
@@ -144,25 +137,12 @@ export function TokenExchange({
         return
       }
 
-      const payload = new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: authorizationCode,
-        redirect_uri: config.redirectUri,
-        client_id: config.clientId,
-        code_verifier: pkce.codeVerifier,
-      })
-
-      if (config.clientSecret) {
-        payload.append('client_secret', config.clientSecret)
-      }
-
-      if (config.scopes?.length) {
-        payload.append('scope', config.scopes.join(' '))
-      }
-
-      if (claimsValue) {
-        payload.append('claims', claimsValue)
-      }
+      const payload = createAuthorizationCodeTokenPayload(
+        config,
+        pkce,
+        authorizationCode,
+        claimsValue || undefined
+      )
 
       const response = await proxyFetch(tokenEndpoint, {
         method: 'POST',
@@ -188,6 +168,7 @@ export function TokenExchange({
       }
 
       setTokenResponse(tokenData)
+      setRefreshToken(tokenData.refresh_token ?? '')
       onTokenExchangeComplete?.(tokenData)
 
       toast.success(`Successfully refreshed tokens${config.demoMode ? ' (demo mode)' : ''}`)
@@ -220,23 +201,7 @@ export function TokenExchange({
         return
       }
 
-      const payload = new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        client_id: config.clientId,
-      })
-
-      if (config.clientSecret) {
-        payload.append('client_secret', config.clientSecret)
-      }
-
-      if (config.scopes?.length) {
-        payload.append('scope', config.scopes.join(' '))
-      }
-
-      if (claimsValue) {
-        payload.append('claims', claimsValue)
-      }
+      const payload = createRefreshTokenPayload(config, refreshToken, claimsValue || undefined)
 
       const response = await proxyFetch(tokenEndpoint, {
         method: 'POST',
@@ -262,6 +227,9 @@ export function TokenExchange({
       }
 
       setRefreshResponse(tokenData)
+      if (tokenData.refresh_token) {
+        setRefreshToken(tokenData.refresh_token)
+      }
       onTokenExchangeComplete?.(tokenData)
 
       toast.success(`Successfully refreshed tokens${config.demoMode ? ' (demo mode)' : ''}`)

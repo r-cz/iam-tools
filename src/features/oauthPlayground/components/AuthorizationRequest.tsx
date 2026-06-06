@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   Card,
   CardContent,
@@ -35,37 +35,12 @@ export function AuthorizationRequest({
   pkce,
   onAuthorizationComplete,
 }: AuthorizationRequestProps) {
-  const [authUrl, setAuthUrl] = useState<string>('')
-  const [authWindow, setAuthWindow] = useState<Window | null>(null)
+  const authWindowRef = useRef<Window | null>(null)
 
-  // Listen for messages from the popup window
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Make sure the message is from our domain
-      if (event.origin !== window.location.origin) return
-
-      // Check if it's our OAuth callback message
-      if (event.data?.type === 'oauth_callback' && event.data?.code) {
-        sessionStorage.removeItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
-        onAuthorizationComplete(event.data.code)
-
-        // Close the popup if it's still open
-        if (authWindow && !authWindow.closed) {
-          authWindow.close()
-        }
-      }
-    }
-
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [authWindow, onAuthorizationComplete])
-
-  // Build the authorization URL
-  useEffect(() => {
+  const authUrl = useMemo(() => {
     const baseUrl = config.authEndpoint
     if (!baseUrl) {
-      setAuthUrl('')
-      return
+      return ''
     }
 
     const params = new URLSearchParams({
@@ -81,18 +56,14 @@ export function AuthorizationRequest({
       params.set('scope', config.scopes.join(' '))
     }
 
-    const constructedUrl = `${baseUrl}?${params.toString()}`
-    let nextAuthUrl = ''
-
     try {
-      nextAuthUrl = new URL(constructedUrl).toString()
+      return new URL(`${baseUrl}?${params.toString()}`).toString()
     } catch (error) {
       if (import.meta?.env?.DEV) {
         console.error('Invalid authorization URL:', error)
       }
+      return ''
     }
-
-    setAuthUrl(nextAuthUrl)
   }, [
     config.authEndpoint,
     config.clientId,
@@ -101,6 +72,30 @@ export function AuthorizationRequest({
     pkce.codeChallenge,
     pkce.state,
   ])
+
+  // Listen for messages from the popup window
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Make sure the message is from our domain
+      if (event.origin !== window.location.origin) return
+
+      // Check if it's our OAuth callback message
+      if (event.data?.type === 'oauth_callback' && event.data?.code) {
+        sessionStorage.removeItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
+        onAuthorizationComplete(event.data.code)
+
+        // Close the popup if it's still open
+        const authWindow = authWindowRef.current
+        if (authWindow && !authWindow.closed) {
+          authWindow.close()
+          authWindowRef.current = null
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [onAuthorizationComplete])
 
   const storeRedirectState = () => {
     if (typeof window === 'undefined') return
@@ -133,7 +128,7 @@ export function AuthorizationRequest({
     const features = `width=${width},height=${height},left=${left},top=${top}`
 
     const popupWindow = window.open(authUrl, 'oauth-authorization', features)
-    setAuthWindow(popupWindow)
+    authWindowRef.current = popupWindow
 
     // Check if popup was blocked
     if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {

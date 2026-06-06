@@ -23,6 +23,15 @@ interface EnvironmentProfileSelectorProps {
   buttonVariant?: 'default' | 'input-group'
 }
 
+interface EnvironmentSelectorTriggerProps {
+  buttonVariant: 'default' | 'input-group'
+  compact: boolean
+  configLoading: boolean
+  disabled: boolean
+  label: string
+  onClick?: () => void
+}
+
 function truncateUrl(url: string, maxLength: number = 44): string {
   if (url.length <= maxLength) {
     return url
@@ -41,6 +50,128 @@ function truncateUrl(url: string, maxLength: number = 44): string {
   } catch {
     return `${url.slice(0, maxLength - 3)}...`
   }
+}
+
+function EnvironmentProfileSummary({ profile }: { profile: EnvironmentProfile }) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex items-center gap-1 text-sm font-medium">
+        <Globe size={14} className="flex-shrink-0" />
+        <span className="truncate">{profile.name}</span>
+      </div>
+      <div className="truncate text-xs text-muted-foreground" title={profile.issuerUrl}>
+        {truncateUrl(profile.issuerUrl)}
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        {profile.clientId && <span>Client: {profile.clientId}</span>}
+        {profile.scopes.length > 0 && <span>Scopes: {profile.scopes.join(' ')}</span>}
+      </div>
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Clock size={12} />
+        {formatDistanceToNow(new Date(profile.lastUsedAt), { addSuffix: true })}
+      </div>
+    </div>
+  )
+}
+
+function EnvironmentProfileActions({
+  profile,
+  onEdit,
+  onDelete,
+}: {
+  profile: EnvironmentProfile
+  onEdit: (profile: EnvironmentProfile) => void
+  onDelete: (profile: EnvironmentProfile) => void
+}) {
+  return (
+    <div className="flex flex-shrink-0 items-center gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        aria-label={`Edit ${profile.name}`}
+        onClick={(event) => {
+          event.stopPropagation()
+          onEdit(profile)
+        }}
+      >
+        <Edit size={14} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        aria-label={`Delete ${profile.name}`}
+        onClick={(event) => {
+          event.stopPropagation()
+          onDelete(profile)
+        }}
+      >
+        <Trash2 size={14} />
+      </Button>
+    </div>
+  )
+}
+
+function EnvironmentSelectorTrigger({
+  buttonVariant,
+  compact,
+  configLoading,
+  disabled,
+  label,
+  onClick,
+}: EnvironmentSelectorTriggerProps) {
+  if (buttonVariant === 'input-group') {
+    return (
+      <InputGroupButton
+        type="button"
+        size="sm"
+        variant="outline"
+        grouped={false}
+        className="flex items-center gap-1.5"
+        disabled={disabled || configLoading}
+        aria-label={label}
+        data-testid="environment-selector-trigger"
+        onClick={onClick}
+      >
+        {configLoading ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
+        <span className="hidden sm:inline">{label}</span>
+      </InputGroupButton>
+    )
+  }
+
+  if (compact) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        type="button"
+        className="h-9 w-9"
+        disabled={disabled || configLoading}
+        aria-label={label}
+        data-testid="environment-selector-trigger"
+        onClick={onClick}
+      >
+        {configLoading ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
+      </Button>
+    )
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      type="button"
+      className="flex items-center gap-1.5"
+      disabled={disabled || configLoading}
+      aria-label={label}
+      data-testid="environment-selector-trigger"
+      onClick={onClick}
+    >
+      {configLoading ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
+      <span className="hidden sm:inline">{label}</span>
+    </Button>
+  )
 }
 
 export function EnvironmentProfileSelector({
@@ -78,117 +209,35 @@ export function EnvironmentProfileSelector({
     setIsDialogOpen(true)
   }
 
-  const renderTrigger = (props?: { onClick?: () => void }) => {
-    if (buttonVariant === 'input-group') {
-      return (
-        <InputGroupButton
-          type="button"
-          size="sm"
-          variant="outline"
-          grouped={false}
-          className="flex items-center gap-1.5"
-          disabled={disabled || configLoading}
-          aria-label={label}
-          data-testid="environment-selector-trigger"
-          onClick={props?.onClick}
-        >
-          {configLoading ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
-          <span className="hidden sm:inline">{label}</span>
-        </InputGroupButton>
-      )
-    }
-
-    if (compact) {
-      return (
-        <Button
-          variant="ghost"
-          size="icon"
-          type="button"
-          className="h-9 w-9"
-          disabled={disabled || configLoading}
-          aria-label={label}
-          data-testid="environment-selector-trigger"
-          onClick={props?.onClick}
-        >
-          {configLoading ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
-        </Button>
-      )
-    }
-
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        type="button"
-        className="flex items-center gap-1.5"
-        disabled={disabled || configLoading}
-        aria-label={label}
-        data-testid="environment-selector-trigger"
-        onClick={props?.onClick}
-      >
-        {configLoading ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
-        <span className="hidden sm:inline">{label}</span>
-      </Button>
-    )
+  const handleDeleteProfile = (profile: EnvironmentProfile) => {
+    removeProfile(profile.id)
+    setIsOpen(false)
   }
 
-  const renderProfileSummary = (profile: EnvironmentProfile) => (
-    <div className="min-w-0 flex-1 space-y-1">
-      <div className="flex items-center gap-1 text-sm font-medium">
-        <Globe size={14} className="flex-shrink-0" />
-        <span className="truncate">{profile.name}</span>
-      </div>
-      <div className="truncate text-xs text-muted-foreground" title={profile.issuerUrl}>
-        {truncateUrl(profile.issuerUrl)}
-      </div>
-      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-        {profile.clientId && <span>Client: {profile.clientId}</span>}
-        {profile.scopes.length > 0 && <span>Scopes: {profile.scopes.join(' ')}</span>}
-      </div>
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Clock size={12} />
-        {formatDistanceToNow(new Date(profile.lastUsedAt), { addSuffix: true })}
-      </div>
-    </div>
-  )
+  const handleTestMenuItemKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+    profile: EnvironmentProfile
+  ) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return
+    }
 
-  const renderProfileActions = (profile: EnvironmentProfile) => (
-    <div className="flex flex-shrink-0 items-center gap-1">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6"
-        aria-label={`Edit ${profile.name}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          handleEditProfile(profile)
-        }}
-      >
-        <Edit size={14} />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6"
-        aria-label={`Delete ${profile.name}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          removeProfile(profile.id)
-          setIsOpen(false)
-        }}
-      >
-        <Trash2 size={14} />
-      </Button>
-    </div>
-  )
+    event.preventDefault()
+    handleSelectProfile(profile)
+  }
 
   return (
     <>
       {isTestEnvironment ? (
         <div className="relative">
-          {renderTrigger({
-            onClick: () => setIsOpen((currentValue) => !currentValue),
-          })}
+          <EnvironmentSelectorTrigger
+            buttonVariant={buttonVariant}
+            compact={compact}
+            configLoading={configLoading}
+            disabled={disabled}
+            label={label}
+            onClick={() => setIsOpen((currentValue) => !currentValue)}
+          />
           {isOpen && (
             <div
               role="menu"
@@ -200,12 +249,19 @@ export function EnvironmentProfileSelector({
                 <div
                   key={profile.id}
                   role="menuitem"
+                  tabIndex={0}
                   className="flex cursor-pointer items-start justify-between gap-2 rounded-sm px-2 py-1.5"
+                  aria-label={`Use ${profile.name}`}
                   onClick={() => handleSelectProfile(profile)}
+                  onKeyDown={(event) => handleTestMenuItemKeyDown(event, profile)}
                   data-testid="environment-selector-item"
                 >
-                  {renderProfileSummary(profile)}
-                  {renderProfileActions(profile)}
+                  <EnvironmentProfileSummary profile={profile} />
+                  <EnvironmentProfileActions
+                    profile={profile}
+                    onEdit={handleEditProfile}
+                    onDelete={handleDeleteProfile}
+                  />
                 </div>
               ))}
             </div>
@@ -213,7 +269,15 @@ export function EnvironmentProfileSelector({
         </div>
       ) : (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
-          <DropdownMenuTrigger asChild>{renderTrigger()}</DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>
+            <EnvironmentSelectorTrigger
+              buttonVariant={buttonVariant}
+              compact={compact}
+              configLoading={configLoading}
+              disabled={disabled}
+              label={label}
+            />
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[360px]">
             <DropdownMenuLabel>Saved Environments</DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -224,8 +288,12 @@ export function EnvironmentProfileSelector({
                 onClick={() => handleSelectProfile(profile)}
                 data-testid="environment-selector-item"
               >
-                {renderProfileSummary(profile)}
-                {renderProfileActions(profile)}
+                <EnvironmentProfileSummary profile={profile} />
+                <EnvironmentProfileActions
+                  profile={profile}
+                  onEdit={handleEditProfile}
+                  onDelete={handleDeleteProfile}
+                />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import EditorImport from 'react-simple-code-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { InfoIcon, TestTubeDiagonal, RotateCcw, Search } from 'lucide-react'
@@ -59,21 +59,11 @@ export function TokenInput({
 }: TokenInputProps) {
   const [isLoadingExample, setIsLoadingExample] = useState(false)
   const [isExampleToken, setIsExampleToken] = useState(false)
-  const [isInitialToken, setIsInitialToken] = useState(!!initialToken)
-
-  // Show "from URL" indicator if token is from URL parameters
-  useEffect(() => {
-    if (initialToken && token === initialToken) {
-      setIsInitialToken(true)
-    } else {
-      setIsInitialToken(false)
-    }
-  }, [initialToken, token])
+  const isInitialToken = Boolean(initialToken && token === initialToken)
 
   const handleSelectTokenFromHistory = (selectedToken: string) => {
     setToken(selectedToken)
     setIsExampleToken(false)
-    setIsInitialToken(false)
     if (onSelectTokenFromHistory) {
       onSelectTokenFromHistory(selectedToken)
     }
@@ -81,7 +71,6 @@ export function TokenInput({
 
   const handleReset = () => {
     setIsExampleToken(false)
-    setIsInitialToken(false)
     onReset()
 
     // Remove the token parameter from the URL without refreshing the page
@@ -215,7 +204,6 @@ export function TokenInput({
               fontFamily: 'monospace',
               fontSize: '0.875rem',
               lineHeight: '1.25rem',
-              outline: 'none',
               minHeight: '120px',
             }}
             className="caret-foreground"

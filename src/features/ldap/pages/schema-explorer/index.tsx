@@ -131,7 +131,7 @@ function highlightSchemaLine(line: string): React.ReactNode {
 
 function buildInheritanceChain(
   objectClass: ParsedObjectClass,
-  allClasses: ParsedObjectClass[],
+  objectClassByName: Map<string, ParsedObjectClass>,
   visited = new Set<string>()
 ): string[] {
   const chain: string[] = []
@@ -143,11 +143,9 @@ function buildInheritanceChain(
   if (objectClass.superior && objectClass.superior.length > 0) {
     for (const sup of objectClass.superior) {
       chain.push(sup)
-      const parent = allClasses.find((oc) =>
-        oc.names.some((n) => n.toLowerCase() === sup.toLowerCase())
-      )
+      const parent = objectClassByName.get(sup.toLowerCase())
       if (parent) {
-        chain.push(...buildInheritanceChain(parent, allClasses, visited))
+        chain.push(...buildInheritanceChain(parent, objectClassByName, visited))
       }
     }
   }
@@ -167,6 +165,17 @@ export default function LdapSchemaExplorerPage() {
   const { schemas, upsertSchema, removeSchema } = useSavedSchemas()
 
   const parsed = useMemo(() => parseLdapSchema(schemaText), [schemaText])
+  const objectClassByName = useMemo(() => {
+    const map = new Map<string, ParsedObjectClass>()
+
+    for (const objectClass of parsed.objectClasses) {
+      for (const name of objectClass.names) {
+        map.set(name.toLowerCase(), objectClass)
+      }
+    }
+
+    return map
+  }, [parsed.objectClasses])
   const hasInput = schemaText.trim().length > 0
 
   // Filter object classes and attributes based on search
@@ -327,6 +336,7 @@ export default function LdapSchemaExplorerPage() {
         accept=".schema,.ldif,.txt,.ldf,text/plain"
         onChange={handleFileSelected}
         className="hidden"
+        aria-label="Upload schema file"
       />
 
       <div className="space-y-10">
@@ -597,6 +607,7 @@ export default function LdapSchemaExplorerPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
+                aria-label="Search schema definitions"
               />
             </div>
           </>
@@ -633,7 +644,7 @@ export default function LdapSchemaExplorerPage() {
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {filteredObjectClasses.map((objectClass) => {
-                const inheritanceChain = buildInheritanceChain(objectClass, parsed.objectClasses)
+                const inheritanceChain = buildInheritanceChain(objectClass, objectClassByName)
                 return (
                   <Card key={`${objectClass.oid}-${objectClass.names[0] ?? 'unnamed'}`}>
                     <CardHeader>
