@@ -8,7 +8,11 @@
  * @param options Fetch options
  * @returns The fetch response
  */
-export async function proxyFetch(url: string, options?: RequestInit): Promise<Response> {
+export async function proxyFetch(
+  url: string,
+  options?: RequestInit,
+  fetcher: typeof fetch = fetch
+): Promise<Response> {
   // Determine if we need to use the proxy
   const useProxy = needsProxy(url)
 
@@ -21,11 +25,11 @@ export async function proxyFetch(url: string, options?: RequestInit): Promise<Re
       : '/api/cors-proxy/'
 
     const proxyUrl = `${baseProxyUrl}${encodeURIComponent(url)}`
-    return fetch(proxyUrl, options)
+    return fetcher(proxyUrl, options)
   }
 
   // Otherwise, fetch directly
-  return fetch(url, options)
+  return fetcher(url, options)
 }
 
 /**
