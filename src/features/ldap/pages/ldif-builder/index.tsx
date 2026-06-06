@@ -175,6 +175,7 @@ export default function LdifBuilderPage() {
         accept=".ldif,.txt,.ldf,text/plain"
         onChange={handleFileSelected}
         className="hidden"
+        aria-label="Upload LDIF file"
       />
 
       <div className="space-y-10">

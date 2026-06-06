@@ -27,8 +27,10 @@ export interface FieldProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const Field = React.forwardRef<HTMLDivElement, FieldProps>(
   ({ className, orientation = 'vertical', ...props }, ref) => {
+    const contextValue = React.useMemo(() => ({ orientation }), [orientation])
+
     return (
-      <FieldContext.Provider value={{ orientation }}>
+      <FieldContext.Provider value={contextValue}>
         <div
           ref={ref}
           data-orientation={orientation}

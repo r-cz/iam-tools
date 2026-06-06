@@ -37,11 +37,6 @@ const mockProxyFetch = mock((): Promise<MockResponse> => {
   })
 })
 
-// Mock the proxyFetch module
-mock.module('@/lib/proxy-fetch', () => ({
-  proxyFetch: mockProxyFetch,
-}))
-
 // Mock jwtVerify to avoid actual crypto operations in tests
 const mockJwtVerify = mock(async () => {
   throw new Error('Signature verification failed')
@@ -128,7 +123,13 @@ describe('verifySignatureWithRefresh', () => {
     const tokenWithWrongKid =
       'eyJhbGciOiJSUzI1NiIsImtpZCI6Indyb25nLWtleSJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature'
 
-    const result = await verifySignatureWithRefresh(tokenWithWrongKid, mockJwksUri, mockJwks)
+    const result = await verifySignatureWithRefresh(
+      tokenWithWrongKid,
+      mockJwksUri,
+      mockJwks,
+      undefined,
+      mockProxyFetch as any
+    )
 
     expect(result.valid).toBe(false)
     expect(result.error).toContain('No key with ID "wrong-key" found in the JWKS')
@@ -157,7 +158,8 @@ describe('verifySignatureWithRefresh', () => {
       (newJwks: JSONWebKeySet) => {
         refreshCalled = true
         expect(newJwks).toEqual(mockJwksRotated)
-      }
+      },
+      mockProxyFetch as any
     )
 
     // The verification will still fail due to invalid test keys,
@@ -181,7 +183,13 @@ describe('verifySignatureWithRefresh', () => {
       })
     })
 
-    const result = await verifySignatureWithRefresh(tokenNewKey, mockJwksUri, mockJwks)
+    const result = await verifySignatureWithRefresh(
+      tokenNewKey,
+      mockJwksUri,
+      mockJwks,
+      undefined,
+      mockProxyFetch as any
+    )
 
     expect(result.valid).toBe(false)
     expect(result.error).toContain('JWKS refresh also failed')
@@ -201,7 +209,13 @@ describe('verifySignatureWithRefresh', () => {
       })
     })
 
-    const result = await verifySignatureWithRefresh(tokenNewKey, mockJwksUri, mockJwks)
+    const result = await verifySignatureWithRefresh(
+      tokenNewKey,
+      mockJwksUri,
+      mockJwks,
+      undefined,
+      mockProxyFetch as any
+    )
 
     expect(result.valid).toBe(false)
     expect(result.error).toContain('JWKS refresh also failed')

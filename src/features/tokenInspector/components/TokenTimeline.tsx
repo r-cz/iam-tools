@@ -6,6 +6,39 @@ interface TokenTimelineProps {
   payload: any
 }
 
+const tokenTimelineDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+function formatTimeDiff(from: number, to: number) {
+  const diffSecs = Math.floor((to - from) / 1000)
+
+  if (diffSecs < 0) {
+    return `${Math.abs(diffSecs)}s ago`
+  }
+
+  if (diffSecs < 60) {
+    return `${diffSecs}s`
+  } else if (diffSecs < 3600) {
+    return `${Math.floor(diffSecs / 60)}m ${diffSecs % 60}s`
+  } else if (diffSecs < 86400) {
+    const hours = Math.floor(diffSecs / 3600)
+    const mins = Math.floor((diffSecs % 3600) / 60)
+    return `${hours}h ${mins}m`
+  } else {
+    const days = Math.floor(diffSecs / 86400)
+    const hours = Math.floor((diffSecs % 86400) / 3600)
+    return `${days}d ${hours}h`
+  }
+}
+
+function formatTimelineDate(timestamp: number) {
+  return tokenTimelineDateFormatter.format(new Date(timestamp))
+}
+
 export function TokenTimeline({ payload }: TokenTimelineProps) {
   const [currentTime, setCurrentTime] = useState(() => Math.floor(Date.now() / 1000))
 
@@ -49,40 +82,6 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
   // Calculate percentage elapsed
   const percentElapsed = Math.min(100, (elapsed / totalLifetime) * 100)
 
-  // Format time difference as human-readable
-  const formatTimeDiff = (from: number, to: number) => {
-    const diffSecs = Math.floor((to - from) / 1000)
-
-    if (diffSecs < 0) {
-      return `${Math.abs(diffSecs)}s ago`
-    }
-
-    if (diffSecs < 60) {
-      return `${diffSecs}s`
-    } else if (diffSecs < 3600) {
-      return `${Math.floor(diffSecs / 60)}m ${diffSecs % 60}s`
-    } else if (diffSecs < 86400) {
-      const hours = Math.floor(diffSecs / 3600)
-      const mins = Math.floor((diffSecs % 3600) / 60)
-      return `${hours}h ${mins}m`
-    } else {
-      const days = Math.floor(diffSecs / 86400)
-      const hours = Math.floor((diffSecs % 86400) / 3600)
-      return `${days}d ${hours}h`
-    }
-  }
-
-  // Format date more concisely for mobile
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date)
-  }
-
   return (
     <div className="space-y-6">
       <div className="relative pt-16 md:pt-12 pb-8 md:pb-4">
@@ -96,13 +95,13 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
           {/* Start label - stack on mobile, side-by-side on desktop */}
           <div className="absolute left-0 top-[-3.5rem] md:top-[-2rem] text-xs font-mono text-left md:transform-none max-w-[150px] md:max-w-none break-words md:whitespace-nowrap">
             <div className="font-semibold">Issued:</div>
-            <div>{formatDate(issuedAt)}</div>
+            <div>{formatTimelineDate(issuedAt)}</div>
           </div>
 
           {/* End label - stack on mobile, side-by-side on desktop */}
           <div className="absolute right-0 top-[-3.5rem] md:top-[-2rem] text-xs font-mono text-right md:transform-none max-w-[150px] md:max-w-none break-words md:whitespace-nowrap">
             <div className="font-semibold">{now > expiration ? 'Expired:' : 'Expires:'}</div>
-            <div>{formatDate(expiration)}</div>
+            <div>{formatTimelineDate(expiration)}</div>
           </div>
         </div>
       </div>
@@ -116,7 +115,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
               className="text-xs text-muted-foreground truncate"
               title={new Date(issuedAt).toLocaleString()}
             >
-              {formatDate(issuedAt)}
+              {formatTimelineDate(issuedAt)}
             </p>
           </div>
         </div>
@@ -131,7 +130,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
               className="text-xs text-muted-foreground truncate"
               title={new Date(expiration).toLocaleString()}
             >
-              {formatDate(expiration)}
+              {formatTimelineDate(expiration)}
             </p>
           </div>
         </div>
@@ -145,7 +144,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
                 className="text-xs text-muted-foreground truncate"
                 title={new Date(authTime).toLocaleString()}
               >
-                {formatDate(authTime)}
+                {formatTimelineDate(authTime)}
               </p>
             </div>
           </div>

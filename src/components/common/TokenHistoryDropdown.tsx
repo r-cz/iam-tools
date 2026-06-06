@@ -120,17 +120,25 @@ export function TokenHistoryDropdown({
                   onChange={(e) => setEditName(e.target.value)}
                   className="flex-1 px-2 py-1 text-sm border rounded"
                   placeholder="Token name"
+                  aria-label="Token history name"
                 />
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
+                    aria-label="Save token name"
                     onClick={() => saveEdit(token.id)}
                   >
                     <Check size={14} />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelEdit}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    aria-label="Cancel editing token name"
+                    onClick={cancelEdit}
+                  >
                     <Trash2 size={14} />
                   </Button>
                 </div>
@@ -225,6 +233,7 @@ export function TokenHistoryDropdown({
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
+                    aria-label={`Rename ${token.name || truncateToken(token.token)}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       startEditing(token.id, token.name)
@@ -236,6 +245,7 @@ export function TokenHistoryDropdown({
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
+                    aria-label={`Delete ${token.name || truncateToken(token.token)}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       removeToken(token.id)

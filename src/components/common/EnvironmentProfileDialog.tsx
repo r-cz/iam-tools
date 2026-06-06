@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { normalizeIssuerUrl } from '@/features/oauthPlayground/utils/oidc-preflight'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,6 +44,11 @@ interface EnvironmentProfileFormErrors {
   userInfoEndpoint?: string
 }
 
+interface EnvironmentProfileDialogResetSource {
+  open: boolean
+  initialProfile?: Partial<EnvironmentProfile | EnvironmentProfileDraft> | null
+}
+
 function getInitialFormState(
   initialProfile?: Partial<EnvironmentProfile | EnvironmentProfileDraft> | null
 ): EnvironmentProfileFormState {
@@ -87,19 +92,24 @@ export function EnvironmentProfileDialog({
   submitLabel,
   onSave,
 }: EnvironmentProfileDialogProps) {
-  const [formState, setFormState] = useState<EnvironmentProfileFormState>(
+  const [formState, setFormState] = useState<EnvironmentProfileFormState>(() =>
     getInitialFormState(initialProfile)
   )
   const [errors, setErrors] = useState<EnvironmentProfileFormErrors>({})
+  const [lastResetSource, setLastResetSource] = useState<EnvironmentProfileDialogResetSource>(
+    () => ({
+      open,
+      initialProfile,
+    })
+  )
 
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
+  if (open && (!lastResetSource.open || initialProfile !== lastResetSource.initialProfile)) {
+    setLastResetSource({ open, initialProfile })
     setFormState(getInitialFormState(initialProfile))
     setErrors({})
-  }, [initialProfile, open])
+  } else if (!open && lastResetSource.open) {
+    setLastResetSource({ open, initialProfile })
+  }
 
   const updateField = (field: keyof EnvironmentProfileFormState, value: string) => {
     setFormState((currentState) => ({ ...currentState, [field]: value }))

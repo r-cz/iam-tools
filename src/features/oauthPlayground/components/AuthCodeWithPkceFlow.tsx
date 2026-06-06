@@ -29,6 +29,7 @@ const clearRedirectState = () => {
 
 export function AuthCodeWithPkceFlow() {
   const location = useLocation()
+  const callbackCode = typeof location.state?.code === 'string' ? location.state.code : null
   const [flowState, setFlowState] = useState<{
     activeTab: string
     config: OAuthConfig | null
@@ -43,23 +44,23 @@ export function AuthCodeWithPkceFlow() {
 
   // Initialize from location state (returning from callback)
   useEffect(() => {
-    if (!location.state?.code) return
+    if (!callbackCode) return
 
     const redirectState = readRedirectState()
     setFlowState((currentState) => {
       if (!redirectState) {
-        return { ...currentState, authCode: location.state.code }
+        return { ...currentState, authCode: callbackCode }
       }
 
       clearRedirectState()
       return {
         activeTab: 'token',
-        authCode: location.state.code,
+        authCode: callbackCode,
         config: redirectState.config,
         pkce: redirectState.pkce,
       }
     })
-  }, [location.state])
+  }, [callbackCode])
 
   // Handle configuration completion
   const handleConfigComplete = (newConfig: OAuthConfig, newPkce: PkceParams) => {

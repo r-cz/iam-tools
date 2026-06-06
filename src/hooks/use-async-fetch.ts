@@ -31,6 +31,7 @@ export function useAsyncFetch<T>(
   asyncFunction: (...args: unknown[]) => Promise<T>,
   options: UseAsyncFetchOptions<T> = {}
 ): UseAsyncFetchResult<T> {
+  const { cache, getCacheKey, onError, onSuccess, shouldExecute } = options
   const [data, setData] = useState<T | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
@@ -41,19 +42,19 @@ export function useAsyncFetch<T>(
   const execute = useCallback(
     async (...args: unknown[]): Promise<T | null> => {
       // Check if we should execute
-      if (options.shouldExecute && !options.shouldExecute(...args)) {
+      if (shouldExecute && !shouldExecute(...args)) {
         return null
       }
 
       // Check cache if available
-      if (options.cache && options.getCacheKey) {
-        const cacheKey = options.getCacheKey(...args)
-        const cached = options.cache.get(cacheKey)
+      if (cache && getCacheKey) {
+        const cacheKey = getCacheKey(...args)
+        const cached = cache.get(cacheKey)
         if (cached) {
           setData(cached)
           setError(null)
           setIsLoading(false)
-          options.onSuccess?.(cached)
+          onSuccess?.(cached)
           return cached
         }
       }
@@ -71,12 +72,12 @@ export function useAsyncFetch<T>(
         setData(result)
 
         // Store in cache if available
-        if (options.cache && options.getCacheKey) {
-          const cacheKey = options.getCacheKey(...args)
-          options.cache.set(cacheKey, result)
+        if (cache && getCacheKey) {
+          const cacheKey = getCacheKey(...args)
+          cache.set(cacheKey, result)
         }
 
-        options.onSuccess?.(result)
+        onSuccess?.(result)
         return result
       } catch (err) {
         if (!isMountedRef.current) {
@@ -86,7 +87,7 @@ export function useAsyncFetch<T>(
         const error = err instanceof Error ? err : new Error('An unknown error occurred')
         setError(error)
         setData(null)
-        options.onError?.(error)
+        onError?.(error)
         return null
       } finally {
         if (isMountedRef.current) {
@@ -94,7 +95,7 @@ export function useAsyncFetch<T>(
         }
       }
     },
-    [asyncFunction, options]
+    [asyncFunction, cache, getCacheKey, onError, onSuccess, shouldExecute]
   )
 
   const reset = useCallback(() => {
