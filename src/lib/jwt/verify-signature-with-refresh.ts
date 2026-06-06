@@ -13,13 +13,15 @@ interface VerifyResult {
  * @param jwksUri The URI where JWKS can be fetched
  * @param initialJwks The initial JWKS to try (from cache or hook state)
  * @param onJwksRefresh Optional callback when JWKS is refreshed
+ * @param fetchJwks Fetch implementation for refreshing JWKS
  * @returns Promise<VerifyResult>
  */
 export async function verifySignatureWithRefresh(
   token: string,
   jwksUri: string,
   initialJwks: JSONWebKeySet,
-  onJwksRefresh?: (newJwks: JSONWebKeySet) => void
+  onJwksRefresh?: (newJwks: JSONWebKeySet) => void,
+  fetchJwks: typeof proxyFetch = proxyFetch
 ): Promise<VerifyResult> {
   try {
     if (import.meta?.env?.DEV) {
@@ -106,7 +108,7 @@ export async function verifySignatureWithRefresh(
         jwksCache.remove(jwksUri)
 
         // Fetch fresh JWKS
-        const response = await proxyFetch(jwksUri)
+        const response = await fetchJwks(jwksUri)
         if (!response.ok) {
           throw new Error(`Failed to fetch JWKS: ${response.status} ${response.statusText}`)
         }
