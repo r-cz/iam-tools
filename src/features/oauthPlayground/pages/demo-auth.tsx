@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
 
 export function DemoAuthPage() {
   const [searchParams] = useSearchParams()
@@ -45,29 +46,26 @@ export function DemoAuthPage() {
       return
     }
 
-    // Generate a mock authorization code
-    // In a real system, this would be a secure random value
-    // and would be associated with the authenticated user
-    const authCode = generateMockAuthCode(username, clientId)
+    const authUrl = new URL(`${getIssuerBaseUrl()}/auth`)
+    authUrl.searchParams.set('response_type', 'code')
+    authUrl.searchParams.set('client_id', clientId)
+    authUrl.searchParams.set('redirect_uri', redirectUri)
+    authUrl.searchParams.set('login_hint', username.trim())
 
-    // Construct the redirect URL with the code
-    const redirectUrl = new URL(redirectUri)
-    redirectUrl.searchParams.set('code', authCode)
-
-    // Add state if provided
     if (state) {
-      redirectUrl.searchParams.set('state', state)
+      authUrl.searchParams.set('state', state)
+    }
+    if (scope) {
+      authUrl.searchParams.set('scope', scope)
+    }
+    if (codeChallenge) {
+      authUrl.searchParams.set('code_challenge', codeChallenge)
+    }
+    if (codeChallengeMethod) {
+      authUrl.searchParams.set('code_challenge_method', codeChallengeMethod)
     }
 
-    // Redirect back to the client
-    window.location.href = redirectUrl.toString()
-  }
-
-  // Generate a mock authorization code
-  const generateMockAuthCode = (username: string, clientId: string): string => {
-    const timestamp = Date.now().toString(36)
-    const random = Math.random().toString(36).substring(2)
-    return `${timestamp}-${username}-${clientId.substring(0, 4)}-${random}`
+    window.location.href = authUrl.toString()
   }
 
   // Handle deny

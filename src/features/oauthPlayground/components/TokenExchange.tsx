@@ -171,13 +171,17 @@ export function TokenExchange({
       setRefreshToken(tokenData.refresh_token ?? '')
       onTokenExchangeComplete?.(tokenData)
 
-      toast.success(`Successfully refreshed tokens${config.demoMode ? ' (demo mode)' : ''}`)
+      toast.success(
+        `Successfully exchanged code for tokens${config.demoMode ? ' (demo mode)' : ''}`
+      )
     } catch (error) {
       if (import.meta?.env?.DEV) {
-        console.error('Error refreshing tokens:', error)
+        console.error('Error exchanging authorization code:', error)
       }
       toast.error(
-        `Failed to refresh tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to exchange code for tokens: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
       )
     } finally {
       setIsExchanging(false)
