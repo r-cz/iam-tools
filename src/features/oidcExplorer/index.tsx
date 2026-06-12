@@ -9,11 +9,14 @@ import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 
-import { ConfigInput, ConfigDisplay, JwksDisplay, ProviderInfo } from './components'
+import { ConfigInput } from './components/ConfigInput'
+import { ConfigDisplay } from './components/ConfigDisplay'
+import { JwksDisplay } from './components/JwksDisplay'
+import { ProviderInfo } from './components/ProviderInfo'
 import { detectProvider } from './utils/config-helpers'
-import { useEnvironmentProfiles, useIssuerHistory } from '../../lib/state'
+import { useEnvironmentProfiles, useIssuerHistory } from '../../lib/state/app-state-context'
 import { EnvironmentProfileDialog, EnvironmentProfileSelector } from '@/components/common'
-import type { EnvironmentProfile, EnvironmentProfileDraft } from '@/lib/state'
+import type { EnvironmentProfile, EnvironmentProfileDraft } from '@/lib/state/types'
 import { extractDiscoveredEndpoints } from '@/features/oauthPlayground/utils/oidc-preflight'
 
 function getDefaultProfileName(issuerUrl: string): string {
@@ -46,6 +49,14 @@ function buildEnvironmentProfileDraft(
   }
 }
 
+function getProcessedUrls(processedUrlsRef: { current: Set<string> | null }): Set<string> {
+  if (processedUrlsRef.current === null) {
+    processedUrlsRef.current = new Set<string>()
+  }
+
+  return processedUrlsRef.current
+}
+
 export function OidcExplorer() {
   // Instantiate hooks
   const oidcConfigHook = useOidcConfig()
@@ -59,7 +70,7 @@ export function OidcExplorer() {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
 
   // Use a ref to track if we've already added this URL to history
-  const processedUrls = useRef<Set<string>>(new Set())
+  const processedUrls = useRef<Set<string> | null>(null)
   const lastConfigSignatureRef = useRef<string | null>(null)
 
   // Effect for successful OIDC config fetch
@@ -74,12 +85,13 @@ export function OidcExplorer() {
 
     lastConfigSignatureRef.current = configSignature
 
+    const processedUrlSet = getProcessedUrls(processedUrls)
     if (
       inputIssuerUrl &&
       inputIssuerUrl.trim().length > 0 &&
-      !processedUrls.current.has(inputIssuerUrl)
+      !processedUrlSet.has(inputIssuerUrl)
     ) {
-      processedUrls.current.add(inputIssuerUrl)
+      processedUrlSet.add(inputIssuerUrl)
       addIssuer(inputIssuerUrl)
     }
 
@@ -294,3 +306,5 @@ export function OidcExplorer() {
     </div>
   )
 }
+
+export { default as OidcExplorerPage } from './pages'

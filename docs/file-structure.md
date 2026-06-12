@@ -8,12 +8,12 @@ This project uses a feature-based architecture to organize code. Each feature is
 ├── src/
 │   ├── features/           # Feature modules (main functionality)
 │   │   ├── home/           # Home page feature
-│   │   └── tokenInspector/ # Token inspection tool
-│   │       ├── components/ # Feature-specific components
-│   │       ├── data/       # Data files (examples, schemas)
-│   │       ├── pages/      # Page components (routes)
-│   │       ├── utils/      # Feature-specific utilities
-│   │       └── index.tsx   # Feature entry point
+│   │   ├── tokenInspector/ # JWT/token inspection tool
+│   │   ├── oidcExplorer/   # OIDC discovery and JWKS explorer
+│   │   ├── oauthPlayground/# OAuth flows, introspection, UserInfo
+│   │   ├── saml/           # SAML response, request, metadata tools
+│   │   ├── ldap/           # LDAP schema explorer and LDIF builder
+│   │   └── not-found/      # 404 route
 │   ├── components/         # Shared components
 │   │   ├── layout/         # Layout components
 │   │   ├── navigation/     # Navigation components
@@ -43,6 +43,9 @@ To add a new feature:
 2. Follow the established pattern with subdirectories for components, pages, etc.
 3. Create an `index.tsx` file that exports the main component
 4. Add the route in `src/main.tsx`
+5. Add navigation in `src/components/navigation/app-sidebar.tsx`
+6. Add feature docs under `docs/feature-guides/`
+7. Add focused tests under `src/tests/` and e2e coverage under `e2e/tests/` when the user flow changes
 
 ## Component Guidelines
 

@@ -174,7 +174,6 @@ export function EnvironmentProfileDialog({
 
   const isTestEnvironment =
     (globalThis as { __IAM_TOOLS_TEST__?: boolean }).__IAM_TOOLS_TEST__ === true ||
-    (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
     import.meta.env.MODE === 'test'
 
   const content = (

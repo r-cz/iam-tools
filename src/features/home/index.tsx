@@ -239,3 +239,5 @@ export default function HomePage() {
     </PageContainer>
   )
 }
+
+export { HomePage }

@@ -283,6 +283,8 @@ Explore and validate LDAP data sets:
 - LDIF Builder & Viewer with schema-based validation and templates
 - Local-only storage for saved schema snapshots
 
+See [LDAP Tools Documentation](docs/feature-guides/ldap-suite.md) for details.
+
 ## Deployment
 
 The application deploys as a Cloudflare Worker (serving both API routes and static assets). A typical deployment includes:

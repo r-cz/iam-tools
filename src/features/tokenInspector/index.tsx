@@ -7,23 +7,21 @@ import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui
 import { Key } from 'lucide-react'
 import { EnvironmentProfileSelector } from '@/components/common'
 
-import {
-  TokenInput,
-  TokenHeader,
-  TokenPayload,
-  TokenSignature,
-  TokenTimeline,
-  TokenSize,
-} from './components'
+import { TokenInput } from './components/TokenInput'
+import { TokenHeader } from './components/TokenHeader'
+import { TokenPayload } from './components/TokenPayload'
+import { TokenSignature } from './components/TokenSignature'
+import { TokenTimeline } from './components/TokenTimeline'
+import { TokenSize } from './components/TokenSize'
 import {
   SignatureStatusBadge,
   TokenTypeBadge,
   DemoTokenBadge,
 } from './components/TokenStatusBadges'
 import { useTokenDecoder } from './hooks/useTokenDecoder'
-import { useTokenHistory } from '../../lib/state'
+import { useTokenHistory } from '../../lib/state/app-state-context'
 import { useOidcConfig } from '@/hooks/data-fetching/useOidcConfig'
-import type { EnvironmentProfile } from '@/lib/state'
+import type { EnvironmentProfile } from '@/lib/state/types'
 
 interface TokenInspectorProps {
   initialToken?: string | null
@@ -379,3 +377,5 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     </div>
   )
 }
+
+export { default as TokenInspectorPage } from './pages'
