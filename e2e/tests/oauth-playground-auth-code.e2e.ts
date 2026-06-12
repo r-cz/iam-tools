@@ -81,6 +81,23 @@ test.describe('OAuth Playground - Auth Code with PKCE', () => {
     await expect(page.locator(selectors.oauthPlayground.launchAuthorizationButton)).toBeVisible()
   })
 
+  test('should launch demo authorization page instead of the app 404', async ({ page }) => {
+    await page.click(selectors.oauthPlayground.demoModeSwitch)
+
+    await page.locator(selectors.oauthPlayground.clientIdInput).fill('test-client')
+    await page.click(selectors.oauthPlayground.startAuthButton)
+
+    const popupPromise = page.waitForEvent('popup')
+    await page.click(selectors.oauthPlayground.launchAuthorizationButton)
+    const popup = await popupPromise
+
+    await expect(popup).toHaveURL(/\/oauth-playground\/demo-auth/)
+    await expect(popup.getByText('Demo Identity Provider', { exact: true })).toBeVisible()
+    await expect(popup.getByText('Page Not Found')).not.toBeVisible()
+
+    await popup.close()
+  })
+
   test('should regenerate PKCE values', async ({ page }) => {
     await expect(page.locator('text=PKCE Parameters')).toBeVisible()
 
