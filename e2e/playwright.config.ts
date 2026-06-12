@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const appPort = process.env.E2E_APP_PORT ?? '5174'
+const proxyPort = '8788'
+const appBaseUrl = `http://127.0.0.1:${appPort}`
+const proxyBaseUrl = `http://localhost:${proxyPort}`
+
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.e2e.ts',
@@ -13,7 +18,7 @@ export default defineConfig({
     timeout: 5000, // 5s for assertions
   },
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: appBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 5000, // 5s per action
@@ -37,14 +42,14 @@ export default defineConfig({
 
   webServer: [
     {
-      command: 'bun run dev',
-      url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
+      command: `bun run dev -- --host 127.0.0.1 --port ${appPort} --strictPort`,
+      url: appBaseUrl,
+      reuseExistingServer: false,
       timeout: 120 * 1000,
     },
     {
       command: 'bun run proxy',
-      url: 'http://localhost:8788/api/.well-known/openid-configuration',
+      url: `${proxyBaseUrl}/api/.well-known/openid-configuration`,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
     },

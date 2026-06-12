@@ -4,14 +4,17 @@ import { signToken } from './sign-token'
  * Determines the host URL for the current environment.
  */
 export function getIssuerBaseUrl(): string {
-  const host = window.location.host
+  const hostname = window.location.hostname
   const protocol = window.location.protocol
 
-  if (host.includes('localhost') && host.includes('5173')) {
+  if (
+    import.meta.env.DEV !== false &&
+    (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1')
+  ) {
     return 'http://localhost:8788/api'
   }
 
-  return `${protocol}//${host}/api`
+  return `${protocol}//${window.location.host}/api`
 }
 
 /**

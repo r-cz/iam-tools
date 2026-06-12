@@ -1,6 +1,6 @@
 // src/features/tokenInspector/components/TokenJwksResolver.tsx
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useJwks } from '@/hooks/data-fetching/useJwks' // Import new hook
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -35,7 +35,7 @@ export function TokenJwksResolver({
 }: TokenJwksResolverProps) {
   const [jwksMode, setJwksMode] = useState<'automatic' | 'manual'>('automatic')
   const [manualJwks, setManualJwks] = useState('')
-  const [lastFetchedUri, setLastFetchedUri] = useState<string | null>(null)
+  const lastFetchedUriRef = useRef<string | null>(null)
 
   // Only instantiate the JWKS hook since we're receiving OIDC config from parent
   const { fetchJwks, isLoading: isJwksLoading } = useJwks(jwksFetcher)
@@ -73,26 +73,20 @@ export function TokenJwksResolver({
     [fetchJwks, onJwksResolved]
   )
 
-  // Effect to fetch JWKS when OIDC config is successfully loaded
+  const autoFetchJwksUri = preferredJwksUri ?? oidcConfig?.jwks_uri ?? null
+
   useEffect(() => {
-    if (!preferredJwksUri || isJwksLoading || preferredJwksUri === lastFetchedUri) {
+    if (!autoFetchJwksUri || isJwksLoading || autoFetchJwksUri === lastFetchedUriRef.current) {
       return
     }
 
-    setLastFetchedUri(preferredJwksUri)
-    void fetchAndApplyJwks(preferredJwksUri)
-  }, [fetchAndApplyJwks, isJwksLoading, lastFetchedUri, preferredJwksUri])
-
-  useEffect(() => {
-    // Only fetch if we have a JWKS URI, aren't currently loading, and haven't already fetched this URI
-    if (oidcConfig?.jwks_uri && !isJwksLoading && oidcConfig.jwks_uri !== lastFetchedUri) {
-      if (import.meta?.env?.DEV) {
-        console.log(`OIDC config loaded, fetching JWKS from: ${oidcConfig.jwks_uri}`)
-      }
-      setLastFetchedUri(oidcConfig.jwks_uri)
-      void fetchAndApplyJwks(oidcConfig.jwks_uri)
+    if (import.meta?.env?.DEV) {
+      console.log(`JWKS URI available, fetching keys from: ${autoFetchJwksUri}`)
     }
-  }, [fetchAndApplyJwks, isJwksLoading, lastFetchedUri, oidcConfig?.jwks_uri]) // Track lastFetchedUri to prevent duplicate fetches
+
+    lastFetchedUriRef.current = autoFetchJwksUri
+    void fetchAndApplyJwks(autoFetchJwksUri)
+  }, [autoFetchJwksUri, fetchAndApplyJwks, isJwksLoading])
 
   // Function to initiate the automatic fetching process
   const triggerAutomaticFetch = () => {

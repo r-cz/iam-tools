@@ -1,5 +1,21 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { cleanup, render } from '@testing-library/react'
 import React from 'react'
+import { TokenJwksResolver } from '@/features/tokenInspector/components/TokenJwksResolver'
+import { jwksCache } from '@/lib/cache/jwks-cache'
+import type { OidcFetchFunction } from '@/features/oauthPlayground/utils/oidc-preflight'
+import { sampleJwksResponse } from '../utils/test-api-mocks'
+import { waitForCondition } from '../utils/test-utils'
+
+beforeEach(() => {
+  cleanup()
+  jwksCache.clear()
+})
+
+afterEach(() => {
+  cleanup()
+  jwksCache.clear()
+})
 
 describe('JWKS Resolver Logic', () => {
   // Default mock implementation
@@ -229,3 +245,76 @@ describe('JWKS Resolver Logic', () => {
     }
   })
 })
+
+describe('TokenJwksResolver component', () => {
+  test('prefers a saved JWKS URI over the OIDC configuration JWKS URI', async () => {
+    const preferredJwksUri = 'https://saved.example.com/.well-known/jwks.json'
+    const discoveredJwksUri = 'https://issuer.example.com/.well-known/jwks.json'
+    const fetchCalls: string[] = []
+    const resolvedKeyCounts: number[] = []
+    const jwksFetcher: OidcFetchFunction = async (url) => {
+      fetchCalls.push(String(url))
+      return createJsonResponse(sampleJwksResponse)
+    }
+
+    render(
+      <TokenJwksResolver
+        issuerUrl="https://issuer.example.com"
+        setIssuerUrl={() => {}}
+        onJwksResolved={(jwks) => resolvedKeyCounts.push(jwks.keys.length)}
+        oidcConfig={{ jwks_uri: discoveredJwksUri }}
+        preferredJwksUri={preferredJwksUri}
+        jwksFetcher={jwksFetcher}
+      />
+    )
+
+    expect(await waitForCondition(() => resolvedKeyCounts.length === 1)).toBe(true)
+    await waitForAsyncEffects()
+
+    expect(fetchCalls).toEqual([preferredJwksUri])
+    expect(resolvedKeyCounts).toEqual([sampleJwksResponse.keys.length])
+  })
+
+  test('resolves a shared preferred and discovered JWKS URI only once', async () => {
+    const jwksUri = 'https://issuer.example.com/.well-known/jwks.json'
+    const fetchCalls: string[] = []
+    const resolvedKeyCounts: number[] = []
+    const jwksFetcher: OidcFetchFunction = async (url) => {
+      fetchCalls.push(String(url))
+      return createJsonResponse(sampleJwksResponse)
+    }
+
+    render(
+      <TokenJwksResolver
+        issuerUrl="https://issuer.example.com"
+        setIssuerUrl={() => {}}
+        onJwksResolved={(jwks) => resolvedKeyCounts.push(jwks.keys.length)}
+        oidcConfig={{ jwks_uri: jwksUri }}
+        preferredJwksUri={jwksUri}
+        jwksFetcher={jwksFetcher}
+      />
+    )
+
+    expect(await waitForCondition(() => resolvedKeyCounts.length === 1)).toBe(true)
+    await waitForAsyncEffects()
+
+    expect(fetchCalls).toEqual([jwksUri])
+    expect(resolvedKeyCounts).toEqual([sampleJwksResponse.keys.length])
+  })
+})
+
+function createJsonResponse<T>(payload: T, status = 200, statusText = 'OK'): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: async () => payload,
+    text: async () => JSON.stringify(payload),
+    blob: async () => new Blob([JSON.stringify(payload)]),
+  } as unknown as Response
+}
+
+async function waitForAsyncEffects() {
+  await new Promise((resolve) => setTimeout(resolve, 20))
+}

@@ -2,6 +2,7 @@ import OAuthPlaygroundPage from './pages'
 import OAuthCallbackPage from './pages/callback'
 import DemoAuthPage from './pages/demo-auth'
 import AuthCodeWithPkcePage from './pages/auth-code-pkce'
+import ClientCredentialsPage from './pages/client-credentials'
 import IntrospectionPage from './pages/introspection'
 import UserInfoPage from './pages/userinfo'
 import { AuthCodeWithPkceFlow } from './components/AuthCodeWithPkceFlow'
@@ -13,6 +14,7 @@ export {
   OAuthCallbackPage,
   DemoAuthPage,
   AuthCodeWithPkcePage,
+  ClientCredentialsPage,
   IntrospectionPage,
   UserInfoPage,
   AuthCodeWithPkceFlow,

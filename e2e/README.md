@@ -24,6 +24,12 @@ Run all tests (uses list reporter by default to prevent terminal blocking):
 bun run e2e
 ```
 
+Run the smoke suite for fast route and core workflow coverage:
+
+```bash
+bun run e2e:smoke
+```
+
 Run tests on all browsers:
 
 ```bash
@@ -64,11 +70,17 @@ e2e/
 │   ├── selectors.ts         # Common selectors used across tests
 │   └── test-utils.ts        # Utility functions for tests
 └── tests/                   # Test files
-    ├── navigation.spec.ts   # Navigation and homepage tests
-    ├── token-inspector.spec.ts
-    ├── oidc-explorer.spec.ts
-    ├── oauth-playground-auth-code.spec.ts
-    └── oauth-playground-client-credentials.spec.ts
+    ├── navigation.e2e.ts    # Navigation and homepage tests
+    ├── routed-feature-smoke.e2e.ts
+    ├── token-inspector.e2e.ts
+    ├── oidc-explorer.e2e.ts
+    ├── oauth-playground-auth-code.e2e.ts
+    ├── oauth-playground-client-credentials.e2e.ts
+    ├── oauth-playground-preflight-endpoints.e2e.ts
+    ├── saml-request-builder.e2e.ts
+    ├── saml-signature-verify.e2e.ts
+    ├── ldap-schema-explorer.e2e.ts
+    └── ldap-ldif-builder.e2e.ts
 ```
 
 ## Key Selectors
@@ -120,7 +132,7 @@ await page.click(selectors.buttons.primary)
 - Wait for elements to be visible before interacting
 - Use `networkidle` for pages that load external data
 - Add screenshots for debugging: `await page.screenshot({ path: 'debug.png' })`
-- Tests run against `http://localhost:5173` by default
+- Tests run against `http://127.0.0.1:5174` by default to avoid colliding with a normal Vite dev server. Override with `E2E_APP_PORT` if needed.
 
 ## Debugging Failed Tests
 
@@ -153,8 +165,8 @@ await expect(page.locator('text=iss').first()).toBeVisible()
 // Wait for specific elements instead of toasts
 await page.waitForSelector('text=Result', { timeout: 5000 })
 
-// Small delay for UI state changes
-await page.waitForTimeout(500)
+// Prefer assertions over fixed sleeps for UI state changes
+await expect(page.locator('text=Ready')).toBeVisible()
 
 // Wait for network idle after navigation
 await page.waitForLoadState('networkidle')
@@ -165,7 +177,7 @@ await page.waitForLoadState('networkidle')
 ```typescript
 // Enable demo mode
 await page.click('#demo-mode-switch')
-await page.waitForTimeout(500)
+await expect(page.locator('#issuer-url-discovery')).toHaveValue(/localhost:8788/)
 
 // Client ID is required even in demo mode
 await page.fill('input[placeholder*="client"]', 'test-client')
@@ -176,7 +188,6 @@ await page.fill('input[placeholder*="client"]', 'test-client')
 ```typescript
 // Click on tab and verify content changes
 await page.click('button[role="tab"]:has-text("Claims")')
-await page.waitForTimeout(300)
 
 // Verify tab is selected
 const claimsTab = page.locator('[role="tab"]:has-text("Claims")')
