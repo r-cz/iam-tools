@@ -185,7 +185,7 @@ export function ConfigurationForm({
     }
 
     const demoIssuer = getIssuerBaseUrl()
-    const demoAuthEndpoint = `${demoIssuer}/auth`
+    const demoAuthEndpoint = `${window.location.origin}/oauth-playground/demo-auth`
     const demoTokenEndpoint = `${demoIssuer}/token`
     const demoJwksEndpoint = `${demoIssuer}/jwks`
 
