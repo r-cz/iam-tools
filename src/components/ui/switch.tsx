@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimitive.Root>) {
   const isTestEnvironment =
     (globalThis as { __IAM_TOOLS_TEST__?: boolean }).__IAM_TOOLS_TEST__ === true ||
-    (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
     import.meta.env.MODE === 'test'
 
   if (isTestEnvironment) {

@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Bug,
   ChevronsUpDown,
-  Github,
   Mail,
   ExternalLink,
   Settings,
@@ -360,7 +360,7 @@ export function NavSettings() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
-                  <Github className="h-4 w-4" />
+                  <Bug className="h-4 w-4" />
                   <span>GitHub Issues</span>
                   <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground" />
                 </a>

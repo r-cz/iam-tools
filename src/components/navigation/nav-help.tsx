@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronsUpDown, Github, HelpCircle, Mail, ExternalLink } from 'lucide-react'
+import { Bug, ChevronsUpDown, HelpCircle, Mail, ExternalLink } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -56,7 +56,7 @@ export function NavHelp() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
-                  <Github className="h-4 w-4" />
+                  <Bug className="h-4 w-4" />
                   <span>GitHub Issues</span>
                   <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground" />
                 </a>
