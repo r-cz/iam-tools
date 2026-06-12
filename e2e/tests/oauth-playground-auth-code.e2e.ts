@@ -98,6 +98,40 @@ test.describe('OAuth Playground - Auth Code with PKCE', () => {
     await popup.close()
   })
 
+  test('should exchange demo authorization code and refresh tokens', async ({ page }) => {
+    await page.click(selectors.oauthPlayground.demoModeSwitch)
+
+    await page.locator(selectors.oauthPlayground.clientIdInput).fill('test-client')
+    await page
+      .locator(selectors.oauthPlayground.scopeInput)
+      .fill('openid profile email offline_access')
+    await page.click(selectors.oauthPlayground.startAuthButton)
+
+    const popupPromise = page.waitForEvent('popup')
+    await page.click(selectors.oauthPlayground.launchAuthorizationButton)
+    const popup = await popupPromise
+
+    await expect(popup).toHaveURL(/\/oauth-playground\/demo-auth/)
+    await popup.getByRole('button', { name: 'Authorize' }).click()
+
+    await expect(page.locator(selectors.oauthPlayground.tabToken)).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    await expect(page.getByText('Token Exchange', { exact: true })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Exchange Code for Tokens' }).click()
+
+    await expect(page.getByText('Access Token', { exact: true })).toBeVisible()
+    await expect(page.getByText('Refresh Token Flow', { exact: true })).toBeVisible()
+    await expect(page.getByText('Failed to exchange code for tokens')).not.toBeVisible()
+
+    await page.getByRole('button', { name: 'Refresh Tokens' }).click()
+
+    await expect(page.getByText('Refresh Response', { exact: true })).toBeVisible()
+    await expect(page.getByText('Failed to refresh tokens')).not.toBeVisible()
+  })
+
   test('should regenerate PKCE values', async ({ page }) => {
     await expect(page.locator('text=PKCE Parameters')).toBeVisible()
 

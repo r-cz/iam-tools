@@ -340,6 +340,7 @@ async function handleAuthorization(request: Request, env: Env): Promise<Response
   const codeChallenge = params.get('code_challenge') || undefined
   const codeChallengeMethod = params.get('code_challenge_method') || undefined
   const nonce = params.get('nonce') || undefined
+  const subject = normalizeDemoSubject(params.get('login_hint'))
 
   if (!clientId || !redirectUri) {
     return buildAuthorizationError(
@@ -403,7 +404,7 @@ async function handleAuthorization(request: Request, env: Env): Promise<Response
     code_challenge: codeChallenge,
     code_challenge_method: codeChallengeMethod,
     nonce,
-    sub: 'demo-user',
+    sub: subject,
     issued_at: now,
     exp: now + AUTH_CODE_TTL,
   }
@@ -851,6 +852,11 @@ function normalizeScope(scope: string): string {
 
 function splitScopes(scope: string): string[] {
   return scope.split(/\s+/).filter(Boolean)
+}
+
+function normalizeDemoSubject(value: string | null): string {
+  const subject = value?.trim()
+  return subject ? subject.slice(0, 128) : 'demo-user'
 }
 
 async function encodeAuthCode(payload: AuthCodePayload, env: Env): Promise<string> {
