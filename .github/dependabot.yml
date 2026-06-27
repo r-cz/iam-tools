@@ -1,16 +1,25 @@
 version: 2
+
+multi-ecosystem-groups:
+  dependency-updates:
+    schedule:
+      interval: 'monthly'
+    open-pull-requests-limit: 1
+    labels:
+      - 'dependencies'
+
 updates:
   - package-ecosystem: 'bun'
     directory: '/'
-    schedule:
-      interval: 'weekly'
-    open-pull-requests-limit: 10
+    patterns:
+      - '*'
+    multi-ecosystem-group: 'dependency-updates'
     versioning-strategy: 'auto'
     labels:
       - 'dependencies'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
-    schedule:
-      interval: 'weekly'
-    open-pull-requests-limit: 5
+    patterns:
+      - '*'
+    multi-ecosystem-group: 'dependency-updates'
