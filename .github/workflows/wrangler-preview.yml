@@ -9,8 +9,8 @@ env:
 
 jobs:
   deploy-preview:
-    # Skip preview deploys for forks: secrets are not available on forked PRs
-    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' && !github.event.pull_request.head.repo.fork }}
+    # Skip preview deploys when secrets are unavailable.
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' && !github.event.pull_request.head.repo.fork && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,8 +40,8 @@ jobs:
           command: deploy --name ${{ env.PREVIEW_NAME }}
 
   delete-preview:
-    # Skip deletion for forks as well; forked PRs never deployed a preview
-    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && !github.event.pull_request.head.repo.fork }}
+    # Skip deletion when the matching preview deploy was skipped.
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && !github.event.pull_request.head.repo.fork && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
