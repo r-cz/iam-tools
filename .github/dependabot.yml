@@ -4,6 +4,7 @@ multi-ecosystem-groups:
   dependency-updates:
     schedule:
       interval: 'monthly'
+    open-pull-requests-limit: 1
     labels:
       - 'dependencies'
 
@@ -13,7 +14,6 @@ updates:
     patterns:
       - '*'
     multi-ecosystem-group: 'dependency-updates'
-    open-pull-requests-limit: 1
     versioning-strategy: 'auto'
     labels:
       - 'dependencies'
@@ -23,4 +23,3 @@ updates:
     patterns:
       - '*'
     multi-ecosystem-group: 'dependency-updates'
-    open-pull-requests-limit: 1
