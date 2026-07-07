@@ -439,6 +439,7 @@ export function ConfigurationForm({
           />
 
           <FormFieldInput
+            id="oauth-redirect-uri"
             label="Redirect URI"
             value={redirectUri}
             readOnly
@@ -468,6 +469,7 @@ export function ConfigurationForm({
             </div>
 
             <FormFieldInput
+              id="oauth-code-verifier"
               label="Code Verifier"
               value={codeVerifier}
               readOnly
@@ -475,6 +477,7 @@ export function ConfigurationForm({
             />
 
             <FormFieldInput
+              id="oauth-code-challenge"
               label="Code Challenge (S256)"
               value={codeChallenge}
               readOnly
@@ -482,6 +485,7 @@ export function ConfigurationForm({
             />
 
             <FormFieldInput
+              id="oauth-state"
               label="State"
               value={state}
               readOnly

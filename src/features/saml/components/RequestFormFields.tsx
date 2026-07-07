@@ -58,6 +58,7 @@ export function RequestFormFields({
   const requestIdInputId = 'saml-request-id-input'
   const isPassiveSelectId = 'saml-request-is-passive-select'
   const nameIdFormatSelectId = 'saml-request-name-id-format-select'
+  const forceAuthnSwitchId = 'saml-request-force-authn-switch'
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 min-w-0">
@@ -167,8 +168,14 @@ export function RequestFormFields({
       </div>
       <div className="grid md:grid-cols-2 gap-4 items-center">
         <div className="flex items-center gap-2">
-          <Switch checked={forceAuthn} onCheckedChange={onForceAuthnChange} />
-          <span className="text-sm">ForceAuthn</span>
+          <Switch
+            id={forceAuthnSwitchId}
+            checked={forceAuthn}
+            onCheckedChange={onForceAuthnChange}
+          />
+          <Label htmlFor={forceAuthnSwitchId} className="text-sm">
+            ForceAuthn
+          </Label>
         </div>
         <div className="grid gap-2 min-w-0">
           <Label htmlFor={isPassiveSelectId} className="text-sm">

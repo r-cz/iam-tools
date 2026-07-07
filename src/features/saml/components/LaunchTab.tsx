@@ -67,8 +67,14 @@ export function LaunchTab({
 
           <div className="mt-4 border-t pt-4 grid gap-3">
             <div className="flex items-center gap-2">
-              <Switch checked={enableSigning} onCheckedChange={onEnableSigningChange} />
-              <span className="text-sm">Sign Redirect (adds Signature)</span>
+              <Switch
+                id="saml-launch-enable-signing"
+                checked={enableSigning}
+                onCheckedChange={onEnableSigningChange}
+              />
+              <Label htmlFor="saml-launch-enable-signing" className="text-sm">
+                Sign Redirect (adds Signature)
+              </Label>
             </div>
             {enableSigning && (
               <>

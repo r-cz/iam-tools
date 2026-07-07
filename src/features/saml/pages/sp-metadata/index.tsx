@@ -10,6 +10,7 @@ import { PageContainer, PageHeader } from '@/components/page'
 import { FileCog } from 'lucide-react'
 import { JsonDisplay } from '@/components/common/JsonDisplay'
 import { formatXml } from '@/lib/format/xml'
+import { copyTextToClipboard } from '@/hooks/use-clipboard'
 
 function xmlEscape(value: string) {
   return value
@@ -36,10 +37,11 @@ export default function SpMetadataGeneratorPage() {
   )
 
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(xml)
+    const copied = await copyTextToClipboard(xml)
+
+    if (copied) {
       toast.success('Metadata copied')
-    } catch {
+    } else {
       toast.error('Copy failed')
     }
   }
@@ -88,8 +90,14 @@ export default function SpMetadataGeneratorPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Switch checked={includeCert} onCheckedChange={setIncludeCert} />
-            <span className="text-sm">Include signing certificate</span>
+            <Switch
+              id="sp-include-signing-certificate"
+              checked={includeCert}
+              onCheckedChange={setIncludeCert}
+            />
+            <Label htmlFor="sp-include-signing-certificate" className="text-sm">
+              Include signing certificate
+            </Label>
           </div>
           {includeCert && (
             <div className="grid gap-2">
@@ -108,7 +116,12 @@ export default function SpMetadataGeneratorPage() {
           )}
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">Generated XML</div>
-            <Button variant="outline" size="sm" onClick={copy}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copy}
+              data-testid="saml-sp-metadata-copy-button"
+            >
               Copy
             </Button>
           </div>
