@@ -27,9 +27,11 @@ export function CopyButton({
 }: CopyButtonProps) {
   const { copy, copied } = useClipboard()
 
-  const handleCopy = () => {
-    copy(text)
-    onCopy?.()
+  const handleCopy = async () => {
+    const success = await copy(text)
+    if (success) {
+      onCopy?.()
+    }
   }
 
   // Provide aria-label for icon-only buttons (when showText is false)

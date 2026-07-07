@@ -5,6 +5,40 @@ interface UseClipboardOptions {
   successDuration?: number
 }
 
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  const copyWithTextArea = () => {
+    if (typeof document === 'undefined') return false
+
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.setAttribute('readonly', '')
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-999999px'
+    textArea.style.top = '-999999px'
+    document.body.appendChild(textArea)
+
+    textArea.focus()
+    textArea.select()
+
+    try {
+      return document.execCommand?.('copy') ?? false
+    } finally {
+      document.body.removeChild(textArea)
+    }
+  }
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    return copyWithTextArea()
+  }
+
+  return copyWithTextArea()
+}
+
 /**
  * Hook for copying text to the clipboard
  * @param options Configuration options
@@ -15,47 +49,20 @@ export function useClipboard({ successDuration = 2000 }: UseClipboardOptions = {
 
   const copy = useCallback(
     async (text: string) => {
-      try {
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(text)
-          setCopied(true)
+      const success = await copyTextToClipboard(text)
 
-          // Reset copied state after specified duration
-          setTimeout(() => {
-            setCopied(false)
-          }, successDuration)
-
-          return true
-        } else {
-          // Fallback for browsers without clipboard API
-          const textArea = document.createElement('textarea')
-          textArea.value = text
-
-          // Make the textarea out of viewport
-          textArea.style.position = 'fixed'
-          textArea.style.left = '-999999px'
-          textArea.style.top = '-999999px'
-          document.body.appendChild(textArea)
-
-          textArea.focus()
-          textArea.select()
-
-          const success = document.execCommand('copy')
-          document.body.removeChild(textArea)
-
-          if (success) {
-            setCopied(true)
-            setTimeout(() => {
-              setCopied(false)
-            }, successDuration)
-            return true
-          }
-          return false
-        }
-      } catch (error) {
-        console.error('Failed to copy text: ', error)
+      if (!success) {
         return false
       }
+
+      setCopied(true)
+
+      // Reset copied state after specified duration
+      setTimeout(() => {
+        setCopied(false)
+      }, successDuration)
+
+      return true
     },
     [successDuration]
   )

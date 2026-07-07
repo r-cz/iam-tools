@@ -139,9 +139,9 @@ test.describe('OAuth Playground - Auth Code with PKCE', () => {
     await expect(regenerateButton).toBeVisible()
     await regenerateButton.click()
 
-    await expect(page.locator('text=Code Verifier').first()).toBeVisible()
-    await expect(page.locator('text=Code Challenge (S256)')).toBeVisible()
-    await expect(page.locator('text=State').first()).toBeVisible()
+    await expect(page.getByLabel('Code Verifier')).not.toHaveValue('')
+    await expect(page.getByLabel('Code Challenge (S256)')).not.toHaveValue('')
+    await expect(page.getByLabel('State')).not.toHaveValue('')
   })
 
   test('should show step indicators', async ({ page }) => {

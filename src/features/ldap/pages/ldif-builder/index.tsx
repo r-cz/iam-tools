@@ -26,6 +26,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { copyTextToClipboard } from '@/hooks/use-clipboard'
 import { useSavedSchemas } from '../../hooks/useSavedSchemas'
 import { useSchemaSummaries } from '../../hooks/useSchemaDetails'
 import { useLdifValidation } from '../../hooks/useLdifValidation'
@@ -134,13 +135,12 @@ export default function LdifBuilderPage() {
   }
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(ldifText)
+    const copied = await copyTextToClipboard(ldifText)
+
+    if (copied) {
       toast.success('Copied LDIF to clipboard')
-    } catch (error) {
-      toast.error('Copy failed', {
-        description: error instanceof Error ? error.message : String(error),
-      })
+    } else {
+      toast.error('Copy failed')
     }
   }
 

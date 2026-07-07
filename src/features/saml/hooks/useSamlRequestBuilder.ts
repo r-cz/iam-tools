@@ -6,6 +6,7 @@ import {
   encodeBase64,
 } from '@/features/saml/utils/saml-request'
 import { signRedirectRequest, type RedirectSigAlg } from '@/features/saml/utils/redirect-signing'
+import { copyTextToClipboard } from '@/hooks/use-clipboard'
 
 type Binding = 'HTTP-Redirect' | 'HTTP-POST'
 type IsPassiveValue = 'unset' | 'true' | 'false'
@@ -149,10 +150,11 @@ export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
 
   // Copy to clipboard helper
   const copy = useCallback(async (text: string, label = 'Copied') => {
-    try {
-      await navigator.clipboard.writeText(text)
+    const copied = await copyTextToClipboard(text)
+
+    if (copied) {
       toast.success(label)
-    } catch {
+    } else {
       toast.error('Copy failed')
     }
   }, [])
