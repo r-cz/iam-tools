@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as jose from 'jose'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -29,7 +29,6 @@ interface TokenInspectorProps {
 
 export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   const [token, setToken] = useState(initialToken || '')
-  const lastInitialTokenRef = useRef(initialToken)
   const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null) // Holds the currently loaded JWKS
   const [activeTab, setActiveTab] = useState('payload')
   const [manualIssuerUrl, setManualIssuerUrl] = useState('') // Manual issuer URL override
@@ -70,13 +69,6 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
       jwks_uri: selectedEnvironment.jwksEndpoint,
     }
   }, [issuerUrl, oidcConfig, selectedEnvironment])
-
-  if (initialToken !== lastInitialTokenRef.current) {
-    lastInitialTokenRef.current = initialToken
-    if (initialToken) {
-      setToken(initialToken)
-    }
-  }
 
   // Effect to decode token whenever the 'token' state changes
   useEffect(() => {

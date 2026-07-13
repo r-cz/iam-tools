@@ -2,6 +2,14 @@ import { expect, test } from '@playwright/test'
 
 const routedPages = [
   {
+    path: '/token-comparison',
+    heading: 'Token Claims Diff',
+  },
+  {
+    path: '/oauth/redirect-uri',
+    heading: 'Redirect URI Debugger',
+  },
+  {
     path: '/oauth-playground/client-credentials',
     heading: 'OAuth Client Credentials Flow',
   },
@@ -36,6 +44,22 @@ const routedPages = [
   {
     path: '/ldap/ldif-builder',
     heading: 'LDIF Builder & Viewer',
+  },
+  {
+    path: '/ldap/filter-studio',
+    heading: 'LDAP Filter Studio',
+  },
+  {
+    path: '/scim/resource-validator',
+    heading: 'SCIM Resource Validator',
+  },
+  {
+    path: '/scim/patch-builder',
+    heading: 'SCIM PATCH Builder',
+  },
+  {
+    path: '/mfa/totp',
+    heading: 'TOTP Debugger',
   },
   {
     path: '/not-a-real-tool',

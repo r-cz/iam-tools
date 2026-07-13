@@ -12,24 +12,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { useLocation, Link } from 'react-router-dom'
-
-// Route to human-readable title mapping
-const routeTitles: Record<string, string> = {
-  '/': 'Home',
-  '/token-inspector': 'Token Inspector',
-  '/oidc-explorer': 'OIDC Explorer',
-  '/oauth-playground': 'OAuth Playground',
-  '/oauth-playground/auth-code-pkce': 'Auth Code with PKCE',
-  '/oauth-playground/client-credentials': 'Client Credentials',
-  '/oauth-playground/introspection': 'Introspection',
-  '/oauth-playground/userinfo': 'UserInfo',
-  '/saml/response-decoder': 'SAML Response Decoder',
-  '/saml/request-builder': 'SAML Request Builder',
-  '/saml/metadata-validator': 'SAML Metadata Validator',
-  '/saml/sp-metadata': 'SP Metadata Generator',
-  '/ldap/schema-explorer': 'LDAP Schema Explorer',
-  '/ldap/ldif-builder': 'LDIF Builder',
-}
+import { routeTitles } from '@/config/tool-catalog'
 
 export function Layout() {
   const location = useLocation()

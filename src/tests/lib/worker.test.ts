@@ -14,7 +14,11 @@ const fetchSpy = async (request: Request | string) => {
 }
 
 const createEnv = (
-  overrides: { CORS_ALLOWED_ORIGINS?: string; DEMO_TOKEN_SIGNING_SECRET?: string } = {}
+  overrides: {
+    CORS_ALLOWED_ORIGINS?: string
+    DEMO_REDIRECT_URIS?: string
+    DEMO_TOKEN_SIGNING_SECRET?: string
+  } = {}
 ) => ({
   ASSETS: {
     fetch: async () =>
@@ -93,6 +97,45 @@ describe('worker api', () => {
     expect(Array.isArray(data.keys)).toBe(true)
   })
 
+  test('rejects unregistered external demo authorization redirects', async () => {
+    const redirectUri = 'https://evil.example/callback'
+    const response = await worker.fetch(
+      buildRequest(
+        `/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}`
+      ),
+      createEnv()
+    )
+
+    expect(response.status).toBe(400)
+    expect(response.headers.get('Location')).toBeNull()
+    const data = await response.json()
+    expect(data.error).toBe('invalid_request')
+  })
+
+  test('allows exact configured demo authorization redirects', async () => {
+    const redirectUri = 'https://client.example.com/oauth/callback'
+    const response = await worker.fetch(
+      buildRequest(
+        `/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}`
+      ),
+      createEnv({ DEMO_REDIRECT_URIS: redirectUri })
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('Location')?.startsWith(redirectUri)).toBe(true)
+  })
+
+  test('allows the local app callback across development ports', async () => {
+    const redirectUri = 'http://127.0.0.1:5173/oauth-playground/callback'
+    const request = new Request(
+      `http://localhost:8788/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}`
+    )
+    const response = await worker.fetch(request, createEnv())
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('Location')?.startsWith(redirectUri)).toBe(true)
+  })
+
   test('echoes allowed origin when allowlist is set', async () => {
     const allowedOrigin = 'https://allowed.example'
     const response = await worker.fetch(
@@ -127,6 +170,28 @@ describe('worker api', () => {
     expect(fetchCalls.length).toBe(0)
   })
 
+  test('rejects insecure, local, private, and IP-literal cors proxy targets', async () => {
+    const blockedTargets = [
+      'http://issuer.example.com/.well-known/openid-configuration',
+      'https://localhost/.well-known/openid-configuration',
+      'https://127.0.0.1/.well-known/openid-configuration',
+      'https://10.0.0.8/.well-known/openid-configuration',
+      'https://169.254.169.254/.well-known/openid-configuration',
+      'https://203.0.113.10/.well-known/openid-configuration',
+      'https://issuer.example.com:8443/.well-known/openid-configuration',
+    ]
+
+    for (const targetUrl of blockedTargets) {
+      const response = await worker.fetch(
+        buildRequest(`/api/cors-proxy/${encodeURIComponent(targetUrl)}`),
+        createEnv()
+      )
+      expect(response.status).toBe(403)
+    }
+
+    expect(fetchCalls.length).toBe(0)
+  })
+
   test('proxies allowed target', async () => {
     const targetUrl = 'https://issuer.example.com/.well-known/openid-configuration'
     const response = await worker.fetch(
@@ -142,6 +207,82 @@ describe('worker api', () => {
 
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET')
+  })
+
+  test('strips credentials and arbitrary headers from cors proxy requests', async () => {
+    const targetUrl = 'https://issuer.example.com/.well-known/openid-configuration'
+    const response = await worker.fetch(
+      buildRequest(`/api/cors-proxy/${encodeURIComponent(targetUrl)}`, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer browser-secret',
+          Cookie: 'session=browser-secret',
+          'X-Forwarded-For': '127.0.0.1',
+        },
+      }),
+      createEnv()
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = fetchCalls[0] as Request
+    expect(forwardedRequest.headers.get('Accept')).toBe('application/json')
+    expect(forwardedRequest.headers.get('Authorization')).toBeNull()
+    expect(forwardedRequest.headers.get('Cookie')).toBeNull()
+    expect(forwardedRequest.headers.get('X-Forwarded-For')).toBeNull()
+    expect(forwardedRequest.redirect).toBe('manual')
+  })
+
+  test('blocks cors proxy redirects to unsafe targets', async () => {
+    const targetUrl = 'https://issuer.example.com/.well-known/openid-configuration'
+    globalThis.fetch = (async (request: Request | string) => {
+      fetchCalls.push(request)
+      return new Response(null, {
+        status: 302,
+        headers: { Location: 'http://127.0.0.1/.well-known/openid-configuration' },
+      })
+    }) as typeof fetch
+
+    const response = await worker.fetch(
+      buildRequest(`/api/cors-proxy/${encodeURIComponent(targetUrl)}`),
+      createEnv()
+    )
+
+    expect(response.status).toBe(403)
+    expect(fetchCalls.length).toBe(1)
+  })
+
+  test('revalidates safe cors proxy redirects and strips unsafe response headers', async () => {
+    const targetUrl = 'https://issuer.example.com/.well-known/openid-configuration'
+    globalThis.fetch = (async (request: Request | string) => {
+      fetchCalls.push(request)
+      if (fetchCalls.length === 1) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: '/tenant/discovery.json' },
+        })
+      }
+
+      return new Response('{"issuer":"https://issuer.example.com"}', {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': 'upstream=secret',
+          'X-Upstream-Internal': 'hidden',
+        },
+      })
+    }) as typeof fetch
+
+    const response = await worker.fetch(
+      buildRequest(`/api/cors-proxy/${encodeURIComponent(targetUrl)}`),
+      createEnv()
+    )
+
+    expect(response.status).toBe(200)
+    expect(fetchCalls.length).toBe(2)
+    expect((fetchCalls[1] as Request).url).toBe('https://issuer.example.com/tenant/discovery.json')
+    expect(response.headers.get('Content-Type')).toBe('application/json')
+    expect(response.headers.get('Set-Cookie')).toBeNull()
+    expect(response.headers.get('X-Upstream-Internal')).toBeNull()
   })
 
   test('rate limits cors proxy requests', async () => {
@@ -233,7 +374,7 @@ describe('worker api', () => {
 
   test('accepts signed auth code and rejects tampered auth code in strict mode', async () => {
     const env = createEnv({ DEMO_TOKEN_SIGNING_SECRET: 'strict-signing-secret' })
-    const redirectUri = 'https://client.example.com/callback'
+    const redirectUri = 'https://app.test/oauth-playground/callback'
 
     const authResponse = await worker.fetch(
       buildRequest(
@@ -289,7 +430,7 @@ describe('worker api', () => {
 
   test('accepts signed refresh token and rejects tampered refresh token in strict mode', async () => {
     const env = createEnv({ DEMO_TOKEN_SIGNING_SECRET: 'strict-signing-secret' })
-    const redirectUri = 'https://client.example.com/callback'
+    const redirectUri = 'https://app.test/oauth-playground/callback'
 
     const authResponse = await worker.fetch(
       buildRequest(
@@ -397,7 +538,7 @@ describe('worker api', () => {
 
   test('keeps legacy auth-code and refresh-token behavior when strict secret is unset', async () => {
     const env = createEnv()
-    const redirectUri = 'https://client.example.com/callback'
+    const redirectUri = 'https://app.test/oauth-playground/callback'
 
     const authResponse = await worker.fetch(
       buildRequest(

@@ -75,6 +75,10 @@ The tool includes example tokens to demonstrate various scenarios:
 3. Token with standard OAuth claims
 4. Token with custom claims
 
+### Token History and Privacy
+
+Decoded tokens remain in the current page by default. Saving raw tokens to browser storage is disabled until you explicitly enable **Settings → Token History → On**. Previously saved entries can be removed with **Settings → Clear All Data**. Treat tokens as credentials and prefer non-production values when debugging.
+
 ## Implementation Details
 
 ### Key Components

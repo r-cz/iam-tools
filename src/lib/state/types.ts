@@ -56,6 +56,7 @@ export interface EnvironmentProfileDraft {
 // User settings
 export interface UserSettings {
   maxHistoryItems: number
+  persistTokenHistory: boolean
   tokenDisplayFormat: 'decoded' | 'encoded'
   enableDetailedValidation: boolean
   defaultTab: string
@@ -76,6 +77,7 @@ export const initialAppState: AppState = {
   environmentProfiles: [],
   settings: {
     maxHistoryItems: 10,
+    persistTokenHistory: false,
     tokenDisplayFormat: 'decoded',
     enableDetailedValidation: true,
     defaultTab: 'payload',

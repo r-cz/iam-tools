@@ -9,7 +9,7 @@ test.describe('LDAP Schema Explorer', () => {
 
   test('should display page title and description', async ({ page }) => {
     await expect(
-      page.locator('[data-slot="card-title"]:has-text("LDAP Schema Explorer")')
+      page.getByRole('heading', { level: 1, name: 'LDAP Schema Explorer' })
     ).toBeVisible()
     await expect(page.locator('text=Visualize LDAP schema definitions')).toBeVisible()
   })

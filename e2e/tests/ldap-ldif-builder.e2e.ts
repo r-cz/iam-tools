@@ -9,7 +9,7 @@ test.describe('LDAP LDIF Builder', () => {
 
   test('should display page title and description', async ({ page }) => {
     await expect(
-      page.locator('[data-slot="card-title"]:has-text("LDIF Builder & Viewer")')
+      page.getByRole('heading', { level: 1, name: 'LDIF Builder & Viewer' })
     ).toBeVisible()
     await expect(page.locator('text=Generate, inspect, and validate LDIF')).toBeVisible()
   })

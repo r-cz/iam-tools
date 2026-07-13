@@ -2,6 +2,8 @@
 
 A collection of specialized tools for Identity and Access Management (IAM) development and debugging. These tools help developers understand, troubleshoot, and work with various IAM technologies like JWT tokens, OIDC providers, and OAuth 2.0 flows.
 
+Most analysis tools run locally in the browser. Raw token history is disabled by default and can be enabled explicitly from Settings; avoid using production credentials in any debugging tool.
+
 ## Technologies
 
 - **Frontend**: Vite + React + TypeScript
@@ -242,6 +244,15 @@ Analyze and debug JWT tokens with detailed information about:
 
 See [Token Inspector Documentation](docs/feature-guides/token-inspector.md) for detailed usage instructions.
 
+### Token Claims Diff & Redirect URI Debugger
+
+Troubleshoot OAuth and OIDC integration drift locally:
+
+- Compare two JWTs with set-aware audience, scope, role, group, permission, and entitlement differences
+- Review issuer, subject, issuance, expiration, and lifetime changes
+- Compare requested redirect URIs against an exact registration allowlist
+- Detect fragments, wildcard registrations, unsafe transport, custom-scheme concerns, and native loopback port matches
+
 ### OIDC Explorer
 
 Explore and analyze OpenID Connect provider configurations:
@@ -281,9 +292,30 @@ Explore and validate LDAP data sets:
 
 - Schema Explorer for RFC/vendor schema parsing and visualization
 - LDIF Builder & Viewer with schema-based validation and templates
+- RFC 4515 filter parsing, formatting, explanation, URL encoding, and assertion-value escaping
 - Local-only storage for saved schema snapshots
 
 See [LDAP Tools Documentation](docs/feature-guides/ldap-suite.md) for details.
+
+### SCIM Tools
+
+Build and validate identity lifecycle payloads locally:
+
+- Validate SCIM 2.0 User, Group, and Enterprise User resource structure
+- Diagnose schema, required-field, type, extension, and multi-valued attribute problems
+- Compose canonical add, remove, and replace PatchOp documents
+- Validate existing SCIM PATCH JSON and attribute paths
+
+### TOTP Debugger
+
+Inspect MFA configuration without sending or retaining the shared secret:
+
+- Parse Base32 seeds and `otpauth://totp` URIs
+- Generate SHA-1, SHA-256, or SHA-512 codes for current and adjacent windows
+- Verify candidate codes and identify clock-step drift
+- Generate random non-production test secrets
+
+See [Local IAM Utilities Documentation](docs/feature-guides/local-iam-utilities.md) for Token Claims Diff, Redirect URI, SCIM, LDAP Filter, and TOTP details.
 
 ## Deployment
 

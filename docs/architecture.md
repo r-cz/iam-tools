@@ -35,6 +35,10 @@ Feature modules are self-contained units that implement specific tools or functi
 - **Data**: Static data, constants, and configuration
 - **Types**: TypeScript types specific to the feature
 
+The user-facing catalog metadata is centralized in `src/config/tool-catalog.ts`. Homepage cards,
+sidebar navigation, and breadcrumb titles consume this registry so newly added tools remain
+consistent across discovery surfaces.
+
 ### 2. Core Infrastructure
 
 - **Components**: Reusable UI components shared across features
@@ -55,7 +59,7 @@ The application includes serverless backend functions:
 2. **Data Processing**: Components use hooks and utilities to process data
 3. **External Requests**: When needed, the application makes requests to external APIs via the CORS proxy
 4. **State Management**: State is managed locally within components using React's useState and useContext
-5. **Persistence**: Some data is persisted in localStorage using custom hooks
+5. **Persistence**: Some preferences, environments, and caches are persisted in localStorage using custom hooks. Raw token history is opt-in and disabled by default.
 
 ## Cloudflare Integration
 
