@@ -175,3 +175,4 @@ The demo token endpoints accept an optional `claims` JSON object; reserved stand
   - Compatibility mode (default): legacy unsigned payload encoding.
   - Strict mode (`DEMO_TOKEN_SIGNING_SECRET` set): HMAC-signed envelopes in `v1.<payload>.<sig>` format.
 - In strict mode, tampered or legacy-form auth codes/refresh tokens are rejected with OAuth errors (`invalid_grant` for token exchange).
+- Demo authorization redirects default to this app's exact `/oauth-playground/callback` URI (with localhost/127.0.0.1 cross-port support in local development). Additional exact callback URIs can be registered with the comma-separated `DEMO_REDIRECT_URIS` Worker variable.

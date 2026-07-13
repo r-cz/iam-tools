@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import './components/navigation/nested-submenu.css'
-import { ThemeProvider } from './components/theme'
-import { AppStateProvider } from './lib/state'
+import { ThemeProvider } from './components/theme/theme-provider'
+import { AppStateProvider } from './lib/state/app-state-context'
 import { Layout } from './components/layout'
 import { Toaster } from './components/ui/sonner'
 import { DiagnosticsListener } from './components/common/DiagnosticsListener'
@@ -14,7 +14,9 @@ import { PageLoading } from './components/common/PageLoading'
 const HomePage = lazy(() => import('./features/home'))
 const NotFoundPage = lazy(() => import('./features/not-found'))
 const TokenInspectorPage = lazy(() => import('./features/tokenInspector/pages'))
+const TokenComparisonPage = lazy(() => import('./features/token-comparison/pages'))
 const OidcExplorerPage = lazy(() => import('./features/oidcExplorer/pages'))
+const RedirectUriDebuggerPage = lazy(() => import('./features/redirect-uri/pages'))
 const OAuthPlaygroundPage = lazy(() => import('./features/oauthPlayground/pages'))
 const OAuthCallbackPage = lazy(() => import('./features/oauthPlayground/pages/callback'))
 const DemoAuthPage = lazy(() => import('./features/oauthPlayground/pages/demo-auth'))
@@ -30,6 +32,10 @@ const SamlMetadataValidatorPage = lazy(() => import('./features/saml/pages/metad
 const SpMetadataGeneratorPage = lazy(() => import('./features/saml/pages/sp-metadata'))
 const LdapSchemaExplorerPage = lazy(() => import('./features/ldap/pages/schema-explorer/index.tsx'))
 const LdifBuilderPage = lazy(() => import('./features/ldap/pages/ldif-builder/index.tsx'))
+const LdapFilterStudioPage = lazy(() => import('./features/ldap-filter/pages'))
+const ScimResourceValidatorPage = lazy(() => import('./features/scim/pages/resource-validator'))
+const ScimPatchBuilderPage = lazy(() => import('./features/scim/pages/patch-builder'))
+const TotpDebuggerPage = lazy(() => import('./features/totp/pages'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -44,7 +50,9 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/" element={<Layout />}>
                   <Route index element={<HomePage />} />
                   <Route path="token-inspector" element={<TokenInspectorPage />} />
+                  <Route path="token-comparison" element={<TokenComparisonPage />} />
                   <Route path="oidc-explorer" element={<OidcExplorerPage />} />
+                  <Route path="oauth/redirect-uri" element={<RedirectUriDebuggerPage />} />
                   <Route path="oauth-playground" element={<OAuthPlaygroundPage />} />
                   <Route
                     path="oauth-playground/auth-code-pkce"
@@ -62,6 +70,10 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="saml/sp-metadata" element={<SpMetadataGeneratorPage />} />
                   <Route path="ldap/schema-explorer" element={<LdapSchemaExplorerPage />} />
                   <Route path="ldap/ldif-builder" element={<LdifBuilderPage />} />
+                  <Route path="ldap/filter-studio" element={<LdapFilterStudioPage />} />
+                  <Route path="scim/resource-validator" element={<ScimResourceValidatorPage />} />
+                  <Route path="scim/patch-builder" element={<ScimPatchBuilderPage />} />
+                  <Route path="mfa/totp" element={<TotpDebuggerPage />} />
                   {/* Catch-all 404 route */}
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>

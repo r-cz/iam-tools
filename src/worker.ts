@@ -4,11 +4,13 @@
 import { DEMO_JWKS } from './lib/jwt/demo-key'
 import { signToken } from './lib/jwt/sign-token'
 import { CSP_INLINE_SCRIPT_SHA256 } from './csp-hashes'
+import { isAllowedDemoRedirectUri } from './features/oauthPlayground/utils/demo-redirect'
 
 type AssetsBinding = { fetch: (request: Request) => Promise<Response> }
 interface Env {
   ASSETS: AssetsBinding
   CORS_ALLOWED_ORIGINS?: string
+  DEMO_REDIRECT_URIS?: string
   DEMO_TOKEN_SIGNING_SECRET?: string
 }
 
@@ -17,6 +19,25 @@ type RateLimitConfig = { max: number; windowMs: number }
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>()
 const CORS_PROXY_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 60_000 }
+const CORS_PROXY_MAX_REDIRECTS = 3
+const CORS_PROXY_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
+const CORS_PROXY_ALLOWED_REQUEST_HEADERS = new Set([
+  'accept',
+  'accept-language',
+  'cache-control',
+  'if-modified-since',
+  'if-none-match',
+])
+const CORS_PROXY_ALLOWED_RESPONSE_HEADERS = new Set([
+  'cache-control',
+  'content-language',
+  'content-length',
+  'content-type',
+  'date',
+  'etag',
+  'expires',
+  'last-modified',
+])
 const DEMO_RATE_LIMIT: RateLimitConfig = { max: 120, windowMs: 60_000 }
 const OIDC_PREFLIGHT_PROBE_RATE_LIMIT: RateLimitConfig = { max: 90, windowMs: 60_000 }
 const SIGNED_ENVELOPE_VERSION = 'v1'
@@ -105,6 +126,13 @@ function parseAllowedOrigins(env?: Env): string[] {
   return raw
     .split(',')
     .map((origin) => origin.trim())
+    .filter(Boolean)
+}
+
+function parseDemoRedirectUris(env?: Env): string[] {
+  return (env?.DEMO_REDIRECT_URIS ?? '')
+    .split(',')
+    .map((redirectUri) => redirectUri.trim())
     .filter(Boolean)
 }
 
@@ -341,11 +369,14 @@ async function handleAuthorization(request: Request, env: Env): Promise<Response
   const codeChallengeMethod = params.get('code_challenge_method') || undefined
   const nonce = params.get('nonce') || undefined
   const subject = normalizeDemoSubject(params.get('login_hint'))
+  const redirectAllowed = redirectUri
+    ? isAllowedDemoRedirectUri(redirectUri, request.url, parseDemoRedirectUris(env))
+    : false
 
   if (!clientId || !redirectUri) {
     return buildAuthorizationError(
       {
-        redirectUri,
+        redirectUri: redirectAllowed ? redirectUri : null,
         state,
         error: 'invalid_request',
         description: 'client_id and redirect_uri are required',
@@ -355,15 +386,13 @@ async function handleAuthorization(request: Request, env: Env): Promise<Response
     )
   }
 
-  try {
-    new URL(redirectUri)
-  } catch {
+  if (!redirectAllowed) {
     return buildAuthorizationError(
       {
         redirectUri: null,
         state,
         error: 'invalid_request',
-        description: 'redirect_uri is invalid',
+        description: 'redirect_uri is not registered for this demo provider',
       },
       request,
       env
@@ -719,7 +748,10 @@ function buildAuthorizationError(
   request: Request,
   env: Env
 ): Response {
-  if (opts.redirectUri) {
+  if (
+    opts.redirectUri &&
+    isAllowedDemoRedirectUri(opts.redirectUri, request.url, parseDemoRedirectUris(env))
+  ) {
     try {
       const redirect = new URL(opts.redirectUri)
       redirect.searchParams.set('error', opts.error)
@@ -1377,11 +1409,11 @@ async function handleCorsProxy(request: Request, env: Env): Promise<Response> {
 
   try {
     const targetUrl = decodeURIComponent(rest)
-    // Validate URL
-    new URL(targetUrl)
+    const initialTarget = new URL(targetUrl)
 
-    // Only allow well-known/JWKS-like endpoints; restrict to safe methods
-    if (!isAllowedEndpoint(targetUrl)) {
+    // Only proxy public HTTPS metadata endpoints. Local development targets are
+    // fetched directly by the browser and never need this server-side escape hatch.
+    if (!isSafeCorsProxyTarget(initialTarget, true)) {
       return new Response('This endpoint is not allowed', {
         status: 403,
         headers: corsHeaders(request, env),
@@ -1391,13 +1423,56 @@ async function handleCorsProxy(request: Request, env: Env): Promise<Response> {
       return new Response('Method not allowed', { status: 405, headers: corsHeaders(request, env) })
     }
 
-    const forward = new Request(targetUrl, {
-      method: request.method,
-      headers: filterHeaders(request.headers),
-    })
+    let currentTarget = initialTarget
+    let resp: Response | null = null
 
-    const resp = await fetch(forward)
-    const headers = new Headers(resp.headers)
+    for (let redirectCount = 0; redirectCount <= CORS_PROXY_MAX_REDIRECTS; redirectCount += 1) {
+      const forward = new Request(currentTarget.toString(), {
+        method: request.method,
+        headers: filterProxyRequestHeaders(request.headers),
+        redirect: 'manual',
+      })
+
+      resp = await fetch(forward)
+      if (!CORS_PROXY_REDIRECT_STATUSES.has(resp.status)) {
+        break
+      }
+
+      const location = resp.headers.get('Location')
+      if (!location) {
+        return new Response('Upstream redirect is missing a Location header', {
+          status: 502,
+          headers: corsHeaders(request, env),
+        })
+      }
+
+      if (redirectCount === CORS_PROXY_MAX_REDIRECTS) {
+        return new Response('Too many upstream redirects', {
+          status: 508,
+          headers: corsHeaders(request, env),
+        })
+      }
+
+      const nextTarget = new URL(location, currentTarget)
+      const crossedOrigin = nextTarget.origin !== currentTarget.origin
+      if (!isSafeCorsProxyTarget(nextTarget, crossedOrigin)) {
+        return new Response('Upstream redirect target is not allowed', {
+          status: 403,
+          headers: corsHeaders(request, env),
+        })
+      }
+
+      currentTarget = nextTarget
+    }
+
+    if (!resp) {
+      return new Response('Unable to fetch upstream endpoint', {
+        status: 502,
+        headers: corsHeaders(request, env),
+      })
+    }
+
+    const headers = filterProxyResponseHeaders(resp.headers)
     const proxyCorsHeaders = corsHeaders(request, env)
     for (const [key, value] of Object.entries(proxyCorsHeaders)) {
       headers.set(key, value)
@@ -1439,14 +1514,43 @@ function isAllowedEndpoint(urlStr: string): boolean {
   return isWellKnown || isJwks || isSamlMeta
 }
 
-function filterHeaders(headers: Headers): Headers {
+function isSafeCorsProxyTarget(url: URL, requireAllowedPath: boolean): boolean {
+  if (url.protocol !== 'https:' || url.username || url.password) {
+    return false
+  }
+
+  if (url.port && url.port !== '443') {
+    return false
+  }
+
+  if (isPrivateOrLocalHostname(url.hostname)) {
+    return false
+  }
+
+  // Identity metadata should be hosted by a DNS name. Rejecting every IP
+  // literal also closes alternate numeric forms of loopback/private targets.
+  if (parseIpv4Address(url.hostname) || url.hostname.includes(':')) {
+    return false
+  }
+
+  return !requireAllowedPath || isAllowedEndpoint(url.toString())
+}
+
+function filterProxyRequestHeaders(headers: Headers): Headers {
   const filtered = new Headers()
   for (const [k, v] of headers.entries()) {
     const key = k.toLowerCase()
-    if (key.startsWith('cf-')) continue
-    if (key.startsWith('cloudflare-')) continue
-    if (key === 'host' || key === 'origin' || key === 'referer') continue
+    if (!CORS_PROXY_ALLOWED_REQUEST_HEADERS.has(key)) continue
     filtered.set(k, v)
+  }
+  return filtered
+}
+
+function filterProxyResponseHeaders(headers: Headers): Headers {
+  const filtered = new Headers()
+  for (const [key, value] of headers.entries()) {
+    if (!CORS_PROXY_ALLOWED_RESPONSE_HEADERS.has(key.toLowerCase())) continue
+    filtered.set(key, value)
   }
   return filtered
 }

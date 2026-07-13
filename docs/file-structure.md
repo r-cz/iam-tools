@@ -13,7 +13,13 @@ This project uses a feature-based architecture to organize code. Each feature is
 │   │   ├── oauthPlayground/# OAuth flows, introspection, UserInfo
 │   │   ├── saml/           # SAML response, request, metadata tools
 │   │   ├── ldap/           # LDAP schema explorer and LDIF builder
+│   │   ├── ldap-filter/    # RFC 4515 filter parser and studio
+│   │   ├── scim/           # SCIM resource validation and PATCH tools
+│   │   ├── token-comparison/# JWT claims diff
+│   │   ├── redirect-uri/   # OAuth redirect URI debugger
+│   │   ├── totp/           # RFC 6238 TOTP debugger
 │   │   └── not-found/      # 404 route
+│   ├── config/             # Typed tool catalog and route metadata
 │   ├── components/         # Shared components
 │   │   ├── layout/         # Layout components
 │   │   ├── navigation/     # Navigation components

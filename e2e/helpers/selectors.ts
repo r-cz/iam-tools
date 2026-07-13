@@ -3,12 +3,18 @@ export const selectors = {
   nav: {
     home: '[data-testid="sidebar-nav-home"]',
     tokenInspector: '[data-testid="sidebar-nav-token-inspector"]',
+    tokenComparison: '[data-testid="sidebar-nav-token-comparison"]',
     oidcExplorer: '[data-testid="sidebar-nav-oidc-explorer"]',
+    redirectUriDebugger: '[data-testid="sidebar-nav-redirect-uri-debugger"]',
     oauthPlayground: '[data-testid="sidebar-nav-oauth-playground"]',
     authCodePkce: '[data-testid="sidebar-nav-oauth-auth-code"]',
     clientCredentials: '[data-testid="sidebar-nav-oauth-client-credentials"]',
     introspection: '[data-testid="sidebar-nav-oauth-introspection"]',
     userinfo: '[data-testid="sidebar-nav-oauth-userinfo"]',
+    scimResourceValidator: '[data-testid="sidebar-nav-scim-resource-validator"]',
+    scimPatchBuilder: '[data-testid="sidebar-nav-scim-patch-builder"]',
+    totpDebugger: '[data-testid="sidebar-nav-totp-debugger"]',
+    ldapFilterStudio: '[data-testid="sidebar-nav-ldap-filter-studio"]',
   },
 
   // Common buttons
@@ -23,8 +29,14 @@ export const selectors = {
   // Home cards
   home: {
     tokenInspector: '[data-testid="home-card-token-inspector"]',
+    tokenComparison: '[data-testid="home-card-token-comparison"]',
     oidcExplorer: '[data-testid="home-card-oidc-explorer"]',
     oauthPlayground: '[data-testid="home-card-oauth-playground"]',
+    redirectUriDebugger: '[data-testid="home-card-redirect-uri-debugger"]',
+    scimResourceValidator: '[data-testid="home-card-scim-resource-validator"]',
+    scimPatchBuilder: '[data-testid="home-card-scim-patch-builder"]',
+    totpDebugger: '[data-testid="home-card-totp-debugger"]',
+    ldapFilterStudio: '[data-testid="home-card-ldap-filter-studio"]',
   },
 
   // Token Inspector

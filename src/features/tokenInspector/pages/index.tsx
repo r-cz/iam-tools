@@ -14,7 +14,7 @@ export default function TokenInspectorPage() {
         description="Decode and inspect JWT tokens used in OAuth 2.0 and OpenID Connect protocols. Validate tokens, examine claims, and verify signatures."
         icon={KeyRound}
       />
-      <TokenInspector initialToken={urlToken} />
+      <TokenInspector key={urlToken ?? 'empty'} initialToken={urlToken} />
     </PageContainer>
   )
 }

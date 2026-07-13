@@ -12,6 +12,7 @@ import {
   Monitor,
   Trash,
   Save,
+  History,
   Activity,
 } from 'lucide-react'
 
@@ -42,6 +43,14 @@ import { oidcConfigCache } from '@/lib/cache/oidc-config-cache'
 import { jwksCache } from '@/lib/cache/jwks-cache'
 import { getDiagnosticsSnapshot, subscribeDiagnostics } from '@/lib/diagnostics/client-diagnostics'
 import { toast } from 'sonner'
+
+function formatMs(value?: number): string {
+  return typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)} ms` : '—'
+}
+
+function formatScore(value?: number): string {
+  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(3) : '—'
+}
 
 export function NavSettings() {
   const { isMobile } = useSidebar()
@@ -91,8 +100,7 @@ export function NavSettings() {
     if (typeof window === 'undefined' || !('performance' in window)) return
 
     const navEntry = performance.getEntriesByType('navigation')[0] as
-      | PerformanceNavigationTiming
-      | undefined
+      PerformanceNavigationTiming | undefined
     const paintEntries = performance.getEntriesByType('paint') as PerformanceEntry[]
     const fcpEntry = paintEntries.find((entry) => entry.name === 'first-contentful-paint')
 
@@ -151,11 +159,6 @@ export function NavSettings() {
 
   useEffect(() => subscribeDiagnostics(setDiagnostics), [])
 
-  const formatMs = (value?: number) =>
-    typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)} ms` : '—'
-  const formatScore = (value?: number) =>
-    typeof value === 'number' && Number.isFinite(value) ? value.toFixed(3) : '—'
-
   const performanceSummary = useMemo(
     () => ({
       ttfb: formatMs(perfMetrics?.ttfb),
@@ -185,6 +188,16 @@ export function NavSettings() {
     updateSettings({ maxHistoryItems: maxItems })
     toast.success('Settings updated', {
       description: `Maximum history items set to ${maxItems}.`,
+    })
+  }
+
+  const handleTokenHistoryChange = (value: string) => {
+    const persistTokenHistory = value === 'enabled'
+    updateSettings({ persistTokenHistory })
+    toast.success(persistTokenHistory ? 'Token history enabled' : 'Token history disabled', {
+      description: persistTokenHistory
+        ? 'Decoded tokens may now be saved in this browser.'
+        : 'Newly decoded tokens will not be saved in browser storage.',
     })
   }
 
@@ -257,6 +270,23 @@ export function NavSettings() {
             </DropdownMenuSub>
 
             {/* Storage Settings */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                <span>Token History</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuLabel>Save decoded tokens</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={settings.persistTokenHistory === true ? 'enabled' : 'disabled'}
+                  onValueChange={handleTokenHistoryChange}
+                >
+                  <DropdownMenuRadioItem value="disabled">Off (recommended)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="enabled">On</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="flex items-center gap-2">
                 <Save className="h-4 w-4" />

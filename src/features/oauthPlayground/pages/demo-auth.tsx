@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { isAllowedDemoRedirectUri } from '../utils/demo-redirect'
 
 export function DemoAuthPage() {
   const [searchParams] = useSearchParams()
@@ -25,6 +26,9 @@ export function DemoAuthPage() {
   const scope = searchParams.get('scope') || ''
   const codeChallenge = searchParams.get('code_challenge') || ''
   const codeChallengeMethod = searchParams.get('code_challenge_method') || ''
+  const redirectAllowed = redirectUri
+    ? isAllowedDemoRedirectUri(redirectUri, window.location.href)
+    : false
 
   // Form state
   const [username, setUsername] = useState('demo-user')
@@ -32,11 +36,13 @@ export function DemoAuthPage() {
     ? 'Missing client_id parameter'
     : !redirectUri
       ? 'Missing redirect_uri parameter'
-      : !codeChallenge
-        ? 'Missing code_challenge parameter'
-        : codeChallengeMethod !== 'S256'
-          ? 'Unsupported code_challenge_method. Only S256 is supported.'
-          : null
+      : !redirectAllowed
+        ? 'The redirect_uri is not registered for this demo provider.'
+        : !codeChallenge
+          ? 'Missing code_challenge parameter'
+          : codeChallengeMethod !== 'S256'
+            ? 'Unsupported code_challenge_method. Only S256 is supported.'
+            : null
 
   // Handle login
   const handleLogin = () => {
@@ -70,6 +76,8 @@ export function DemoAuthPage() {
 
   // Handle deny
   const handleDeny = () => {
+    if (error) return
+
     // Construct the redirect URL with the error
     const redirectUrl = new URL(redirectUri)
     redirectUrl.searchParams.set('error', 'access_denied')

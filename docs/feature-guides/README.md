@@ -9,6 +9,7 @@ This directory contains detailed documentation for each feature in the IAM Tools
 - [OAuth Playground](./oauth-playground.md) - Documentation for the interactive OAuth 2.0 flow testing tool
 - [SAML Suite](./saml-suite.md) - Documentation for SAML tools: Response Decoder, Request Builder, Metadata Validator, SP Metadata
 - [LDAP Tools](./ldap-suite.md) - Documentation for LDAP Schema Explorer and LDIF Builder & Viewer
+- [Local IAM Utilities](./local-iam-utilities.md) - Token diff, redirect URI, SCIM, LDAP filter, and TOTP tools
 
 ## Adding New Feature Guides
 

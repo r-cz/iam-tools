@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader } from '@/components/ui/card'
 import { LucideIcon } from 'lucide-react'
 
 interface PageHeaderProps {
@@ -13,8 +13,8 @@ export function PageHeader({ title, description, icon: Icon }: PageHeaderProps) 
     <Card className="mb-6">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
-          {Icon && <Icon className="h-5 w-5 text-primary" />}
-          <CardTitle>{title}</CardTitle>
+          {Icon && <Icon className="h-5 w-5 text-primary" aria-hidden="true" />}
+          <h1 className="leading-none font-semibold">{title}</h1>
         </div>
         {description && <CardDescription className="text-sm">{description}</CardDescription>}
       </CardHeader>

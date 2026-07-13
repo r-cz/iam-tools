@@ -125,11 +125,15 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   // Token history methods
   const addToken = useCallback(
     (token: string) => {
+      // Raw tokens can contain sensitive claims and credentials. Persist them only
+      // after the user explicitly enables token history in Settings.
+      if (settings.persistTokenHistory !== true) return
+
       setTokenHistory((currentHistory) =>
         addTokenToHistory(currentHistory, token, settings.maxHistoryItems)
       )
     },
-    [setTokenHistory, settings.maxHistoryItems]
+    [setTokenHistory, settings.maxHistoryItems, settings.persistTokenHistory]
   )
 
   const updateToken = useCallback(
