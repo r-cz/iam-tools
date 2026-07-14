@@ -32,6 +32,11 @@ async function setupDom() {
 
 await setupDom()
 
+// Radix components access this constructor directly instead of through window.
+if (!(globalThis as any).HTMLFormElement && globalThis.document) {
+  ;(globalThis as any).HTMLFormElement = globalThis.document.createElement('form').constructor
+}
+
 try {
   const mod: any = await import('happy-dom')
   for (const WindowLike of [mod.Window, mod.BrowserWindow]) {
