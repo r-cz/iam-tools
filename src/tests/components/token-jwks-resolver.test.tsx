@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { cleanup, render } from '@testing-library/react'
+import { act, cleanup, render } from '@testing-library/react'
 import React from 'react'
 import { TokenJwksResolver } from '@/features/tokenInspector/components/TokenJwksResolver'
 import { jwksCache } from '@/lib/cache/jwks-cache'
@@ -260,6 +260,54 @@ describe('TokenJwksResolver component', () => {
     expect(document.body.textContent).toContain(
       'Automatic discovery failed: OIDC discovery failed: 403 Forbidden'
     )
+  })
+
+  test('hides a stale discovery error when discovery is bypassed', async () => {
+    const staleError = new Error('OIDC discovery failed: 403 Forbidden')
+    const preferredJwksUri = 'https://saved.example.com/.well-known/jwks.json'
+    const jwksFetcher: OidcFetchFunction = async () => createJsonResponse(sampleJwksResponse)
+    const { rerender } = render(
+      <TokenJwksResolver
+        issuerUrl="https://issuer.example.com"
+        setIssuerUrl={() => {}}
+        onJwksResolved={() => {}}
+        oidcConfigError={staleError}
+        jwksFetcher={jwksFetcher}
+      />
+    )
+
+    expect(document.body.textContent).toContain('Automatic discovery failed:')
+
+    await act(async () => {
+      rerender(
+        <TokenJwksResolver
+          issuerUrl="https://issuer.example.com"
+          setIssuerUrl={() => {}}
+          onJwksResolved={() => {}}
+          oidcConfigError={staleError}
+          preferredJwksUri={preferredJwksUri}
+          jwksFetcher={jwksFetcher}
+        />
+      )
+      await waitForAsyncEffects()
+    })
+
+    expect(document.body.textContent).not.toContain('Automatic discovery failed:')
+
+    await act(async () => {
+      rerender(
+        <TokenJwksResolver
+          issuerUrl="https://issuer.example.com"
+          setIssuerUrl={() => {}}
+          onJwksResolved={() => {}}
+          oidcConfigError={staleError}
+          isCurrentTokenDemo
+          jwksFetcher={jwksFetcher}
+        />
+      )
+    })
+
+    expect(document.body.textContent).not.toContain('Automatic discovery failed:')
   })
 
   test('prefers a saved JWKS URI over the OIDC configuration JWKS URI', async () => {

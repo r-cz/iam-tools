@@ -294,11 +294,14 @@ export function TokenJwksResolver({
             >
               {isLoadingOidcConfig || isJwksLoading ? 'Fetching...' : 'Fetch JWKS'}
             </Button>
-            {oidcConfigError && !isLoadingOidcConfig && (
-              <p className="text-xs text-destructive" role="alert">
-                Automatic discovery failed: {getDiscoveryErrorSummary(oidcConfigError)}
-              </p>
-            )}
+            {oidcConfigError &&
+              !isLoadingOidcConfig &&
+              !preferredJwksUri &&
+              !isCurrentTokenDemo && (
+                <p className="text-xs text-destructive" role="alert">
+                  Automatic discovery failed: {getDiscoveryErrorSummary(oidcConfigError)}
+                </p>
+              )}
           </div>
           <p className="text-xs text-muted-foreground">
             Fetches JWKS based on the token's 'iss' claim. Use this for real external tokens.
