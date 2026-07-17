@@ -17,6 +17,8 @@ interface TokenSignatureProps {
   isCurrentTokenDemo?: boolean // Flag indicating if the token being inspected is a demo one
   oidcConfig?: any // OIDC configuration from parent
   isLoadingOidcConfig?: boolean // OIDC config loading state
+  oidcConfigError?: Error | null
+  onFetchOidcConfig?: (issuerUrl: string) => Promise<void>
   preferredJwksUri?: string | null
   jwksFetcher?: OidcFetchFunction
 }
@@ -33,6 +35,8 @@ export function TokenSignature({
   isCurrentTokenDemo, // Use the flag passed from the parent
   oidcConfig,
   isLoadingOidcConfig,
+  oidcConfigError,
+  onFetchOidcConfig,
   preferredJwksUri,
   jwksFetcher,
 }: TokenSignatureProps) {
@@ -100,6 +104,8 @@ export function TokenSignature({
             isCurrentTokenDemo={isCurrentTokenDemo}
             oidcConfig={oidcConfig}
             isLoadingOidcConfig={isLoadingOidcConfig}
+            oidcConfigError={oidcConfigError}
+            onFetchOidcConfig={onFetchOidcConfig}
             preferredJwksUri={preferredJwksUri}
             jwksFetcher={jwksFetcher}
           />

@@ -19,8 +19,14 @@ interface TokenJwksResolverProps {
   isCurrentTokenDemo?: boolean // Flag from parent indicating if the current token is a demo one
   oidcConfig?: any // OIDC configuration from parent
   isLoadingOidcConfig?: boolean // OIDC config loading state
+  oidcConfigError?: Error | null
+  onFetchOidcConfig?: (issuerUrl: string) => Promise<void>
   preferredJwksUri?: string | null
   jwksFetcher?: OidcFetchFunction
+}
+
+function getDiscoveryErrorSummary(error: Error): string {
+  return error.message.split(/\s+-\s+/, 1)[0] || 'OIDC discovery failed'
 }
 
 export function TokenJwksResolver({
@@ -30,6 +36,8 @@ export function TokenJwksResolver({
   isCurrentTokenDemo = false, // Default to false if not provided
   oidcConfig,
   isLoadingOidcConfig,
+  oidcConfigError,
+  onFetchOidcConfig,
   preferredJwksUri,
   jwksFetcher,
 }: TokenJwksResolverProps) {
@@ -114,6 +122,8 @@ export function TokenJwksResolver({
         console.log(`Fetching JWKS directly from: ${oidcConfig.jwks_uri}`)
       }
       void fetchAndApplyJwks(oidcConfig.jwks_uri, true)
+    } else if (onFetchOidcConfig) {
+      void onFetchOidcConfig(issuerUrl)
     } else {
       toast.info('OIDC configuration not yet loaded. Please wait...')
     }
@@ -284,6 +294,11 @@ export function TokenJwksResolver({
             >
               {isLoadingOidcConfig || isJwksLoading ? 'Fetching...' : 'Fetch JWKS'}
             </Button>
+            {oidcConfigError && !isLoadingOidcConfig && (
+              <p className="text-xs text-destructive" role="alert">
+                Automatic discovery failed: {getDiscoveryErrorSummary(oidcConfigError)}
+              </p>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Fetches JWKS based on the token's 'iss' claim. Use this for real external tokens.

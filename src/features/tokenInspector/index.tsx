@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as jose from 'jose'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -33,6 +33,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   const [activeTab, setActiveTab] = useState('payload')
   const [manualIssuerUrl, setManualIssuerUrl] = useState('') // Manual issuer URL override
   const [selectedEnvironment, setSelectedEnvironment] = useState<EnvironmentProfile | null>(null)
+  const lastOidcDiscoveryAttemptRef = useRef<string | null>(null)
 
   // Token decoder hook for decoding and validation logic
   const {
@@ -53,6 +54,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     data: oidcConfig,
     currentIssuer: oidcConfigIssuer,
     isLoading: isOidcConfigLoading,
+    error: oidcConfigError,
     fetchConfig: fetchOidcConfig,
   } = useOidcConfig()
 
@@ -88,16 +90,26 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
   // Effect to fetch OIDC config when issuer changes
   useEffect(() => {
     if (!issuerUrl || isDemoToken || selectedEnvironment?.jwksEndpoint) {
+      if (!issuerUrl) {
+        lastOidcDiscoveryAttemptRef.current = null
+      }
       return
     }
 
     const hasConfigForIssuer = oidcConfig?.issuer === issuerUrl && oidcConfigIssuer === issuerUrl
 
-    if (!hasConfigForIssuer && !isOidcConfigLoading) {
+    if (
+      !hasConfigForIssuer &&
+      !isOidcConfigLoading &&
+      lastOidcDiscoveryAttemptRef.current !== issuerUrl
+    ) {
       if (import.meta?.env?.DEV) {
         console.log('Fetching OIDC config for issuer:', issuerUrl)
       }
-      fetchOidcConfig(issuerUrl)
+      // Mark the issuer before starting the request. A failed request toggles the loading
+      // state, which must not be interpreted as a reason to immediately retry forever.
+      lastOidcDiscoveryAttemptRef.current = issuerUrl
+      void fetchOidcConfig(issuerUrl)
     }
   }, [
     fetchOidcConfig,
@@ -118,6 +130,7 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     setJwks(null) // Reset loaded JWKS
     setManualIssuerUrl('') // Clear manual issuer override
     setSelectedEnvironment(null)
+    lastOidcDiscoveryAttemptRef.current = null
     resetState() // Call hook's reset function
     // Clear token from URL if it was present
     if (initialToken) {
@@ -327,6 +340,8 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
                   isCurrentTokenDemo={isDemoToken} // Pass the flag indicating if CURRENT token is demo
                   oidcConfig={effectiveOidcConfig} // Pass OIDC config data
                   isLoadingOidcConfig={isOidcConfigLoading} // Pass loading state
+                  oidcConfigError={oidcConfigError}
+                  onFetchOidcConfig={(nextIssuerUrl) => fetchOidcConfig(nextIssuerUrl)}
                   preferredJwksUri={selectedEnvironment?.jwksEndpoint ?? null}
                 />
               </TabsContent>

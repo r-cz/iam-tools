@@ -247,6 +247,21 @@ describe('JWKS Resolver Logic', () => {
 })
 
 describe('TokenJwksResolver component', () => {
+  test('shows a stable discovery error after automatic lookup fails', () => {
+    render(
+      <TokenJwksResolver
+        issuerUrl="https://issuer.example.com"
+        setIssuerUrl={() => {}}
+        onJwksResolved={() => {}}
+        oidcConfigError={new Error('OIDC discovery failed: 403 Forbidden - <html>blocked</html>')}
+      />
+    )
+
+    expect(document.body.textContent).toContain(
+      'Automatic discovery failed: OIDC discovery failed: 403 Forbidden'
+    )
+  })
+
   test('prefers a saved JWKS URI over the OIDC configuration JWKS URI', async () => {
     const preferredJwksUri = 'https://saved.example.com/.well-known/jwks.json'
     const discoveredJwksUri = 'https://issuer.example.com/.well-known/jwks.json'
