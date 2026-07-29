@@ -23,7 +23,7 @@ interface TokenInputProps {
   onDecode: () => void
   onReset: () => void
   onJwksResolved?: (jwks: any) => void // Optional callback for JWKS
-  initialToken?: string | null // Token from URL parameter
+  initialToken?: string | null // Token received from a secure in-app handoff
   onSelectTokenFromHistory?: (token: string) => void // Callback for when a token is selected from history
   environmentAction?: React.ReactNode
 }
@@ -72,13 +72,6 @@ export function TokenInput({
   const handleReset = () => {
     setIsExampleToken(false)
     onReset()
-
-    // Remove the token parameter from the URL without refreshing the page
-    if (initialToken) {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('token')
-      window.history.replaceState({}, '', url.toString())
-    }
   }
 
   const loadExampleToken = async () => {
@@ -248,8 +241,8 @@ export function TokenInput({
         <Alert className="my-2 py-2 bg-green-500/10 border-green-500/20 text-green-700">
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
-            This token was provided via URL parameters. You can share links with tokens for quick
-            inspection.
+            This token arrived through a one-time, session-only handoff and was removed from the
+            handoff store after opening.
           </AlertDescription>
         </Alert>
       )}

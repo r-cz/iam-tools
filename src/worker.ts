@@ -5,6 +5,11 @@ import { DEMO_JWKS } from './lib/jwt/demo-key'
 import { signToken } from './lib/jwt/sign-token'
 import { CSP_INLINE_SCRIPT_SHA256 } from './csp-hashes'
 import { isAllowedDemoRedirectUri } from './features/oauthPlayground/utils/demo-redirect'
+import {
+  assessPublicNetworkTarget,
+  isPrivateOrLocalHostname,
+  parseIpv4Address,
+} from './lib/network/target-safety'
 
 type AssetsBinding = { fetch: (request: Request) => Promise<Response> }
 interface Env {
@@ -1324,22 +1329,12 @@ function sanitizeOidcProbeHeaders(rawHeaders: unknown): Headers {
 }
 
 function isAllowedOidcProbeTarget(urlStr: string): boolean {
-  let parsed: URL
-  try {
-    parsed = new URL(urlStr)
-  } catch {
+  const assessment = assessPublicNetworkTarget(urlStr)
+  if (!assessment.allowed) {
     return false
   }
 
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    return false
-  }
-
-  if (isPrivateOrLocalHostname(parsed.hostname)) {
-    return false
-  }
-
-  const path = parsed.pathname.toLowerCase()
+  const path = assessment.url.pathname.toLowerCase()
   return (
     path.includes('/.well-known/openid-configuration') ||
     path.includes('/authorize') ||
@@ -1355,49 +1350,6 @@ function isAllowedOidcProbeTarget(urlStr: string): boolean {
     path.includes('/oidc') ||
     path.includes('/connect')
   )
-}
-
-function isPrivateOrLocalHostname(hostname: string): boolean {
-  const lower = hostname.toLowerCase()
-  if (
-    lower === 'localhost' ||
-    lower === '127.0.0.1' ||
-    lower === '::1' ||
-    lower === '0.0.0.0' ||
-    lower.endsWith('.local')
-  ) {
-    return true
-  }
-
-  const ipv4 = parseIpv4Address(lower)
-  if (!ipv4) {
-    // Avoid proxying probe requests to IPv6 literals.
-    return lower.includes(':')
-  }
-
-  const [a, b] = ipv4
-  return (
-    a === 10 ||
-    a === 127 ||
-    a === 0 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168)
-  )
-}
-
-function parseIpv4Address(hostname: string): number[] | null {
-  const parts = hostname.split('.')
-  if (parts.length !== 4) {
-    return null
-  }
-
-  const octets = parts.map((part) => Number(part))
-  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
-    return null
-  }
-
-  return octets
 }
 
 async function handleCorsProxy(request: Request, env: Env): Promise<Response> {

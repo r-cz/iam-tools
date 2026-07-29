@@ -307,21 +307,31 @@ describe('worker api', () => {
   })
 
   test('rejects OIDC preflight probe for disallowed targets', async () => {
-    const response = await worker.fetch(
-      buildRequest('/api/oidc-preflight-probe', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          url: 'http://localhost:8080/oauth2/token',
-          method: 'POST',
-        }),
-      }),
-      createEnv()
-    )
+    const blockedTargets = [
+      'http://localhost:8080/oauth2/token',
+      'http://10.0.0.8/oauth2/token',
+      'http://169.254.169.254/latest/meta-data',
+      'https://user:secret@issuer.example.com/oauth2/token',
+    ]
 
-    expect(response.status).toBe(403)
-    const data = await response.json()
-    expect(data.ok).toBe(false)
+    for (const target of blockedTargets) {
+      const response = await worker.fetch(
+        buildRequest('/api/oidc-preflight-probe', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            url: target,
+            method: 'POST',
+          }),
+        }),
+        createEnv()
+      )
+
+      expect(response.status).toBe(403)
+      const data = await response.json()
+      expect(data.ok).toBe(false)
+    }
+
     expect(fetchCalls.length).toBe(0)
   })
 

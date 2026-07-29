@@ -19,6 +19,7 @@ import {
   SearchCheck,
   Server,
   Shield,
+  ShieldCheck,
   UserCheck,
   UserRoundCheck,
   UserRoundSearch,
@@ -100,6 +101,17 @@ export const toolCatalog: ToolCatalogSection[] = [
         tags: ['OAuth', 'Redirects'],
         homeTestId: 'home-card-redirect-uri-debugger',
         navigationTestId: 'sidebar-nav-redirect-uri-debugger',
+      },
+      {
+        id: 'environment-health',
+        title: 'Environment Health',
+        description:
+          'Check OIDC discovery and endpoint reachability for a saved environment or issuer.',
+        path: '/oauth/environment-health',
+        icon: ShieldCheck,
+        tags: ['OIDC', 'Diagnostics'],
+        homeTestId: 'home-card-environment-health',
+        navigationTestId: 'sidebar-nav-environment-health',
       },
       {
         id: 'oauth-playground',

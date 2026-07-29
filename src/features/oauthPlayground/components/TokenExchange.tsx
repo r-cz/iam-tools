@@ -16,6 +16,11 @@ import { toast } from 'sonner'
 import { JsonDisplay } from '@/components/common'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  createHandoff,
+  TOKEN_COMPARISON_DESTINATION,
+  TOKEN_INSPECTOR_DESTINATION,
+} from '@/lib/handoff'
 
 interface TokenExchangeProps {
   config: OAuthConfig
@@ -99,6 +104,31 @@ export function TokenExchange({
   const refreshRequestPayload = refreshToken
     ? createRefreshTokenPayload(config, refreshToken, customClaimsValue).toString()
     : ''
+
+  const inspectToken = (token: string) => {
+    const state = createHandoff(TOKEN_INSPECTOR_DESTINATION, { token })
+    if (!state) {
+      toast.error('Unable to securely open Token Inspector')
+      return
+    }
+
+    navigate(TOKEN_INSPECTOR_DESTINATION, { state })
+  }
+
+  const compareAccessAndIdTokens = () => {
+    if (!tokenResponse?.access_token || !tokenResponse.id_token) return
+
+    const state = createHandoff(TOKEN_COMPARISON_DESTINATION, {
+      leftToken: tokenResponse.access_token,
+      rightToken: tokenResponse.id_token,
+    })
+    if (!state) {
+      toast.error('Unable to securely open Token Claims Diff')
+      return
+    }
+
+    navigate(TOKEN_COMPARISON_DESTINATION, { state })
+  }
 
   const validateClaims = () => {
     if (!customClaims.trim()) {
@@ -422,11 +452,8 @@ export function TokenExchange({
               variant="outline"
               className="w-full"
               onClick={() => {
-                // Use React Router navigation for a smoother experience
                 if (tokenResponse.access_token) {
-                  navigate(
-                    `/token-inspector?token=${encodeURIComponent(tokenResponse.access_token)}`
-                  )
+                  inspectToken(tokenResponse.access_token)
                 }
               }}
             >
@@ -438,12 +465,21 @@ export function TokenExchange({
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  // Use React Router navigation for a smoother experience
-                  // Add ! to assert that id_token is not null/undefined here
-                  navigate(`/token-inspector?token=${encodeURIComponent(tokenResponse.id_token!)}`)
+                  inspectToken(tokenResponse.id_token!)
                 }}
               >
                 Inspect ID Token
+              </Button>
+            )}
+
+            {tokenResponse.access_token && tokenResponse.id_token && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={compareAccessAndIdTokens}
+                data-testid="token-exchange-compare-tokens"
+              >
+                Compare Access &amp; ID Tokens
               </Button>
             )}
           </div>

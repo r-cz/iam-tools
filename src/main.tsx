@@ -10,6 +10,7 @@ import { Toaster } from './components/ui/sonner'
 import { DiagnosticsListener } from './components/common/DiagnosticsListener'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { PageLoading } from './components/common/PageLoading'
+import { initializeHandoffCleanup } from './lib/handoff'
 
 const HomePage = lazy(() => import('./features/home'))
 const NotFoundPage = lazy(() => import('./features/not-found'))
@@ -17,6 +18,7 @@ const TokenInspectorPage = lazy(() => import('./features/tokenInspector/pages'))
 const TokenComparisonPage = lazy(() => import('./features/token-comparison/pages'))
 const OidcExplorerPage = lazy(() => import('./features/oidcExplorer/pages'))
 const RedirectUriDebuggerPage = lazy(() => import('./features/redirect-uri/pages'))
+const EnvironmentHealthPage = lazy(() => import('./features/environment-health'))
 const OAuthPlaygroundPage = lazy(() => import('./features/oauthPlayground/pages'))
 const OAuthCallbackPage = lazy(() => import('./features/oauthPlayground/pages/callback'))
 const DemoAuthPage = lazy(() => import('./features/oauthPlayground/pages/demo-auth'))
@@ -37,6 +39,8 @@ const ScimResourceValidatorPage = lazy(() => import('./features/scim/pages/resou
 const ScimPatchBuilderPage = lazy(() => import('./features/scim/pages/patch-builder'))
 const TotpDebuggerPage = lazy(() => import('./features/totp/pages'))
 
+initializeHandoffCleanup()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider defaultTheme="system" storageKey="iam-tools-theme">
@@ -53,6 +57,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="token-comparison" element={<TokenComparisonPage />} />
                   <Route path="oidc-explorer" element={<OidcExplorerPage />} />
                   <Route path="oauth/redirect-uri" element={<RedirectUriDebuggerPage />} />
+                  <Route path="oauth/environment-health" element={<EnvironmentHealthPage />} />
                   <Route path="oauth-playground" element={<OAuthPlaygroundPage />} />
                   <Route
                     path="oauth-playground/auth-code-pkce"

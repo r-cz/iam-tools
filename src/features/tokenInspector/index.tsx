@@ -25,9 +25,13 @@ import type { EnvironmentProfile } from '@/lib/state/types'
 
 interface TokenInspectorProps {
   initialToken?: string | null
+  initialTokenIsEphemeral?: boolean
 }
 
-export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
+export function TokenInspector({
+  initialToken = null,
+  initialTokenIsEphemeral = false,
+}: TokenInspectorProps) {
   const [token, setToken] = useState(initialToken || '')
   const [jwks, setJwks] = useState<jose.JSONWebKeySet | null>(null) // Holds the currently loaded JWKS
   const [activeTab, setActiveTab] = useState('payload')
@@ -132,20 +136,15 @@ export function TokenInspector({ initialToken = null }: TokenInspectorProps) {
     setSelectedEnvironment(null)
     lastOidcDiscoveryAttemptRef.current = null
     resetState() // Call hook's reset function
-    // Clear token from URL if it was present
-    if (initialToken) {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('token')
-      window.history.replaceState({}, '', url.toString())
-    }
   }
 
   // Effect to add token to history when successfully decoded
   useEffect(() => {
-    if (decodedToken && token && token.trim().length > 0) {
+    const isEphemeralInitialToken = initialTokenIsEphemeral && token === initialToken
+    if (decodedToken && token && token.trim().length > 0 && !isEphemeralInitialToken) {
       addToken(token)
     }
-  }, [decodedToken, token, addToken])
+  }, [addToken, decodedToken, initialToken, initialTokenIsEphemeral, token])
 
   // Callback for TokenInput when an example token is generated
   // It provides the corresponding DEMO_JWKS immediately

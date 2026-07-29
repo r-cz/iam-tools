@@ -1,4 +1,7 @@
-import { Outlet } from 'react-router-dom'
+import * as React from 'react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+
+import { CommandCenterProvider, CommandCenterTrigger } from '@/components/command-center'
 import { AppSidebar } from '@/components/navigation/app-sidebar'
 import { ThemeMeta } from '@/components/theme'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
@@ -11,11 +14,21 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { useLocation, Link } from 'react-router-dom'
-import { routeTitles } from '@/config/tool-catalog'
+import { allTools, routeTitles } from '@/config/tool-catalog'
+import { ToolPreferencesProvider, useToolPreferences } from '@/lib/state'
 
-export function Layout() {
+function LayoutContent() {
   const location = useLocation()
+  const { recordRecent } = useToolPreferences()
+  const lastTrackedPath = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    if (lastTrackedPath.current === location.pathname) return
+    lastTrackedPath.current = location.pathname
+
+    const activeTool = allTools.find((tool) => tool.path === location.pathname)
+    if (activeTool) recordRecent(activeTool.id)
+  }, [location.pathname, recordRecent])
 
   // Generate page title based on route with proper casing
   const getPageTitle = () => {
@@ -78,15 +91,13 @@ export function Layout() {
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2">
-          <div className="flex items-center gap-2 px-4 w-full justify-between">
+          <div className="flex w-full items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
+            <Breadcrumb className="min-w-0">
               <BreadcrumbList>{getBreadcrumbItems()}</BreadcrumbList>
             </Breadcrumb>
-            <div className="ml-auto">
-              {/* Theme toggle removed as it's now in the settings menu */}
-            </div>
+            <CommandCenterTrigger className="ml-auto w-10 justify-center px-0 sm:w-64 sm:justify-start sm:px-3" />
           </div>
         </header>
         {/* Main content area with id for skip link */}
@@ -95,5 +106,15 @@ export function Layout() {
         </main>
       </SidebarInset>
     </SidebarProvider>
+  )
+}
+
+export function Layout() {
+  return (
+    <ToolPreferencesProvider>
+      <CommandCenterProvider>
+        <LayoutContent />
+      </CommandCenterProvider>
+    </ToolPreferencesProvider>
   )
 }

@@ -1,4 +1,5 @@
 export * from './app-state-context'
 export * from './types'
 export * from './constants'
+export * from './tool-preferences-context'
 export * from './utils'
