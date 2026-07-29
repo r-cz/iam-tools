@@ -9,6 +9,8 @@ export const STORAGE_KEYS = {
   ISSUER_HISTORY: 'iam-tools-issuer-history',
   ENVIRONMENT_PROFILES: 'iam-tools-environment-profiles',
   USER_SETTINGS: 'iam-tools-user-settings',
+  FAVORITE_TOOL_IDS: 'iam-tools-favorite-tool-ids',
+  RECENT_TOOLS: 'iam-tools-recent-tools',
 }
 
 // Max history items

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { HomeIcon, KeyRound } from 'lucide-react'
+import { HomeIcon } from 'lucide-react'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -10,22 +10,13 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@/components/ui/item'
-import {
-  featuredToolIds,
-  getToolById,
-  toolCatalog,
-  type ToolCatalogItem,
-  type ToolCatalogSection,
-} from '@/config/tool-catalog'
+import { toolCatalog, type ToolCatalogItem, type ToolCatalogSection } from '@/config/tool-catalog'
+import { QuickAccess } from '@/features/home/quick-access'
 
 const homeSections = toolCatalog.map((section) => ({
   ...section,
   tools: section.tools.filter((tool) => tool.showOnHome !== false),
 }))
-
-const featuredTools = featuredToolIds
-  .map((id) => getToolById(id))
-  .filter((tool): tool is ToolCatalogItem => Boolean(tool))
 
 const totalToolCount = homeSections.reduce((count, section) => count + section.tools.length, 0)
 
@@ -97,26 +88,7 @@ export default function HomePage() {
       />
 
       <div className="flex flex-col gap-8">
-        <section className="grid gap-3 lg:grid-cols-4">
-          <Item className="h-full">
-            <ItemMedia variant="icon" className="bg-primary text-primary-foreground">
-              <KeyRound className="size-5" aria-hidden="true" />
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle>{totalToolCount} local-first tools</ItemTitle>
-              <ItemDescription>
-                Sensitive inputs stay in this tab. Network access is only used by tools that
-                explicitly call identity endpoints.
-              </ItemDescription>
-            </ItemContent>
-          </Item>
-
-          <ItemGroup className="grid gap-3 sm:grid-cols-3 lg:col-span-3">
-            {featuredTools.map((tool) => (
-              <ToolCard key={tool.path} tool={tool} exposeTestId={false} />
-            ))}
-          </ItemGroup>
-        </section>
+        <QuickAccess totalToolCount={totalToolCount} />
 
         {homeSections.map((section) => (
           <section key={section.id} className="flex flex-col gap-4">

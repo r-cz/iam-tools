@@ -35,6 +35,7 @@ import {
   extractDiscoveredEndpoints,
   fetchOidcDiscoveryConfiguration,
 } from '../utils/oidc-preflight'
+import { createHandoff, TOKEN_INSPECTOR_DESTINATION } from '@/lib/handoff'
 
 interface TokenResponse {
   access_token?: string
@@ -208,8 +209,15 @@ export function ClientCredentialsFlow() {
   // Function to handle inspecting the token
   const handleInspectToken = () => {
     if (result?.access_token) {
-      const inspectUrl = `/token-inspector?token=${encodeURIComponent(result.access_token)}`
-      navigate(inspectUrl)
+      const state = createHandoff(TOKEN_INSPECTOR_DESTINATION, {
+        token: result.access_token,
+      })
+      if (!state) {
+        toast.error('Unable to securely open Token Inspector')
+        return
+      }
+
+      navigate(TOKEN_INSPECTOR_DESTINATION, { state })
     }
   }
 

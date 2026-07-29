@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   ArrowRightLeft,
   Braces,
@@ -43,6 +44,11 @@ import {
   type DifferenceKind,
   type TokenMetadata,
 } from '../utils/token-comparison'
+import {
+  consumeHandoff,
+  getHandoffIdFromNavigationState,
+  TOKEN_COMPARISON_DESTINATION,
+} from '@/lib/handoff'
 
 const STATUS_VARIANTS: Record<DifferenceKind, 'default' | 'secondary' | 'destructive' | 'outline'> =
   {
@@ -122,9 +128,28 @@ function MetadataColumn({ label, metadata }: { label: string; metadata: TokenMet
 }
 
 export default function TokenComparisonPage() {
+  const location = useLocation()
+  const handoffId = getHandoffIdFromNavigationState(location.state)
+  const consumedHandoffIdRef = useRef<string | null>(null)
   const [leftToken, setLeftToken] = useState('')
   const [rightToken, setRightToken] = useState('')
   const [showUnchanged, setShowUnchanged] = useState(false)
+
+  useEffect(() => {
+    if (!handoffId) {
+      consumedHandoffIdRef.current = null
+      setLeftToken('')
+      setRightToken('')
+      setShowUnchanged(false)
+      return
+    }
+    if (consumedHandoffIdRef.current === handoffId) return
+
+    consumedHandoffIdRef.current = handoffId
+    const payload = consumeHandoff(handoffId, TOKEN_COMPARISON_DESTINATION)
+    setLeftToken(payload?.leftToken ?? '')
+    setRightToken(payload?.rightToken ?? '')
+  }, [handoffId])
 
   const leftDecode = useMemo(
     () => (leftToken.trim() ? decodeTokenForComparison(leftToken) : null),

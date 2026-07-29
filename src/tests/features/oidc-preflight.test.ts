@@ -53,6 +53,72 @@ describe('OIDC endpoint preflight', () => {
     ).rejects.toThrow(/OIDC discovery failed: 503/)
   })
 
+  test('bounds discovery fetch duration and aborts the underlying request', async () => {
+    let discoverySignal: AbortSignal | undefined
+    const fetcher = mock((_target: string, options?: RequestInit) => {
+      discoverySignal = options?.signal ?? undefined
+      return new Promise<Response>(() => {})
+    })
+
+    await expect(
+      fetchOidcDiscoveryConfiguration('https://issuer.example.com', fetcher, {
+        timeoutMs: 5,
+      })
+    ).rejects.toThrow(/timed out after 5ms/)
+
+    expect(discoverySignal?.aborted).toBe(true)
+  })
+
+  test('supports caller cancellation for discovery fetches', async () => {
+    const controller = new AbortController()
+    const fetcher = mock(
+      (_target: string, _options?: RequestInit) => new Promise<Response>(() => {})
+    )
+    const pending = fetchOidcDiscoveryConfiguration('https://issuer.example.com', fetcher, {
+      signal: controller.signal,
+    })
+
+    controller.abort()
+
+    await expect(pending).rejects.toThrow(/cancelled/)
+  })
+
+  test('keeps the timeout active while reading the discovery document body', async () => {
+    const fetcher = mock(async () => {
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () => new Promise<unknown>(() => {}),
+      } as Response
+    })
+
+    await expect(
+      fetchOidcDiscoveryConfiguration('https://issuer.example.com', fetcher, {
+        timeoutMs: 5,
+      })
+    ).rejects.toThrow(/timed out after 5ms/)
+  })
+
+  test('returns a bounded network-classified report when discovery times out', async () => {
+    const fetcher = mock(
+      (_target: string, _options?: RequestInit) => new Promise<Response>(() => {})
+    )
+
+    const report = await runOidcEndpointPreflight(
+      {
+        issuerUrl: 'https://issuer.example.com',
+        timeoutMs: 5,
+      },
+      fetcher
+    )
+
+    expect(report.endpoints).toHaveLength(1)
+    expect(report.endpoints[0]?.status).toBe('fail')
+    expect(report.endpoints[0]?.reasonCode).toBe('network_or_cors')
+    expect(report.endpoints[0]?.error).toContain('timed out after 5ms')
+  })
+
   test('classifies endpoint probe results with reachability-first semantics', async () => {
     const fetcher = mock(async (target: string) => {
       if (isDiscoveryUrl(target)) {
@@ -108,6 +174,37 @@ describe('OIDC endpoint preflight', () => {
 
     expect(byEndpoint.jwks_uri.status).toBe('fail')
     expect(byEndpoint.jwks_uri.reasonCode).toBe('missing_or_unavailable')
+  })
+
+  test('uses a dedicated direct fetcher only for authorized same-origin endpoint probes', async () => {
+    const discoveryFetcher = mock(async (target: string) => {
+      expect(isDiscoveryUrl(target)).toBe(true)
+      return createJsonResponse({
+        issuer: 'http://10.0.0.8',
+        authorization_endpoint: 'http://10.0.0.8/authorize',
+      })
+    })
+    const endpointProbeFetcher = mock(async (target: string) => {
+      expect(target).toBe('http://10.0.0.8/authorize')
+      return new Response(null, { status: 302 })
+    })
+
+    const report = await runOidcEndpointPreflight(
+      {
+        issuerUrl: 'http://10.0.0.8',
+        requiredEndpoints: ['authorization_endpoint'],
+        includeOptionalEndpoints: false,
+        endpointProbeFetcher,
+        enableServerAssistedProbes: false,
+      },
+      discoveryFetcher
+    )
+
+    expect(discoveryFetcher).toHaveBeenCalledTimes(1)
+    expect(endpointProbeFetcher).toHaveBeenCalledTimes(1)
+    expect(
+      report.endpoints.find((entry) => entry.endpoint === 'authorization_endpoint')?.status
+    ).toBe('pass')
   })
 
   test('treats 404/410/5xx as fail for required endpoints and warn for optional endpoints', async () => {
@@ -296,4 +393,89 @@ describe('OIDC endpoint preflight', () => {
     expect(userInfoResult?.status).toBe('warn')
     expect(userInfoResult?.reasonCode).toBe('invalid_url')
   })
+
+  test.each([
+    'http://localhost:8080/authorize',
+    'http://api.localhost/authorize',
+    'http://10.0.0.8/authorize',
+    'http://169.254.169.254/latest/meta-data',
+    'http://172.16.0.1/authorize',
+    'http://192.168.1.10/authorize',
+    'http://2130706433/authorize',
+    'http://[::1]/authorize',
+    'http://metadata.google.internal/authorize',
+    'https://auth.issuer.example.com/authorize',
+    'https://issuer.example.com:8443/authorize',
+    'https://attacker-controlled.example/authorize',
+    'https://user:secret@public.example.com/authorize',
+  ])('never probes unsafe discovery-controlled target %s', async (unsafeTarget) => {
+    const browserCalls: string[] = []
+    const browserFetcher = mock(async (target: string) => {
+      browserCalls.push(target)
+      if (isDiscoveryUrl(target)) {
+        return createJsonResponse({
+          issuer: 'https://issuer.example.com',
+          authorization_endpoint: unsafeTarget,
+        })
+      }
+
+      return createJsonResponse({}, 200)
+    })
+    const serverAssistedFetcher = mock(async () => createJsonResponse({ ok: true, status: 200 }))
+
+    const report = await runOidcEndpointPreflight(
+      {
+        issuerUrl: 'https://issuer.example.com',
+        requiredEndpoints: ['authorization_endpoint'],
+        includeOptionalEndpoints: false,
+        enableServerAssistedProbes: true,
+        serverAssistedProbeFetcher: serverAssistedFetcher,
+      },
+      browserFetcher
+    )
+
+    const result = report.endpoints.find((entry) => entry.endpoint === 'authorization_endpoint')
+    expect(result?.status).toBe('warn')
+    expect(result?.reasonCode).toBe('unsafe_target')
+    expect(result?.message).toContain('Probe blocked')
+    expect(browserCalls).toEqual(['https://issuer.example.com/.well-known/openid-configuration'])
+    expect(serverAssistedFetcher).not.toHaveBeenCalled()
+  })
+
+  test.each(['http://localhost:9000', 'http://10.0.0.8', 'http://issuer.corp.internal'])(
+    'probes same-origin endpoints for explicitly supplied issuer %s',
+    async (issuerUrl) => {
+      const calls: string[] = []
+      const fetcher = mock(async (target: string) => {
+        calls.push(target)
+        if (isDiscoveryUrl(target)) {
+          return createJsonResponse({
+            issuer: issuerUrl,
+            authorization_endpoint: `${issuerUrl}/authorize`,
+          })
+        }
+
+        return createJsonResponse({}, 200)
+      })
+
+      const report = await runOidcEndpointPreflight(
+        {
+          issuerUrl,
+          requiredEndpoints: ['authorization_endpoint'],
+          includeOptionalEndpoints: false,
+          enableServerAssistedProbes: false,
+        },
+        fetcher
+      )
+
+      expect(calls).toEqual([
+        `${issuerUrl}/.well-known/openid-configuration`,
+        `${issuerUrl}/authorize`,
+      ])
+      expect(report.endpoints[0]?.status).toBe('pass')
+      expect(
+        report.endpoints.find((entry) => entry.endpoint === 'authorization_endpoint')?.reasonCode
+      ).toBe('reachable')
+    }
+  )
 })

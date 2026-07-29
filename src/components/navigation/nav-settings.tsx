@@ -38,9 +38,16 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useTheme } from '@/components/theme'
-import { useEnvironmentProfiles, useSettings, useTokenHistory, useIssuerHistory } from '@/lib/state'
+import {
+  useEnvironmentProfiles,
+  useIssuerHistory,
+  useSettings,
+  useTokenHistory,
+  useToolPreferences,
+} from '@/lib/state'
 import { oidcConfigCache } from '@/lib/cache/oidc-config-cache'
 import { jwksCache } from '@/lib/cache/jwks-cache'
+import { clearHandoffs } from '@/lib/handoff'
 import { getDiagnosticsSnapshot, subscribeDiagnostics } from '@/lib/diagnostics/client-diagnostics'
 import { toast } from 'sonner'
 
@@ -59,6 +66,7 @@ export function NavSettings() {
   const { clearTokens } = useTokenHistory()
   const { clearIssuers } = useIssuerHistory()
   const { clearProfiles } = useEnvironmentProfiles()
+  const { clearToolPreferences } = useToolPreferences()
   const appVersion = import.meta.env.APP_VERSION
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -175,12 +183,21 @@ export function NavSettings() {
     clearTokens()
     clearIssuers()
     clearProfiles()
+    clearToolPreferences()
+    const handoffsCleared = clearHandoffs()
     oidcConfigCache.clear()
     jwksCache.clear()
-    toast.success('All data cleared', {
-      description:
-        'Token history, issuer history, saved environments, and cache have been cleared.',
-    })
+    if (handoffsCleared) {
+      toast.success('All data cleared', {
+        description:
+          'History, saved environments, favorites, recent tools, one-time handoffs, and cache have been cleared.',
+      })
+    } else {
+      toast.warning('Most data cleared', {
+        description:
+          'History, saved environments, preferences, and cache were cleared, but this browser did not confirm removal of every one-time handoff.',
+      })
+    }
   }
 
   const handleMaxHistoryChange = (value: string) => {

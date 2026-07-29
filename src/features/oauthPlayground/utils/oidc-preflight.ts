@@ -21,6 +21,7 @@ export type OidcPreflightReasonCode =
   | 'missing_or_unavailable'
   | 'server_error'
   | 'invalid_url'
+  | 'unsafe_target'
 
 export interface OidcPreflightRequest {
   issuerUrl: string
@@ -28,7 +29,13 @@ export interface OidcPreflightRequest {
   includeOptionalEndpoints?: boolean
   timeoutMs?: number
   enableServerAssistedProbes?: boolean
+  endpointProbeFetcher?: OidcFetchFunction
   serverAssistedProbeFetcher?: OidcFetchFunction
+}
+
+export interface OidcDiscoveryFetchOptions {
+  timeoutMs?: number
+  signal?: AbortSignal
 }
 
 export interface OidcEndpointPreflightResult {
@@ -104,6 +111,9 @@ const ENDPOINT_METHODS: Record<OidcDiscoveryEndpointName, 'GET' | 'HEAD' | 'POST
 }
 
 const SERVER_ASSISTED_PROBE_PATH = '/api/oidc-preflight-probe'
+const DEFAULT_PREFLIGHT_TIMEOUT_MS = 8000
+const MAX_PREFLIGHT_TIMEOUT_MS = 30_000
+const defaultDirectEndpointFetcher: OidcFetchFunction = (url, options) => fetch(url, options)
 const defaultServerAssistedProbeFetcher: OidcFetchFunction = (url, options) => fetch(url, options)
 
 export function normalizeIssuerUrl(rawIssuerUrl: string): string {
@@ -131,28 +141,36 @@ export function buildOidcDiscoveryUrl(issuerUrl: string): string {
 
 export async function fetchOidcDiscoveryConfiguration(
   issuerUrl: string,
-  fetcher: OidcFetchFunction = proxyFetch
+  fetcher: OidcFetchFunction = proxyFetch,
+  options: OidcDiscoveryFetchOptions = {}
 ): Promise<OidcDiscoveryFetchResult> {
   const normalizedIssuerUrl = normalizeIssuerUrl(issuerUrl)
   const discoveryUrl = buildOidcDiscoveryUrl(normalizedIssuerUrl)
+  const timeoutMs = normalizeTimeoutMs(options.timeoutMs)
 
-  const response = await fetcher(discoveryUrl)
-  if (!response.ok) {
-    throw new Error(await buildResponseError(response, 'OIDC discovery failed'))
-  }
+  return runDiscoveryOperationWithTimeout(
+    async (signal) => {
+      const response = await fetcher(discoveryUrl, { signal })
+      if (!response.ok) {
+        throw new Error(await buildResponseError(response, 'OIDC discovery failed'))
+      }
 
-  const rawBody = (await response.json()) as unknown
-  if (!rawBody || typeof rawBody !== 'object') {
-    throw new Error('OIDC discovery returned an invalid document')
-  }
+      const rawBody = (await response.json()) as unknown
+      if (!rawBody || typeof rawBody !== 'object') {
+        throw new Error('OIDC discovery returned an invalid document')
+      }
 
-  return {
-    normalizedIssuerUrl,
-    discoveryUrl,
-    config: rawBody as OidcConfiguration,
-    status: response.status,
-    statusText: response.statusText,
-  }
+      return {
+        normalizedIssuerUrl,
+        discoveryUrl,
+        config: rawBody as OidcConfiguration,
+        status: response.status,
+        statusText: response.statusText,
+      }
+    },
+    timeoutMs,
+    options.signal
+  )
 }
 
 export function extractDiscoveredEndpoints(
@@ -186,19 +204,25 @@ export async function runOidcEndpointPreflight(
     ? request.requiredEndpoints
     : DEFAULT_REQUIRED_ENDPOINTS
   const includeOptionalEndpoints = request.includeOptionalEndpoints ?? true
-  const timeoutMs = request.timeoutMs ?? 8000
+  const timeoutMs = normalizeTimeoutMs(request.timeoutMs)
   const enableServerAssistedProbes = request.enableServerAssistedProbes ?? fetcher === proxyFetch
+  const endpointProbeFetcher =
+    request.endpointProbeFetcher ??
+    (fetcher === proxyFetch ? defaultDirectEndpointFetcher : fetcher)
   const serverAssistedProbeFetcher =
     request.serverAssistedProbeFetcher ?? defaultServerAssistedProbeFetcher
 
   const normalizedIssuerUrl = normalizeIssuerUrl(request.issuerUrl)
+  const normalizedIssuerOrigin = new URL(normalizedIssuerUrl).origin
   const discoveryUrl = buildOidcDiscoveryUrl(normalizedIssuerUrl)
   const endpoints: OidcEndpointPreflightResult[] = []
   const requiredSet = new Set<OidcEndpointName>(['discovery', ...requiredEndpoints])
 
   let discoveryResult: OidcDiscoveryFetchResult
   try {
-    discoveryResult = await fetchOidcDiscoveryConfiguration(normalizedIssuerUrl, fetcher)
+    discoveryResult = await fetchOidcDiscoveryConfiguration(normalizedIssuerUrl, fetcher, {
+      timeoutMs,
+    })
     endpoints.push({
       endpoint: 'discovery',
       label: ENDPOINT_LABELS.discovery,
@@ -212,15 +236,18 @@ export async function runOidcEndpointPreflight(
       message: `Discovery document resolved (${discoveryResult.status})`,
     })
   } catch (error) {
+    const networkUnavailable = isNetworkOrCorsError(error)
     endpoints.push({
       endpoint: 'discovery',
       label: ENDPOINT_LABELS.discovery,
       method: 'GET',
       status: 'fail',
       required: true,
-      reasonCode: 'missing_or_unavailable',
+      reasonCode: networkUnavailable ? 'network_or_cors' : 'missing_or_unavailable',
       url: discoveryUrl,
-      message: 'Discovery document is unavailable',
+      message: networkUnavailable
+        ? 'Discovery document could not be reached'
+        : 'Discovery document is unavailable',
       error: error instanceof Error ? error.message : String(error),
     })
 
@@ -254,18 +281,26 @@ export async function runOidcEndpointPreflight(
         } satisfies OidcEndpointPreflightResult
       }
 
-      if (!isValidAbsoluteUrl(endpointUrl)) {
+      const targetAssessment = assessDiscoveredEndpointTarget(endpointUrl, normalizedIssuerOrigin)
+      if (!targetAssessment.allowed) {
+        const invalidUrl =
+          targetAssessment.reason === 'invalid_url' ||
+          targetAssessment.reason === 'unsupported_protocol'
         return {
           endpoint: key,
           label: ENDPOINT_LABELS[key],
           method: ENDPOINT_METHODS[key],
-          status: endpointRequired ? 'fail' : 'warn',
+          status: invalidUrl && endpointRequired ? 'fail' : 'warn',
           required: endpointRequired,
-          reasonCode: 'invalid_url',
+          reasonCode: invalidUrl ? 'invalid_url' : 'unsafe_target',
           url: endpointUrl,
-          message: endpointRequired
-            ? `${ENDPOINT_LABELS[key]} is required but has an invalid URL`
-            : `${ENDPOINT_LABELS[key]} has an invalid URL`,
+          message: invalidUrl
+            ? endpointRequired
+              ? `${ENDPOINT_LABELS[key]} is required but has an invalid URL`
+              : `${ENDPOINT_LABELS[key]} has an invalid URL`
+            : targetAssessment.reason === 'embedded_credentials'
+              ? 'Probe blocked because discovery advertised an endpoint URL with embedded credentials'
+              : 'Probe blocked because discovery advertised an endpoint outside the issuer origin',
         } satisfies OidcEndpointPreflightResult
       }
 
@@ -275,7 +310,7 @@ export async function runOidcEndpointPreflight(
         url: endpointUrl,
         method: ENDPOINT_METHODS[key],
         timeoutMs,
-        fetcher,
+        fetcher: endpointProbeFetcher,
         enableServerAssistedProbes,
         serverAssistedProbeFetcher,
       })
@@ -299,13 +334,37 @@ function getStringValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
-function isValidAbsoluteUrl(value: string): boolean {
+type DiscoveredEndpointTargetAssessment =
+  | { allowed: true; url: URL }
+  | {
+      allowed: false
+      reason: 'invalid_url' | 'unsupported_protocol' | 'embedded_credentials' | 'cross_origin'
+    }
+
+function assessDiscoveredEndpointTarget(
+  value: string,
+  authorizedIssuerOrigin: string
+): DiscoveredEndpointTargetAssessment {
+  let endpoint: URL
   try {
-    const parsed = new URL(value)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    endpoint = new URL(value)
   } catch {
-    return false
+    return { allowed: false, reason: 'invalid_url' }
   }
+
+  if (endpoint.protocol !== 'http:' && endpoint.protocol !== 'https:') {
+    return { allowed: false, reason: 'unsupported_protocol' }
+  }
+
+  if (endpoint.username || endpoint.password) {
+    return { allowed: false, reason: 'embedded_credentials' }
+  }
+
+  if (endpoint.origin !== authorizedIssuerOrigin) {
+    return { allowed: false, reason: 'cross_origin' }
+  }
+
+  return { allowed: true, url: endpoint }
 }
 
 function summarizeResults(results: OidcEndpointPreflightResult[]) {
@@ -316,6 +375,75 @@ function summarizeResults(results: OidcEndpointPreflightResult[]) {
     },
     { pass: 0, warn: 0, fail: 0 }
   )
+}
+
+async function runDiscoveryOperationWithTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  externalSignal?: AbortSignal
+): Promise<T> {
+  if (externalSignal?.aborted) {
+    throw createAbortError()
+  }
+
+  const controller = new AbortController()
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+  let externalAbortHandler: (() => void) | undefined
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      controller.abort()
+      const timeoutError = new Error(`OIDC discovery timed out after ${timeoutMs}ms`)
+      timeoutError.name = 'TimeoutError'
+      reject(timeoutError)
+    }, timeoutMs)
+  })
+
+  const pending: Array<Promise<T> | Promise<never>> = [
+    Promise.resolve().then(() => operation(controller.signal)),
+    timeoutPromise,
+  ]
+
+  if (externalSignal) {
+    pending.push(
+      new Promise<never>((_, reject) => {
+        externalAbortHandler = () => {
+          controller.abort()
+          reject(createAbortError())
+        }
+        if (externalSignal.aborted) {
+          externalAbortHandler()
+        } else {
+          externalSignal.addEventListener('abort', externalAbortHandler, { once: true })
+        }
+      })
+    )
+  }
+
+  try {
+    return await Promise.race(pending)
+  } finally {
+    if (timeoutHandle !== undefined) {
+      clearTimeout(timeoutHandle)
+    }
+    if (externalSignal && externalAbortHandler) {
+      externalSignal.removeEventListener('abort', externalAbortHandler)
+    }
+  }
+}
+
+function normalizeTimeoutMs(value?: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_PREFLIGHT_TIMEOUT_MS
+  }
+
+  return Math.min(MAX_PREFLIGHT_TIMEOUT_MS, Math.max(1, Math.floor(value)))
+}
+
+function createAbortError(): Error {
+  const error = new Error('OIDC discovery request was cancelled')
+  error.name = 'AbortError'
+  return error
 }
 
 async function buildResponseError(response: Response, prefix: string): Promise<string> {
@@ -651,6 +779,10 @@ function isNetworkOrCorsError(error: unknown): boolean {
   }
 
   if (error instanceof Error) {
+    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+      return true
+    }
+
     const message = error.message.toLowerCase()
     return (
       message.includes('failed to fetch') ||
