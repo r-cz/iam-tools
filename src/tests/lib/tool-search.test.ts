@@ -20,4 +20,29 @@ describe('tool command search', () => {
     expect(provisioningResults).toContain('scim-resource-validator')
     expect(provisioningResults).toContain('scim-patch-builder')
   })
+
+  test('matches core tools independently of the browser casing locale', () => {
+    const originalToLocaleLowerCase = String.prototype.toLocaleLowerCase
+
+    Object.defineProperty(String.prototype, 'toLocaleLowerCase', {
+      configurable: true,
+      writable: true,
+      value: function toTurkishLowerCase(this: string) {
+        return originalToLocaleLowerCase.call(this, 'tr')
+      },
+    })
+
+    try {
+      expect(searchToolCommands('inspector').map(({ tool }) => tool.id)).toContain(
+        'token-inspector'
+      )
+      expect(searchToolCommands('oidc').map(({ tool }) => tool.id)).toContain('oidc-explorer')
+    } finally {
+      Object.defineProperty(String.prototype, 'toLocaleLowerCase', {
+        configurable: true,
+        writable: true,
+        value: originalToLocaleLowerCase,
+      })
+    }
+  })
 })
