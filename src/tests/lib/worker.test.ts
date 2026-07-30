@@ -226,6 +226,7 @@ describe('worker api', () => {
     expect(response.status).toBe(200)
     const forwardedRequest = fetchCalls[0] as Request
     expect(forwardedRequest.headers.get('Accept')).toBe('application/json')
+    expect(forwardedRequest.headers.get('User-Agent')).toBe('iam.tools/1.0 (+https://iam.tools)')
     expect(forwardedRequest.headers.get('Authorization')).toBeNull()
     expect(forwardedRequest.headers.get('Cookie')).toBeNull()
     expect(forwardedRequest.headers.get('X-Forwarded-For')).toBeNull()

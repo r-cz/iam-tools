@@ -85,6 +85,7 @@ function CommandOption({
   index,
   onOpen,
   onSelect,
+  onToggleFavorite,
 }: {
   command: ToolCommand
   active: boolean
@@ -92,47 +93,66 @@ function CommandOption({
   index: number
   onOpen: () => void
   onSelect: () => void
+  onToggleFavorite: () => void
 }) {
   const Icon = command.tool.icon
   const optionId = `command-tool-${command.tool.id}`
 
   return (
-    <button
+    <div
       id={optionId}
-      type="button"
-      role="option"
+      role="row"
       aria-selected={active}
-      tabIndex={-1}
       className={cn(
-        'flex min-w-0 items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left outline-none transition-colors',
+        'flex min-w-0 items-center rounded-lg border border-transparent outline-none transition-colors',
         active && 'border-border bg-accent'
       )}
       onMouseEnter={onSelect}
-      onClick={onOpen}
       data-command-index={index}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-        <Icon width={18} height={18} aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{command.tool.title}</span>
-        <span className="block truncate text-xs text-muted-foreground">
-          {command.tool.description}
-        </span>
-      </span>
-      <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-        {command.section.title}
-      </span>
-      <span className="shrink-0 text-muted-foreground">
-        <Star
-          width={17}
-          height={17}
-          className={cn(favorite && 'fill-current text-foreground')}
-          aria-hidden="true"
-        />
-        <span className="sr-only">{favorite ? 'Favorite tool' : 'Not a favorite'}</span>
-      </span>
-    </button>
+      <div role="gridcell" className="min-w-0 flex-1">
+        <button
+          type="button"
+          tabIndex={-1}
+          className="flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-left outline-none"
+          onClick={onOpen}
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <Icon width={18} height={18} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium">{command.tool.title}</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {command.tool.description}
+            </span>
+          </span>
+          <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+            {command.section.title}
+          </span>
+        </button>
+      </div>
+      <div role="gridcell" className="shrink-0 pr-2">
+        <button
+          type="button"
+          tabIndex={-1}
+          className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={
+            favorite
+              ? `Remove ${command.tool.title} from favorites`
+              : `Add ${command.tool.title} to favorites`
+          }
+          aria-pressed={favorite}
+          onClick={onToggleFavorite}
+        >
+          <Star
+            width={17}
+            height={17}
+            className={cn(favorite && 'fill-current text-foreground')}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -185,22 +205,25 @@ function CommandCenterDialog({
     [navigate, onOpenChange, recordRecent]
   )
 
-  const toggleActiveFavorite = () => {
-    if (!activeCommand) return
-
-    const activeToolId = activeCommand.tool.id
-    const nextFavoriteToolIds = isFavorite(activeToolId)
-      ? favoriteToolIds.filter((toolId) => toolId !== activeToolId)
-      : [...favoriteToolIds, activeToolId]
+  const toggleCommandFavorite = (command: ToolCommand) => {
+    const toolId = command.tool.id
+    const nextFavoriteToolIds = isFavorite(toolId)
+      ? favoriteToolIds.filter((favoriteToolId) => favoriteToolId !== toolId)
+      : [...favoriteToolIds, toolId]
     const nextVisibleCommands = commandGroups(
       query,
       nextFavoriteToolIds,
       recentTools.map(({ id }) => id)
     ).flatMap((group) => group.commands)
-    const nextActiveIndex = nextVisibleCommands.findIndex(({ tool }) => tool.id === activeToolId)
+    const nextActiveIndex = nextVisibleCommands.findIndex(({ tool }) => tool.id === toolId)
 
     setSelectedIndex(Math.max(0, nextActiveIndex))
-    toggleFavorite(activeToolId)
+    toggleFavorite(toolId)
+  }
+
+  const toggleActiveFavorite = () => {
+    if (!activeCommand) return
+    toggleCommandFavorite(activeCommand)
   }
 
   const selectIndex = (nextIndex: number) => {
@@ -225,6 +248,12 @@ function CommandCenterDialog({
     if (event.key === 'ArrowUp') {
       event.preventDefault()
       selectIndex(activeIndex <= 0 ? visibleCommands.length - 1 : activeIndex - 1)
+      return
+    }
+
+    if (event.key === 'Enter' && event.shiftKey && activeCommand) {
+      event.preventDefault()
+      toggleCommandFavorite(activeCommand)
       return
     }
 
@@ -265,6 +294,7 @@ function CommandCenterDialog({
               role="combobox"
               aria-label="Search tools and workflows"
               aria-expanded={open}
+              aria-haspopup="grid"
               aria-controls="tool-command-list"
               aria-autocomplete="list"
               aria-activedescendant={
@@ -292,7 +322,7 @@ function CommandCenterDialog({
 
         <div
           id="tool-command-list"
-          role={visibleCommands.length ? 'listbox' : undefined}
+          role={visibleCommands.length ? 'grid' : undefined}
           aria-label={visibleCommands.length ? 'Tools' : undefined}
           className="max-h-[min(26rem,calc(100vh-12rem))] overflow-y-auto p-2"
         >
@@ -326,7 +356,7 @@ function CommandCenterDialog({
             groups.map((group) => (
               <section
                 key={group.id}
-                role="group"
+                role="rowgroup"
                 aria-label={group.label}
                 className="flex flex-col gap-1 py-1"
               >
@@ -349,6 +379,7 @@ function CommandCenterDialog({
                       index={currentIndex}
                       onSelect={() => setSelectedIndex(currentIndex)}
                       onOpen={() => openTool(command)}
+                      onToggleFavorite={() => toggleCommandFavorite(command)}
                     />
                   )
                 })}
@@ -380,14 +411,21 @@ function CommandCenterDialog({
               aria-pressed={isFavorite(activeCommand.tool.id)}
               onClick={toggleActiveFavorite}
             >
-              <Kbd size="sm" className="normal-case tracking-normal" aria-hidden="true">
-                <Star
-                  width={12}
-                  height={12}
-                  className={cn(isFavorite(activeCommand.tool.id) && 'fill-current')}
-                />
-              </Kbd>
+              <Star
+                width={14}
+                height={14}
+                className={cn(isFavorite(activeCommand.tool.id) && 'fill-current')}
+                aria-hidden="true"
+              />
               {isFavorite(activeCommand.tool.id) ? 'Favorited' : 'Favorite'}
+              <span className="inline-flex items-center gap-1" aria-hidden="true">
+                <Kbd size="sm" className="normal-case tracking-normal">
+                  Shift
+                </Kbd>
+                <Kbd size="sm" className="normal-case tracking-normal">
+                  <CornerDownLeft width={12} height={12} />
+                </Kbd>
+              </span>
             </Button>
           ) : null}
         </div>

@@ -1,4 +1,5 @@
 import { proxyFetch } from '@/lib/proxy-fetch'
+import { isPrivateOrLocalHostname } from '@/lib/network/target-safety'
 import type { OidcConfiguration } from '@/features/oidcExplorer/utils/types'
 
 export type OidcFetchFunction = (url: string, options?: RequestInit) => Promise<Response>
@@ -147,10 +148,15 @@ export async function fetchOidcDiscoveryConfiguration(
   const normalizedIssuerUrl = normalizeIssuerUrl(issuerUrl)
   const discoveryUrl = buildOidcDiscoveryUrl(normalizedIssuerUrl)
   const timeoutMs = normalizeTimeoutMs(options.timeoutMs)
+  const issuer = new URL(normalizedIssuerUrl)
+  const discoveryFetcher =
+    fetcher === proxyFetch && isPrivateOrLocalHostname(issuer.hostname)
+      ? defaultDirectEndpointFetcher
+      : fetcher
 
   return runDiscoveryOperationWithTimeout(
     async (signal) => {
-      const response = await fetcher(discoveryUrl, { signal })
+      const response = await discoveryFetcher(discoveryUrl, { signal })
       if (!response.ok) {
         throw new Error(await buildResponseError(response, 'OIDC discovery failed'))
       }
