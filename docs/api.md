@@ -58,6 +58,8 @@ The CORS proxy is implemented in `src/worker.ts`. It:
 4. Adds appropriate CORS headers to allow the frontend to access the response
 5. Returns the modified response to the frontend
 
+Outbound proxy requests identify themselves with the `iam.tools/1.0 (+https://iam.tools)` user agent. Browser-supplied user-agent and other arbitrary headers are not forwarded.
+
 ### Security and Restrictions
 
 To prevent abuse, the proxy applies strict allow-listing and method limits:

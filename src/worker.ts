@@ -26,6 +26,7 @@ const rateLimitBuckets = new Map<string, RateLimitBucket>()
 const CORS_PROXY_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 60_000 }
 const CORS_PROXY_MAX_REDIRECTS = 3
 const CORS_PROXY_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
+const CORS_PROXY_USER_AGENT = 'iam.tools/1.0 (+https://iam.tools)'
 const CORS_PROXY_ALLOWED_REQUEST_HEADERS = new Set([
   'accept',
   'accept-language',
@@ -1379,9 +1380,11 @@ async function handleCorsProxy(request: Request, env: Env): Promise<Response> {
     let resp: Response | null = null
 
     for (let redirectCount = 0; redirectCount <= CORS_PROXY_MAX_REDIRECTS; redirectCount += 1) {
+      const proxyRequestHeaders = filterProxyRequestHeaders(request.headers)
+      proxyRequestHeaders.set('User-Agent', CORS_PROXY_USER_AGENT)
       const forward = new Request(currentTarget.toString(), {
         method: request.method,
-        headers: filterProxyRequestHeaders(request.headers),
+        headers: proxyRequestHeaders,
         redirect: 'manual',
       })
 

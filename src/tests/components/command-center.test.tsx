@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 
 import { CommandCenterProvider, CommandCenterTrigger } from '@/components/command-center'
@@ -107,35 +107,57 @@ describe('CommandCenter', () => {
       { target: { value: 'definitely-not-a-catalog-tool' } }
     )
 
-    expect(screen.queryByRole('listbox', { name: 'Tools' })).toBeNull()
+    expect(screen.queryByRole('grid', { name: 'Tools' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Browse all tools' }))
-    expect(screen.getByRole('listbox', { name: 'Tools' })).not.toBeNull()
+    expect(screen.getByRole('grid', { name: 'Tools' })).not.toBeNull()
   })
 
-  test('toggles favorites from a search result and restores trigger focus on Escape', async () => {
+  test('toggles favorites from a result star and with Shift+Enter', () => {
     renderCommandCenter()
-    const trigger = screen.getByRole('button', { name: 'Search tools' })
-
-    trigger.focus()
-    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('button', { name: 'Search tools' }))
 
     const searchInput = screen.getByRole('combobox', {
       name: 'Search tools and workflows',
     })
     fireEvent.change(searchInput, { target: { value: 'Token Inspector' } })
-    const listbox = screen.getByRole('listbox', { name: 'Tools' })
-    const favoriteButton = screen.getByRole('button', {
+    const toolGrid = screen.getByRole('grid', { name: 'Tools' })
+    const resultFavoriteButton = within(toolGrid).getByRole('button', {
       name: 'Add Token Inspector to favorites',
     })
 
-    expect(listbox.contains(favoriteButton)).toBe(false)
-    fireEvent.click(favoriteButton)
+    expect(resultFavoriteButton.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(resultFavoriteButton)
 
     expect(JSON.parse(window.localStorage.getItem(STORAGE_KEYS.FAVORITE_TOOL_IDS) ?? '[]')).toEqual(
       ['token-inspector']
     )
+    expect(
+      within(toolGrid).getByRole('button', {
+        name: 'Remove Token Inspector from favorites',
+      })
+    ).not.toBeNull()
 
-    fireEvent.keyDown(searchInput, { key: 'Escape' })
+    fireEvent.keyDown(searchInput, { key: 'Enter', shiftKey: true })
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEYS.FAVORITE_TOOL_IDS) ?? '[]')).toEqual(
+      []
+    )
+    expect(screen.getByTestId('command-center')).not.toBeNull()
+    expect(screen.getByTestId('location').textContent).toBe('/')
+  })
+
+  test('restores trigger focus on Escape', async () => {
+    renderCommandCenter()
+    const trigger = screen.getByRole('button', { name: 'Search tools' })
+
+    trigger.focus()
+    fireEvent.click(trigger)
+    fireEvent.keyDown(
+      screen.getByRole('combobox', {
+        name: 'Search tools and workflows',
+      }),
+      { key: 'Escape' }
+    )
+
     await waitFor(() => expect(document.activeElement).toBe(trigger))
   })
 })

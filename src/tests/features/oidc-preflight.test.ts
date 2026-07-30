@@ -16,6 +16,50 @@ function isDiscoveryUrl(target: string): boolean {
 }
 
 describe('OIDC endpoint preflight', () => {
+  test.each(['http://10.0.0.8', 'http://idp.corp.internal'])(
+    'fetches explicitly entered private issuer discovery directly for %s',
+    async (issuerUrl) => {
+      const originalFetch = globalThis.fetch
+      const calls: string[] = []
+
+      globalThis.fetch = mock(async (target: string | URL | Request) => {
+        const url = String(target)
+        calls.push(url)
+
+        if (isDiscoveryUrl(url)) {
+          return createJsonResponse({
+            issuer: issuerUrl,
+            authorization_endpoint: `${issuerUrl}/authorize`,
+          })
+        }
+
+        return createJsonResponse({}, 200)
+      }) as typeof fetch
+
+      try {
+        const report = await runOidcEndpointPreflight({
+          issuerUrl,
+          requiredEndpoints: ['authorization_endpoint'],
+          includeOptionalEndpoints: false,
+          enableServerAssistedProbes: false,
+        })
+
+        expect(calls).toEqual([
+          `${issuerUrl}/.well-known/openid-configuration`,
+          `${issuerUrl}/authorize`,
+        ])
+        expect(report.endpoints.find(({ endpoint }) => endpoint === 'discovery')?.status).toBe(
+          'pass'
+        )
+        expect(
+          report.endpoints.find(({ endpoint }) => endpoint === 'authorization_endpoint')?.status
+        ).toBe('pass')
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+    }
+  )
+
   test('fetches discovery document and normalizes issuer URL', async () => {
     const fetcher = mock(async (target: string) => {
       if (target.endsWith('/tenant/.well-known/openid-configuration')) {
