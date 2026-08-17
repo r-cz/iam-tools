@@ -72,7 +72,7 @@ objectClasses: ( 2.5.6.6 NAME 'person' STRUCTURAL MUST cn )`)
     const schemaInput = page.locator(selectors.ldap.schemaInput)
     await schemaInput.fill(`attributeTypes: ( INVALID SYNTAX WITHOUT PROPER FORMAT `)
 
-    await expect(page.getByRole('heading', { name: 'Attribute Types' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Attribute Types', exact: true })).toBeVisible()
   })
 
   test('should clear schema when clear button clicked', async ({ page }) => {

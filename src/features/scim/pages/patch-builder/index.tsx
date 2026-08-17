@@ -332,8 +332,11 @@ export default function ScimPatchBuilderPage() {
                   <ItemContent>
                     <ItemTitle>{validation.valid ? 'Valid PatchOp' : 'Invalid PatchOp'}</ItemTitle>
                     <ItemDescription>
-                      Parsed {validation.operations.length} canonical operation
-                      {validation.operations.length === 1 ? '' : 's'}.
+                      {validation.valid
+                        ? `Parsed ${validation.operations.length} canonical operation${
+                            validation.operations.length === 1 ? '' : 's'
+                          }.`
+                        : 'No canonical operation set is exposed until all errors are resolved.'}
                     </ItemDescription>
                   </ItemContent>
                   <Badge variant={validation.valid ? 'default' : 'destructive'}>

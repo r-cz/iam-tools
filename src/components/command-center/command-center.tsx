@@ -177,10 +177,9 @@ function CommandCenterDialog({
   onCloseAutoFocus: React.ComponentProps<typeof DialogContent>['onCloseAutoFocus']
 }) {
   const navigate = useNavigate()
-  const { favoriteToolIds, recentTools, isFavorite, toggleFavorite, recordRecent } =
-    useToolPreferences()
+  const { favoriteToolIds, recentTools, isFavorite, toggleFavorite } = useToolPreferences()
   const [query, setQuery] = React.useState('')
-  const [selectedIndex, setSelectedIndex] = React.useState(0)
+  const [selectedToolId, setSelectedToolId] = React.useState<string | null>(null)
 
   const groups = React.useMemo(
     () =>
@@ -192,17 +191,16 @@ function CommandCenterDialog({
     [favoriteToolIds, query, recentTools]
   )
   const visibleCommands = React.useMemo(() => groups.flatMap((group) => group.commands), [groups])
-  const activeIndex =
-    visibleCommands.length === 0 ? -1 : Math.min(selectedIndex, visibleCommands.length - 1)
+  const selectedIndex = visibleCommands.findIndex(({ tool }) => tool.id === selectedToolId)
+  const activeIndex = visibleCommands.length === 0 ? -1 : Math.max(0, selectedIndex)
   const activeCommand = activeIndex >= 0 ? visibleCommands[activeIndex] : undefined
 
   const openTool = React.useCallback(
     (command: ToolCommand) => {
-      recordRecent(command.tool.id)
       onOpenChange(false)
       navigate(command.tool.path)
     },
-    [navigate, onOpenChange, recordRecent]
+    [navigate, onOpenChange]
   )
 
   const toggleCommandFavorite = (command: ToolCommand) => {
@@ -217,7 +215,7 @@ function CommandCenterDialog({
     ).flatMap((group) => group.commands)
     const nextActiveIndex = nextVisibleCommands.findIndex(({ tool }) => tool.id === toolId)
 
-    setSelectedIndex(Math.max(0, nextActiveIndex))
+    setSelectedToolId(nextVisibleCommands[Math.max(0, nextActiveIndex)]?.tool.id ?? null)
     toggleFavorite(toolId)
   }
 
@@ -227,9 +225,9 @@ function CommandCenterDialog({
   }
 
   const selectIndex = (nextIndex: number) => {
-    setSelectedIndex(nextIndex)
     const nextCommand = visibleCommands[nextIndex]
     if (!nextCommand) return
+    setSelectedToolId(nextCommand.tool.id)
 
     window.requestAnimationFrame(() => {
       document
@@ -304,7 +302,7 @@ function CommandCenterDialog({
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value)
-                setSelectedIndex(0)
+                setSelectedToolId(null)
               }}
               onKeyDown={handleSearchKeyDown}
             />
@@ -345,7 +343,7 @@ function CommandCenterDialog({
                   size="sm"
                   onClick={() => {
                     setQuery('')
-                    setSelectedIndex(0)
+                    setSelectedToolId(null)
                   }}
                 >
                   Browse all tools
@@ -377,7 +375,7 @@ function CommandCenterDialog({
                       active={currentIndex === activeIndex}
                       favorite={isFavorite(command.tool.id)}
                       index={currentIndex}
-                      onSelect={() => setSelectedIndex(currentIndex)}
+                      onSelect={() => setSelectedToolId(command.tool.id)}
                       onOpen={() => openTool(command)}
                       onToggleFavorite={() => toggleCommandFavorite(command)}
                     />

@@ -4,6 +4,7 @@ import {
   generateCodeChallenge,
   base64UrlEncode,
   generateState,
+  generatePkceParams,
   validateState,
 } from '@/features/oauthPlayground/utils/pkce'
 
@@ -213,6 +214,12 @@ describe('PKCE Utilities', () => {
   })
 
   describe('integration: full PKCE flow', () => {
+    it('publishes a complete verifier/challenge/state tuple', async () => {
+      const tuple = await generatePkceParams()
+      expect(tuple.codeChallenge).toBe(await generateCodeChallenge(tuple.codeVerifier))
+      expect(tuple.state).not.toBe(tuple.codeVerifier)
+    })
+
     it('should generate valid PKCE pair', async () => {
       const verifier = generateCodeVerifier()
       const challenge = await generateCodeChallenge(verifier)

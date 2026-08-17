@@ -16,6 +16,7 @@ interface LaunchTabProps {
   sigAlg: RedirectSigAlg
   privateKeyPem: string
   signedRedirectUrl: string
+  isSigning: boolean
   onEnableSigningChange: (value: boolean) => void
   onSigAlgChange: (value: RedirectSigAlg) => void
   onPrivateKeyPemChange: (value: string) => void
@@ -34,6 +35,7 @@ export function LaunchTab({
   sigAlg,
   privateKeyPem,
   signedRedirectUrl,
+  isSigning,
   onEnableSigningChange,
   onSigAlgChange,
   onPrivateKeyPemChange,
@@ -108,8 +110,8 @@ export function LaunchTab({
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={onSignRedirect} disabled={!redirectUrl}>
-                    Sign URL
+                  <Button onClick={onSignRedirect} disabled={!redirectUrl || isSigning}>
+                    {isSigning ? 'Signing…' : 'Sign URL'}
                   </Button>
                   <Button
                     variant="outline"

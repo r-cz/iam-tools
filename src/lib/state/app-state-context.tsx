@@ -15,7 +15,7 @@ import {
   updateTokenInHistory,
   updateIssuerInHistory,
   saveEnvironmentProfile,
-  updateEnvironmentProfile,
+  replaceEnvironmentProfile,
   removeEnvironmentProfile,
   markEnvironmentProfileUsed,
   removeTokenFromHistory,
@@ -48,12 +48,9 @@ interface AppStateContextType {
 
   // Environment profile methods
   saveProfile: (profile: EnvironmentProfileDraft) => EnvironmentProfile
-  updateProfile: (
-    id: string,
-    updates: Partial<EnvironmentProfileDraft>
-  ) => EnvironmentProfile | null
+  replaceProfile: (id: string, replacement: EnvironmentProfileDraft) => void
   removeProfile: (id: string) => void
-  markProfileUsed: (id: string) => EnvironmentProfile | null
+  markProfileUsed: (id: string) => void
   clearProfiles: () => void
 
   // Settings methods
@@ -83,9 +80,9 @@ const AppStateContext = createContext<AppStateContextType>({
   saveProfile: () => {
     throw new Error('saveProfile is unavailable outside AppStateProvider')
   },
-  updateProfile: () => null,
+  replaceProfile: () => {},
   removeProfile: () => {},
-  markProfileUsed: () => null,
+  markProfileUsed: () => {},
   clearProfiles: () => {},
 
   updateSettings: () => {},
@@ -185,20 +182,22 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   // Environment profile methods
   const saveProfile = useCallback(
     (profile: EnvironmentProfileDraft) => {
-      const result = saveEnvironmentProfile(environmentProfiles, profile)
-      setEnvironmentProfiles(result.profiles)
+      const result = saveEnvironmentProfile([], profile)
+      setEnvironmentProfiles((currentProfiles) =>
+        sortEnvironmentProfiles([result.savedProfile, ...currentProfiles])
+      )
       return result.savedProfile
     },
-    [environmentProfiles, setEnvironmentProfiles]
+    [setEnvironmentProfiles]
   )
 
-  const updateProfile = useCallback(
-    (id: string, updates: Partial<EnvironmentProfileDraft>) => {
-      const result = updateEnvironmentProfile(environmentProfiles, id, updates)
-      setEnvironmentProfiles(result.profiles)
-      return result.updatedProfile
+  const replaceProfile = useCallback(
+    (id: string, replacement: EnvironmentProfileDraft) => {
+      setEnvironmentProfiles(
+        (currentProfiles) => replaceEnvironmentProfile(currentProfiles, id, replacement).profiles
+      )
     },
-    [environmentProfiles, setEnvironmentProfiles]
+    [setEnvironmentProfiles]
   )
 
   const removeProfile = useCallback(
@@ -210,11 +209,11 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
 
   const markProfileUsed = useCallback(
     (id: string) => {
-      const result = markEnvironmentProfileUsed(environmentProfiles, id)
-      setEnvironmentProfiles(result.profiles)
-      return result.updatedProfile
+      setEnvironmentProfiles(
+        (currentProfiles) => markEnvironmentProfileUsed(currentProfiles, id).profiles
+      )
     },
-    [environmentProfiles, setEnvironmentProfiles]
+    [setEnvironmentProfiles]
   )
 
   const clearProfiles = useCallback(() => {
@@ -253,7 +252,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     clearIssuers,
 
     saveProfile,
-    updateProfile,
+    replaceProfile,
     removeProfile,
     markProfileUsed,
     clearProfiles,
@@ -315,7 +314,7 @@ export function useEnvironmentProfiles() {
   const {
     environmentProfiles,
     saveProfile,
-    updateProfile,
+    replaceProfile,
     removeProfile,
     markProfileUsed,
     clearProfiles,
@@ -324,7 +323,7 @@ export function useEnvironmentProfiles() {
   return {
     profiles: sortEnvironmentProfiles(environmentProfiles),
     saveProfile,
-    updateProfile,
+    replaceProfile,
     removeProfile,
     markProfileUsed,
     clearProfiles,

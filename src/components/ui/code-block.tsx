@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { cn } from '@/lib/utils'
 import { Highlight, themes } from 'prism-react-renderer' // Import types
 import { useTheme } from '@/components/theme/theme-provider'
@@ -9,17 +9,8 @@ interface CodeBlockProps extends React.HTMLAttributes<HTMLPreElement> {
 }
 
 export function CodeBlock({ code, language = 'json', className, ...props }: CodeBlockProps) {
-  const { theme } = useTheme()
-
-  const isDarkMode = useMemo(() => {
-    if (theme === 'dark') return true
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches
-    }
-    return false
-  }, [theme])
-
-  const codeTheme = isDarkMode ? themes.nightOwl : themes.github
+  const { resolvedTheme } = useTheme()
+  const codeTheme = resolvedTheme === 'dark' ? themes.nightOwl : themes.github
 
   return (
     <Highlight theme={codeTheme} code={code} language={language as any}>

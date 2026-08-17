@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { parseLdapSchema, type ParsedObjectClass } from '../utils/parse-schema'
+import { compileParsedLdapSchema } from '../utils/compile-schema'
 import type { SavedSchemaEntry } from './useSavedSchemas'
 
 export interface SchemaDetails {
@@ -42,47 +43,7 @@ export function useSchemaDetails(
 
     const parsed = summary.parsed
 
-    // Build attribute map with all names and aliases
-    const attributeMap = new Map<string, { canonical: string; aliases: string[] }>()
-    parsed.attributeTypes.forEach((attribute) => {
-      const canonical = attribute.names[0] ?? attribute.oid
-      const aliasSet = new Set<string>()
-
-      if (attribute.oid) {
-        aliasSet.add(attribute.oid.toLowerCase())
-      }
-
-      attribute.names.forEach((name) => {
-        if (name) {
-          aliasSet.add(name.toLowerCase())
-        }
-      })
-
-      if (canonical) {
-        aliasSet.add(canonical.toLowerCase())
-      }
-
-      const entry = {
-        canonical,
-        aliases: Array.from(aliasSet),
-      }
-
-      aliasSet.forEach((alias) => {
-        attributeMap.set(alias, entry)
-      })
-    })
-
-    // Build object class map
-    const objectClassEntries: Array<[string, ParsedObjectClass]> = parsed.objectClasses.flatMap(
-      (objectClass) => {
-        const keys = [objectClass.oid, ...objectClass.names]
-        return keys
-          .filter((key): key is string => Boolean(key))
-          .map((key) => [key.toLowerCase(), objectClass] as [string, ParsedObjectClass])
-      }
-    )
-
-    const objectClassMap = new Map<string, ParsedObjectClass>(objectClassEntries)
+    const { attributeMap, objectClassMap } = compileParsedLdapSchema(parsed)
 
     return {
       stored,

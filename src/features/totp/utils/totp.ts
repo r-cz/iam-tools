@@ -304,10 +304,8 @@ export async function generateTotp(secret: TotpSecret, options: TotpOptions = {}
   const secretBytes = resolveSecretBytes(secret)
   const resolved = resolveTotpOptions(options)
   const counter = Math.floor(resolved.timestampSeconds / resolved.period)
-  const counterBytes = encodeCounter(counter)
   const cryptoApi = getCryptoApi()
   const hashName = toWebCryptoHash(resolved.algorithm)
-
   const key = await cryptoApi.subtle.importKey(
     'raw',
     secretBytes,
@@ -315,6 +313,16 @@ export async function generateTotp(secret: TotpSecret, options: TotpOptions = {}
     false,
     ['sign']
   )
+  return generateTotpForCounter(key, counter, resolved.digits, cryptoApi)
+}
+
+async function generateTotpForCounter(
+  key: CryptoKey,
+  counter: number,
+  digits: number,
+  cryptoApi: Crypto
+): Promise<string> {
+  const counterBytes = encodeCounter(counter)
   const digest = new Uint8Array(await cryptoApi.subtle.sign('HMAC', key, counterBytes))
   const offset = digest[digest.length - 1]! & 0x0f
   const binaryCode =
@@ -322,9 +330,9 @@ export async function generateTotp(secret: TotpSecret, options: TotpOptions = {}
     ((digest[offset + 1]! & 0xff) << 16) |
     ((digest[offset + 2]! & 0xff) << 8) |
     (digest[offset + 3]! & 0xff)
-  const code = binaryCode % 10 ** resolved.digits
+  const code = binaryCode % 10 ** digits
 
-  return code.toString().padStart(resolved.digits, '0')
+  return code.toString().padStart(digits, '0')
 }
 
 /**
@@ -345,13 +353,22 @@ export async function verifyTotp(
   }
 
   const deltas = buildDriftSearchOrder(driftWindow)
+  const cryptoApi = getCryptoApi()
+  const key = await cryptoApi.subtle.importKey(
+    'raw',
+    resolveSecretBytes(secret),
+    { name: 'HMAC', hash: toWebCryptoHash(resolved.algorithm) },
+    false,
+    ['sign']
+  )
+  const currentCounter = Math.floor(resolved.timestampSeconds / resolved.period)
   for (const delta of deltas) {
-    const candidate = await generateTotp(secret, {
-      timestamp: resolved.timestampSeconds + delta * resolved.period,
-      period: resolved.period,
-      digits: resolved.digits,
-      algorithm: resolved.algorithm,
-    })
+    const candidate = await generateTotpForCounter(
+      key,
+      currentCounter + delta,
+      resolved.digits,
+      cryptoApi
+    )
 
     if (constantTimeEqual(normalizedCode, candidate)) {
       return { valid: true, delta }

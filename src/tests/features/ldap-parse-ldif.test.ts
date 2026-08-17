@@ -14,9 +14,9 @@ mail: jdoe@example.com`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
 
-      const entry = result.entries[0]
+      const entry = result.records[0]
       expect(entry.dn).toBe('uid=jdoe,ou=people,dc=example,dc=com')
       expect(entry.attributes['uid'].values).toContain('jdoe')
       expect(entry.attributes['cn'].values).toContain('John Doe')
@@ -36,9 +36,9 @@ cn: Alice Smith`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(2)
-      expect(result.entries[0].dn).toBe('uid=jdoe,ou=people,dc=example,dc=com')
-      expect(result.entries[1].dn).toBe('uid=asmith,ou=people,dc=example,dc=com')
+      expect(result.records).toHaveLength(2)
+      expect(result.records[0].dn).toBe('uid=jdoe,ou=people,dc=example,dc=com')
+      expect(result.records[1].dn).toBe('uid=asmith,ou=people,dc=example,dc=com')
     })
 
     it('should handle multi-valued attributes', () => {
@@ -53,9 +53,9 @@ mail: admin@corp.example.com`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
 
-      const entry = result.entries[0]
+      const entry = result.records[0]
       expect(entry.attributes['objectclass'].values).toHaveLength(3)
       expect(entry.attributes['objectclass'].values).toContain('person')
       expect(entry.attributes['objectclass'].values).toContain('organizationalPerson')
@@ -77,9 +77,9 @@ cn: Short Name`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
 
-      const entry = result.entries[0]
+      const entry = result.records[0]
       expect(entry.dn).toBe(
         'cn=Very Long Common Name That Needs To Be Folded,ou=people,dc=example,dc=com'
       )
@@ -95,9 +95,9 @@ description:: VGhpcyBpcyBhIGJhc2U2NC1lbmNvZGVkIHZhbHVl`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
 
-      const entry = result.entries[0]
+      const entry = result.records[0]
       expect(entry.attributes['description']).toBeDefined()
       // The value should be decoded from base64
       expect(entry.attributes['description'].values[0]).toBeTruthy()
@@ -112,9 +112,9 @@ cn;lang-fr: Nom Français`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
 
-      const entry = result.entries[0]
+      const entry = result.records[0]
       // All cn attributes (with different options) are merged under the 'cn' key
       expect(entry.attributes['cn']).toBeDefined()
       expect(entry.attributes['cn'].values).toHaveLength(3)
@@ -135,21 +135,21 @@ cn: Test User
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
-      expect(result.entries[0].attributes['cn'].values).toContain('Test User')
+      expect(result.records).toHaveLength(1)
+      expect(result.records[0].attributes['cn'].values).toContain('Test User')
     })
 
     it('should return empty result for empty input', () => {
       const result = parseLdif('')
 
-      expect(result.entries).toHaveLength(0)
+      expect(result.records).toHaveLength(0)
       expect(result.errors).toHaveLength(0)
     })
 
     it('should return empty result for whitespace-only input', () => {
       const result = parseLdif('   \n\n   \t\t\n  ')
 
-      expect(result.entries).toHaveLength(0)
+      expect(result.records).toHaveLength(0)
       expect(result.errors).toHaveLength(0)
     })
 
@@ -159,7 +159,7 @@ cn: No DN Entry`
 
       const result = parseLdif(ldif)
 
-      expect(result.entries).toHaveLength(0)
+      expect(result.records).toHaveLength(0)
       expect(result.errors.length).toBeGreaterThan(0)
       expect(result.errors[0]).toContain('distinguished name')
     })
@@ -172,7 +172,7 @@ sn: Last Name`
 
       const result = parseLdif(ldif)
 
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
       expect(result.errors.length).toBeGreaterThan(0)
       expect(result.errors[0]).toContain('Could not parse line')
     })
@@ -183,8 +183,8 @@ sn: Last Name`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
-      expect(result.entries[0].attributes['cn'].values).toContain('Test User')
+      expect(result.records).toHaveLength(1)
+      expect(result.records[0].attributes['cn'].values).toContain('Test User')
     })
 
     it('should handle tab-based line folding', () => {
@@ -195,8 +195,8 @@ description: First line
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
-      expect(result.entries[0].attributes['description'].values[0]).toContain('second line')
+      expect(result.records).toHaveLength(1)
+      expect(result.records[0].attributes['description'].values[0]).toContain('second line')
     })
 
     it('should preserve case in attribute names but use lowercase for keys', () => {
@@ -208,9 +208,9 @@ GivenName: Also merged`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
 
-      const entry = result.entries[0]
+      const entry = result.records[0]
       expect(entry.attributes['givenname']).toBeDefined()
       expect(entry.attributes['givenname'].values).toHaveLength(3)
       expect(entry.attributes['givenname'].name).toBe('givenName') // First occurrence preserved
@@ -223,8 +223,8 @@ cn: John Doe, Jr.`
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
-      expect(result.entries[0].dn).toContain('John Doe\\, Jr.')
+      expect(result.records).toHaveLength(1)
+      expect(result.records[0].dn).toContain('John Doe\\, Jr.')
     })
 
     it('should handle LDIF modification separator (-)', () => {
@@ -238,8 +238,22 @@ uniqueMember: uid=adoe,ou=people,dc=example,dc=com
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
-      expect(result.entries[0].attributes['uniquemember'].values).toHaveLength(2)
+      expect(result.records).toHaveLength(1)
+      expect(result.records[0].kind).toBe('modify')
+      if (result.records[0].kind !== 'modify') throw new Error('expected modify record')
+      expect(result.records[0].modifications).toEqual([
+        {
+          operation: 'replace',
+          attribute: 'uniqueMember',
+          options: [],
+          values: ['uid=jdoe,ou=people,dc=example,dc=com', 'uid=adoe,ou=people,dc=example,dc=com'],
+          rawLines: [
+            'replace: uniqueMember',
+            'uniqueMember: uid=jdoe,ou=people,dc=example,dc=com',
+            'uniqueMember: uid=adoe,ou=people,dc=example,dc=com',
+          ],
+        },
+      ])
     })
 
     it('should handle multiple modification operations with separators', () => {
@@ -257,12 +271,19 @@ delete: description
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
+      expect(result.records).toHaveLength(1)
 
-      const entry = result.entries[0]
-      expect(entry.attributes['changetype'].values).toContain('modify')
-      expect(entry.attributes['mail'].values).toContain('newemail@example.com')
-      expect(entry.attributes['telephonenumber'].values).toContain('+1-555-1234')
+      const entry = result.records[0]
+      expect(entry.kind).toBe('modify')
+      if (entry.kind !== 'modify') throw new Error('expected modify record')
+      expect(entry.modifications.map((item) => item.operation)).toEqual([
+        'replace',
+        'add',
+        'delete',
+      ])
+      expect(entry.modifications[0].values).toEqual(['newemail@example.com'])
+      expect(entry.modifications[1].values).toEqual(['+1-555-1234'])
+      expect(entry.modifications[2].values).toEqual([])
     })
 
     it('should handle standalone dash without surrounding whitespace', () => {
@@ -278,8 +299,26 @@ member: uid=user2,ou=people,dc=example,dc=com
       const result = parseLdif(ldif)
 
       expect(result.errors).toHaveLength(0)
-      expect(result.entries).toHaveLength(1)
-      expect(result.entries[0].attributes['member'].values).toHaveLength(2)
+      expect(result.records).toHaveLength(1)
+      expect(result.records[0].kind).toBe('modify')
+      if (result.records[0].kind !== 'modify') throw new Error('expected modify record')
+      expect(result.records[0].modifications).toHaveLength(2)
+      expect(result.records[0].modifications.map((item) => item.values[0])).toEqual([
+        'uid=user1,ou=people,dc=example,dc=com',
+        'uid=user2,ou=people,dc=example,dc=com',
+      ])
+    })
+
+    it('represents delete records and duplicate DNs without contradictory attributes', () => {
+      const result = parseLdif(`dn: uid=test,dc=example,dc=com
+changetype: delete
+
+dn: UID=TEST,DC=EXAMPLE,DC=COM
+cn: replacement`)
+
+      expect(result.records.map((record) => record.kind)).toEqual(['delete', 'content'])
+      expect(result.records.map((record) => record.sourceOrdinal)).toEqual([1, 2])
+      expect(result.errors).toContain('Record 2: Duplicate dn from record 1')
     })
   })
 })

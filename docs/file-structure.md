@@ -49,7 +49,7 @@ To add a new feature:
 2. Follow the established pattern with subdirectories for components, pages, etc.
 3. Create an `index.tsx` file that exports the main component
 4. Add the route in `src/main.tsx`
-5. Add navigation in `src/components/navigation/app-sidebar.tsx`
+5. Add the tool metadata to `src/config/tool-catalog.ts` (the sidebar and command center derive from it)
 6. Add feature docs under `docs/feature-guides/`
 7. Add focused tests under `src/tests/` and e2e coverage under `e2e/tests/` when the user flow changes
 
@@ -62,11 +62,11 @@ To add a new feature:
 
 ## Navigation Structure
 
-The navigation system is organized in:
+The navigation system is catalog-driven:
 
-- `src/components/navigation/app-sidebar.tsx`: Main sidebar component
-- `src/components/navigation/nav-main.tsx`: Primary navigation items
-- `src/components/navigation/nav-help.tsx`: Help and support navigation
+- `src/config/tool-catalog.ts`: Authoritative tool identity, path, labels, and navigation metadata
+- `src/components/navigation/app-sidebar.tsx`: Renders the catalog as the sidebar
+- `src/components/command-center/command-center.tsx`: Searches and opens the same catalog
 
 ## Hook Utilities
 

@@ -91,9 +91,10 @@ describe('ResourceCache', () => {
     cache.set('https://example.com/c', 'C')
 
     const stored = JSON.parse(window.localStorage.getItem(cacheKey) || '{}')
-    expect(Object.keys(stored)).toContain('https://example.com/b')
-    expect(Object.keys(stored)).toContain('https://example.com/c')
-    expect(Object.keys(stored)).not.toContain('https://example.com/a')
+    expect(stored.version).toBe(1)
+    expect(Object.keys(stored.entries)).toContain('https://example.com/b')
+    expect(Object.keys(stored.entries)).toContain('https://example.com/c')
+    expect(Object.keys(stored.entries)).not.toContain('https://example.com/a')
   })
 
   test('manages pending request lifecycle', async () => {
@@ -110,5 +111,69 @@ describe('ResourceCache', () => {
 
     cache.removePendingRequest('https://example.com/pending')
     expect(cache.getPendingRequest('https://example.com/pending')).toBeNull()
+  })
+
+  test('keeps query identity while discarding fragments', () => {
+    const cache = new ResourceCache<string>({
+      storageKey: 'resource-cache-url-identity',
+      memoryTTL: 5_000,
+      storageTTL: 5_000,
+    })
+    cache.set('https://example.com/data?tenant=one#first', 'one')
+
+    expect(cache.get('https://example.com/data?tenant=one#second')).toBe('one')
+    expect(cache.get('https://example.com/data?tenant=two')).toBeNull()
+  })
+
+  test('discards unversioned persisted cache records', () => {
+    window.localStorage.setItem(
+      'resource-cache-legacy',
+      JSON.stringify({
+        'https://example.com/data': { data: 'legacy', timestamp: now, ttl: 5_000 },
+      })
+    )
+    const cache = new ResourceCache<string>({
+      storageKey: 'resource-cache-legacy',
+      memoryTTL: 5_000,
+      storageTTL: 5_000,
+    })
+    expect(cache.get('https://example.com/data')).toBeNull()
+  })
+
+  test('deduplicates loads and prevents an older forced-refresh overlap from winning', async () => {
+    const cache = new ResourceCache<string>({
+      storageKey: 'resource-cache-fill',
+      memoryTTL: 5_000,
+      storageTTL: 5_000,
+    })
+    let loadCount = 0
+    let resolveFirst!: (value: string) => void
+    let resolveRefresh!: (value: string) => void
+    const firstLoader = () => {
+      loadCount++
+      return new Promise<string>((resolve) => {
+        resolveFirst = resolve
+      })
+    }
+    const first = cache.getOrLoad('https://example.com/data', firstLoader)
+    const duplicate = cache.getOrLoad('https://example.com/data', firstLoader)
+    const refresh = cache.getOrLoad(
+      'https://example.com/data',
+      () =>
+        new Promise<string>((resolve) => {
+          resolveRefresh = resolve
+        }),
+      { forceRefresh: true }
+    )
+
+    expect(loadCount).toBe(1)
+    resolveFirst('old')
+    expect(await first).toBe('old')
+    expect(await duplicate).toBe('old')
+    expect(cache.get('https://example.com/data')).toBeNull()
+    resolveRefresh('new')
+    expect(await refresh).toBe('new')
+    expect(cache.get('https://example.com/data')).toBe('new')
+    expect(cache.getPendingRequest('https://example.com/data')).toBeNull()
   })
 })

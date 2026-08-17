@@ -5,7 +5,7 @@
  * It maps to the local demo OAuth endpoints served by the worker.
  */
 
-import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { getIssuerBaseUrl } from './demo-issuer'
 
 class DemoOAuthServer {
   private static instance: DemoOAuthServer

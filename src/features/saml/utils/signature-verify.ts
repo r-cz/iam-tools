@@ -2,19 +2,24 @@
 // Note: xmldsigjs API surface differs across versions; we use `any` where needed to keep compatibility.
 
 import * as xmldsig from 'xmldsigjs'
+import {
+  findDirectXmlDsigSignature,
+  findMetadataEntityDescriptor,
+  findSamlAssertionElements,
+} from './signature-targets'
 
-export type ElementVerifyResult = {
-  present: boolean
-  valid: boolean | null
-  error?: string
-}
+export type SignatureVerificationOutcome =
+  | { status: 'unsigned' }
+  | { status: 'valid' }
+  | { status: 'invalid' }
+  | { status: 'error'; message: string }
 
 export type ResponseVerifyResult = {
-  response: ElementVerifyResult
-  assertions: Array<{ id?: string; result: ElementVerifyResult }>
+  response: SignatureVerificationOutcome
+  assertions: Array<{ id?: string; result: SignatureVerificationOutcome }>
 }
 
-export type MetadataVerifyResult = ElementVerifyResult
+export type MetadataVerifyResult = SignatureVerificationOutcome
 
 function ensureEngine() {
   const app: any = (xmldsig as any).Application
@@ -67,38 +72,26 @@ export async function verifySamlResponseSignatures(
 
   const responseEl = doc.documentElement
   const result: ResponseVerifyResult = {
-    response: { present: false, valid: null },
+    response: { status: 'unsigned' },
     assertions: [],
   }
 
   // Response-level signature
-  const respSig = findChildSignature(responseEl)
+  const respSig = findDirectXmlDsigSignature(responseEl)
   if (respSig) {
-    result.response.present = true
-    try {
-      result.response.valid = await verifySignatureElement(doc, respSig, certPem)
-    } catch (e: any) {
-      result.response.valid = false
-      result.response.error = e?.message || 'Verification error'
-    }
+    result.response = await verifySignatureOutcome(doc, respSig, certPem)
   }
 
   // Assertion-level signatures
-  const assertions = findDescendantsByLocalName(responseEl, 'Assertion')
+  const assertions = findSamlAssertionElements(responseEl)
   for (const a of assertions) {
-    const aSig = findChildSignature(a)
-    const item: { id?: string; result: ElementVerifyResult } = {
+    const aSig = findDirectXmlDsigSignature(a)
+    const item: { id?: string; result: SignatureVerificationOutcome } = {
       id: a.getAttribute('ID') || undefined,
-      result: { present: false, valid: null },
+      result: { status: 'unsigned' },
     }
     if (aSig) {
-      item.result.present = true
-      try {
-        item.result.valid = await verifySignatureElement(doc, aSig, certPem)
-      } catch (e: any) {
-        item.result.valid = false
-        item.result.error = e?.message || 'Verification error'
-      }
+      item.result = await verifySignatureOutcome(doc, aSig, certPem)
     }
     result.assertions.push(item)
   }
@@ -112,33 +105,27 @@ export async function verifySamlMetadataSignature(
 ): Promise<MetadataVerifyResult> {
   const parser = new DOMParser()
   const doc = parser.parseFromString(xml, 'application/xml')
-  const entity =
-    findDescendantsByLocalName(doc.documentElement, 'EntityDescriptor')[0] ||
-    (doc.documentElement.localName === 'EntityDescriptor' ? doc.documentElement : null)
+  const entity = findMetadataEntityDescriptor(doc)
 
-  if (!entity) return { present: false, valid: null }
-  const sig = findChildSignature(entity)
-  if (!sig) return { present: false, valid: null }
+  if (!entity) return { status: 'unsigned' }
+  const sig = findDirectXmlDsigSignature(entity)
+  if (!sig) return { status: 'unsigned' }
 
+  return await verifySignatureOutcome(doc, sig, certPem)
+}
+
+async function verifySignatureOutcome(
+  doc: Document,
+  signature: Element,
+  certPem: string
+): Promise<SignatureVerificationOutcome> {
   try {
-    const valid = await verifySignatureElement(doc, sig, certPem)
-    return { present: true, valid }
-  } catch (e: any) {
-    return { present: true, valid: false, error: e?.message || 'Verification error' }
+    const valid = await verifySignatureElement(doc, signature, certPem)
+    return valid ? { status: 'valid' } : { status: 'invalid' }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Verification error',
+    }
   }
-}
-
-function findChildSignature(el: Element): Element | null {
-  const ns = 'http://www.w3.org/2000/09/xmldsig#'
-  const list = el.getElementsByTagNameNS(ns, 'Signature')
-  if (list && list.length > 0 && list[0].parentElement === el) return list[0]
-  // fallback: first Signature anywhere under
-  return el.getElementsByTagNameNS(ns, 'Signature')[0] || null
-}
-
-function findDescendantsByLocalName(parent: Element, localName: string): Element[] {
-  const all = parent.getElementsByTagName('*')
-  return Array.from(all).filter(
-    (e) => e.localName === localName || e.nodeName.endsWith(':' + localName)
-  )
 }

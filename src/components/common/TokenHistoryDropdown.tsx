@@ -18,6 +18,9 @@ interface TokenHistoryDropdownProps {
   onSelectToken: (token: string) => void
   disabled?: boolean
   compact?: boolean
+  buttonVariant?: 'default' | 'input-group'
+  label?: string
+  align?: 'start' | 'center' | 'end'
 }
 
 /**
@@ -44,6 +47,9 @@ export function TokenHistoryDropdown({
   onSelectToken,
   disabled = false,
   compact = false,
+  buttonVariant = 'default',
+  label = 'Recent Tokens',
+  align = 'end',
 }: TokenHistoryDropdownProps) {
   const { tokenHistory, removeToken, updateToken, clearTokens } = useAppState()
   const [editingId, setEditingId] = React.useState<string | null>(null)
@@ -81,15 +87,26 @@ export function TokenHistoryDropdown({
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        {compact ? (
+        {buttonVariant === 'input-group' ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="flex items-center gap-1.5"
+            disabled={disabled}
+            aria-label={label}
+          >
+            <History size={16} />
+            <span className="hidden sm:inline">{label}</span>
+          </Button>
+        ) : compact ? (
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="h-9 w-9 rounded-none border-0"
             disabled={disabled}
-            title="Recent Tokens"
-            aria-label="Recent tokens"
+            title={label}
+            aria-label={label}
           >
             <History size={16} />
           </Button>
@@ -100,14 +117,14 @@ export function TokenHistoryDropdown({
             size="sm"
             className="flex items-center gap-1"
             disabled={disabled}
-            aria-label="Recent tokens"
+            aria-label={label}
           >
             <History size={16} />
-            <span className="hidden sm:inline">Recent Tokens</span>
+            <span className="hidden sm:inline">{label}</span>
           </Button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[300px]">
+      <DropdownMenuContent align={align} className="w-[300px]">
         <DropdownMenuLabel>Token History</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {tokenHistory.slice(0, 10).map((token) => (

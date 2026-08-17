@@ -21,10 +21,13 @@ You can deploy using Wrangler directly or via GitHub Actions:
 
 No special environment variables are required for basic deployment. However, you may configure the following if needed:
 
-- **NODE_ENV**: Set to `production` for production builds
 - **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins for CORS (disallowed origins receive `403`)
 - **APP_VERSION**: Release version string embedded in the frontend (defaults to package.json version)
-- **DEMO_TOKEN_SIGNING_SECRET**: Optional secret used to HMAC-sign demo authorization codes and refresh tokens (`v1.<payload>.<sig>`). When set, strict verification is enforced for these artifacts.
+- **DEMO_REDIRECT_URIS**: Comma-separated additional exact callback URLs for the demo provider
+- **DEMO_TOKEN_SIGNING_SECRET**: Optional Worker secret used for strict HMAC-signed, artifact-tagged demo grants (`v2.<payload>.<sig>`)
+
+Configure sensitive values with `bunx wrangler secret put DEMO_TOKEN_SIGNING_SECRET`; never place
+them in `wrangler.jsonc` or commit local secret files.
 
 ### Custom Domains
 
@@ -59,9 +62,8 @@ This repo deploys preview Workers per pull request via GitHub Actions:
 
 ### API URLs
 
-- CORS Proxy: `https://your-domain.com/api/cors-proxy/*`
-- JWKS Endpoint: `https://your-domain.com/api/jwks/`
-- OIDC Discovery (mock): `https://your-domain.com/api/.well-known/openid-configuration`
+The authoritative endpoint, method, error-shape, and rate-limit contract is in
+[API Documentation](./api.md). All Worker API routes are served under `https://your-domain.com/api/`.
 
 ### Local Development
 
@@ -90,7 +92,7 @@ If you need to deploy manually:
 
 Before deploying to production:
 
-1. Run all tests: `bun test`
+1. Run all tests: `bun run test`
 2. Ensure the build completes successfully: `bun run build`
 3. Preview the production build locally: `bun run preview`
 4. Verify all features work as expected
@@ -129,7 +131,7 @@ The deployment includes several security measures:
 3. API request validation in function handlers
 4. Strict allow-listing for the CORS proxy (well-known/JWKS endpoints, `GET/HEAD` only)
 5. In-worker rate limiting on `/api/cors-proxy` and demo OAuth endpoints (`429` with `Retry-After`)
-6. Signed envelope integrity for demo auth codes/refresh tokens when `DEMO_TOKEN_SIGNING_SECRET` is configured
+6. Tagged auth-code/refresh-token envelopes, with HMAC integrity when `DEMO_TOKEN_SIGNING_SECRET` is configured
 7. Demo JWT signature checks in `/api/userinfo` and `/api/introspect` before treating tokens as active
 8. Regular security updates through GitHub dependency management
 

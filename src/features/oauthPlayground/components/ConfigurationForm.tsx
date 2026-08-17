@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 // Removed Tabs imports
 import { Button } from '@/components/ui/button'
@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge' // Import Badge
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
-import { generateCodeVerifier, generateCodeChallenge, generateState } from '../utils/pkce'
+import { generatePkceParams } from '../utils/pkce'
 import { OAuthConfig, PkceParams } from '../utils/types' // Removed OAuthFlowType import
-import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { getIssuerBaseUrl } from '../utils/demo-issuer'
 import { toast } from 'sonner'
 import {
   DemoModeToggle,
@@ -54,9 +54,8 @@ export function ConfigurationForm({
   const { addIssuer } = useIssuerHistory()
 
   // Generate PKCE values
-  const [codeVerifier, setCodeVerifier] = useState<string>('')
-  const [codeChallenge, setCodeChallenge] = useState<string>('')
-  const [state, setState] = useState<string>('')
+  const [pkce, setPkce] = useState<PkceParams | null>(null)
+  const pkceGeneration = useRef(0)
 
   useEffect(() => {
     // Generate initial PKCE values
@@ -93,14 +92,10 @@ export function ConfigurationForm({
   }
 
   const regeneratePkce = async () => {
-    const verifier = generateCodeVerifier()
-    setCodeVerifier(verifier)
-
-    const challenge = await generateCodeChallenge(verifier)
-    setCodeChallenge(challenge)
-
-    const newState = generateState()
-    setState(newState)
+    const generation = ++pkceGeneration.current
+    setPkce(null)
+    const nextPkce = await generatePkceParams()
+    if (pkceGeneration.current === generation) setPkce(nextPkce)
   }
 
   const fetchOidcConfig = async (issuerInput = issuerUrl) => {
@@ -202,10 +197,9 @@ export function ConfigurationForm({
       demoMode: isDemoMode,
     }
 
-    const pkce: PkceParams = {
-      codeVerifier,
-      codeChallenge,
-      state,
+    if (!pkce) {
+      toast.error('PKCE parameters are still being generated')
+      return
     }
 
     onConfigComplete(config, pkce)
@@ -471,7 +465,7 @@ export function ConfigurationForm({
             <FormFieldInput
               id="oauth-code-verifier"
               label="Code Verifier"
-              value={codeVerifier}
+              value={pkce?.codeVerifier ?? ''}
               readOnly
               description="Random string used to generate the code challenge"
             />
@@ -479,7 +473,7 @@ export function ConfigurationForm({
             <FormFieldInput
               id="oauth-code-challenge"
               label="Code Challenge (S256)"
-              value={codeChallenge}
+              value={pkce?.codeChallenge ?? ''}
               readOnly
               description="SHA-256 hash of the code verifier, Base64URL encoded"
             />
@@ -487,13 +481,18 @@ export function ConfigurationForm({
             <FormFieldInput
               id="oauth-state"
               label="State"
-              value={state}
+              value={pkce?.state ?? ''}
               readOnly
               description="Random value for CSRF protection"
             />
           </FieldSet>
 
-          <Button type="button" onClick={handleSubmit} data-testid="oauth-authcode-continue-button">
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!pkce}
+            data-testid="oauth-authcode-continue-button"
+          >
             Continue to Authorization
           </Button>
         </div>

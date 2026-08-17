@@ -1,18 +1,34 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import {
   buildAuthnRequestXml,
   deflateRawToBase64,
   encodeBase64,
 } from '@/features/saml/utils/saml-request'
-import { signRedirectRequest, type RedirectSigAlg } from '@/features/saml/utils/redirect-signing'
+import {
+  buildRedirectUrl,
+  parseRedirectDestination,
+  signRedirectRequest,
+  type RedirectSigAlg,
+} from '@/features/saml/utils/redirect-signing'
 import { copyTextToClipboard } from '@/hooks/use-clipboard'
 
 type Binding = 'HTTP-Redirect' | 'HTTP-POST'
 type IsPassiveValue = 'unset' | 'true' | 'false'
+type RedirectEncodingStatus = 'pending' | 'ready' | 'error'
+
+type RedirectArtifact =
+  | { status: 'pending'; xml: string }
+  | { status: 'ready'; xml: string; base64: string }
+  | { status: 'error'; xml: string }
+
+type SignedArtifact =
+  | { status: 'idle' }
+  | { status: 'pending'; key: string }
+  | { status: 'ready'; key: string; url: string }
+  | { status: 'error'; key: string }
 
 export interface SamlRequestBuilderState {
-  // Form fields
   issuer: string
   destination: string
   acsUrl: string
@@ -22,20 +38,18 @@ export interface SamlRequestBuilderState {
   binding: Binding
   requestId: string
   isPassive: IsPassiveValue
-
-  // Computed values
   xml: string
-  redirectEncoded: string
+  redirectBase64: string
+  redirectEncodingStatus: RedirectEncodingStatus
   postEncoded: string
   redirectUrl: string
   isDestinationValid: boolean
   destinationForForm: string | undefined
-
-  // Signing
   enableSigning: boolean
   sigAlg: RedirectSigAlg
   privateKeyPem: string
   signedRedirectUrl: string
+  isSigning: boolean
 }
 
 export interface UseSamlRequestBuilderReturn extends SamlRequestBuilderState {
@@ -56,11 +70,7 @@ export interface UseSamlRequestBuilderReturn extends SamlRequestBuilderState {
   handleSignRedirect: () => Promise<void>
 }
 
-/**
- * Custom hook for managing SAML AuthnRequest builder state and logic
- */
 export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
-  // Form fields
   const [issuer, setIssuer] = useState('https://sp.example.com')
   const [destination, setDestination] = useState('https://idp.example.com/sso')
   const [acsUrl, setAcsUrl] = useState('https://sp.example.com/saml/acs')
@@ -72,39 +82,10 @@ export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
   const [binding, setBinding] = useState<Binding>('HTTP-POST')
   const [requestId, setRequestId] = useState<string>('_' + crypto.randomUUID())
   const [isPassive, setIsPassive] = useState<IsPassiveValue>('unset')
-
-  // Encoded values
-  const [redirectEncoded, setRedirectEncoded] = useState<string>('')
-  const [postEncoded, setPostEncoded] = useState<string>('')
-  const [redirectUrl, setRedirectUrl] = useState('')
-
-  // Signing
   const [enableSigning, setEnableSigning] = useState(false)
   const [sigAlg, setSigAlg] = useState<RedirectSigAlg>('rsa-sha256')
   const [privateKeyPem, setPrivateKeyPem] = useState('')
-  const [signedRedirectUrl, setSignedRedirectUrl] = useState('')
 
-  // Helper: returns true for valid http(s) URLs
-  const isValidHttpUrl = useCallback((url: string) => {
-    try {
-      const u = new URL(url)
-      return u.protocol === 'http:' || u.protocol === 'https:'
-    } catch {
-      return false
-    }
-  }, [])
-
-  // Compute safe destination for use in form action and a validity flag
-  const isDestinationValid = useMemo(
-    () => isValidHttpUrl(destination),
-    [isValidHttpUrl, destination]
-  )
-  const destinationForForm = useMemo(
-    () => (isDestinationValid ? destination : undefined),
-    [isDestinationValid, destination]
-  )
-
-  // Generate XML
   const xml = useMemo(
     () =>
       buildAuthnRequestXml({
@@ -118,84 +99,113 @@ export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
       }),
     [issuer, destination, acsUrl, nameIdFormat, forceAuthn, requestId, isPassive]
   )
+  const postEncoded = useMemo(() => encodeBase64(xml), [xml])
+  const [redirectArtifact, setRedirectArtifact] = useState<RedirectArtifact>({
+    status: 'pending',
+    xml,
+  })
 
-  // Encode for POST and Redirect bindings
   useEffect(() => {
-    // POST binding: base64 of raw XML
-    setPostEncoded(encodeBase64(xml))
-
-    // Redirect binding: DEFLATE (raw) + base64 + URL encode
-    ;(async () => {
-      try {
-        const deflated = await deflateRawToBase64(xml)
-        setRedirectEncoded(encodeURIComponent(deflated))
-      } catch {
-        setRedirectEncoded('')
+    let current = true
+    setRedirectArtifact({ status: 'pending', xml })
+    void deflateRawToBase64(xml).then(
+      (base64) => {
+        if (current) setRedirectArtifact({ status: 'ready', xml, base64 })
+      },
+      () => {
+        if (current) setRedirectArtifact({ status: 'error', xml })
       }
-    })()
+    )
+    return () => {
+      current = false
+    }
   }, [xml])
 
-  // Build redirect URL
-  useEffect(() => {
-    if (!redirectEncoded) {
-      setRedirectUrl('')
-      return
-    }
-    const url = new URL(destination, window.location.origin)
-    url.searchParams.set('SAMLRequest', redirectEncoded)
-    if (relayState) url.searchParams.set('RelayState', relayState)
-    setRedirectUrl(url.toString())
-    setSignedRedirectUrl('')
-  }, [destination, redirectEncoded, relayState])
+  const redirectBase64 =
+    redirectArtifact.status === 'ready' && redirectArtifact.xml === xml
+      ? redirectArtifact.base64
+      : ''
+  const redirectEncodingStatus: RedirectEncodingStatus =
+    redirectArtifact.xml === xml ? redirectArtifact.status : 'pending'
 
-  // Copy to clipboard helper
+  const isDestinationValid = useMemo(() => {
+    try {
+      parseRedirectDestination(destination)
+      return true
+    } catch {
+      return false
+    }
+  }, [destination])
+  const destinationForForm = isDestinationValid ? destination : undefined
+
+  const redirectUrl = useMemo(() => {
+    if (!redirectBase64) return ''
+    try {
+      return buildRedirectUrl({
+        destination,
+        samlRequest: redirectBase64,
+        relayState: relayState || undefined,
+      })
+    } catch {
+      return ''
+    }
+  }, [destination, redirectBase64, relayState])
+
+  const signingKey = useMemo(
+    () => JSON.stringify([destination, redirectBase64, relayState, sigAlg, privateKeyPem]),
+    [destination, redirectBase64, relayState, sigAlg, privateKeyPem]
+  )
+  const signingGenerationRef = useRef(0)
+  const [signedArtifact, setSignedArtifact] = useState<SignedArtifact>({ status: 'idle' })
+  const signedRedirectUrl =
+    signedArtifact.status === 'ready' && signedArtifact.key === signingKey ? signedArtifact.url : ''
+  const isSigning = signedArtifact.status === 'pending' && signedArtifact.key === signingKey
+
   const copy = useCallback(async (text: string, label = 'Copied') => {
     const copied = await copyTextToClipboard(text)
-
-    if (copied) {
-      toast.success(label)
-    } else {
-      toast.error('Copy failed')
-    }
+    if (copied) toast.success(label)
+    else toast.error('Copy failed')
   }, [])
 
-  // Regenerate request ID
   const regenerateId = useCallback(() => {
     setRequestId('_' + crypto.randomUUID())
   }, [])
 
-  // Sign redirect URL
   const handleSignRedirect = useCallback(async () => {
+    if (!redirectBase64) {
+      toast.error('No encoded Redirect SAMLRequest available')
+      return
+    }
+    if (!privateKeyPem.trim()) {
+      toast.error('Private key (PKCS8 PEM) is required to sign')
+      return
+    }
+
+    const key = signingKey
+    const generation = ++signingGenerationRef.current
+    setSignedArtifact({ status: 'pending', key })
     try {
-      if (!redirectEncoded) {
-        toast.error('No encoded Redirect SAMLRequest available')
-        return
-      }
-      if (!privateKeyPem.trim()) {
-        toast.error('Private key (PKCS8 PEM) is required to sign')
-        return
-      }
-      const baseUrl = new URL(destination, window.location.origin)
       const { url } = await signRedirectRequest({
-        baseUrl: baseUrl.toString(),
-        samlRequest: redirectEncoded,
+        baseUrl: destination,
+        samlRequest: redirectBase64,
         relayState: relayState || undefined,
         sigAlg,
         privateKeyPem,
       })
-      setSignedRedirectUrl(url)
+      if (signingGenerationRef.current !== generation) return
+      setSignedArtifact({ status: 'ready', key, url })
       toast.success('Redirect URL signed')
-    } catch (e: any) {
-      if (import.meta?.env?.DEV) {
-        console.error(e)
-      }
-      toast.error('Signing failed', { description: e?.message })
-      setSignedRedirectUrl('')
+    } catch (error) {
+      if (signingGenerationRef.current !== generation) return
+      if (import.meta.env.DEV) console.error(error)
+      setSignedArtifact({ status: 'error', key })
+      toast.error('Signing failed', {
+        description: error instanceof Error ? error.message : String(error),
+      })
     }
-  }, [redirectEncoded, privateKeyPem, destination, relayState, sigAlg])
+  }, [destination, privateKeyPem, redirectBase64, relayState, sigAlg, signingKey])
 
   return {
-    // State
     issuer,
     destination,
     acsUrl,
@@ -206,7 +216,8 @@ export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
     requestId,
     isPassive,
     xml,
-    redirectEncoded,
+    redirectBase64,
+    redirectEncodingStatus,
     postEncoded,
     redirectUrl,
     isDestinationValid,
@@ -215,8 +226,7 @@ export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
     sigAlg,
     privateKeyPem,
     signedRedirectUrl,
-
-    // Setters
+    isSigning,
     setIssuer,
     setDestination,
     setAcsUrl,
@@ -229,8 +239,6 @@ export function useSamlRequestBuilder(): UseSamlRequestBuilderReturn {
     setEnableSigning,
     setSigAlg,
     setPrivateKeyPem,
-
-    // Methods
     regenerateId,
     copy,
     handleSignRedirect,

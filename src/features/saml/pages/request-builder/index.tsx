@@ -21,7 +21,8 @@ export default function SamlRequestBuilderPage() {
     requestId,
     isPassive,
     xml,
-    redirectEncoded,
+    redirectBase64,
+    redirectEncodingStatus,
     postEncoded,
     redirectUrl,
     isDestinationValid,
@@ -30,6 +31,7 @@ export default function SamlRequestBuilderPage() {
     sigAlg,
     privateKeyPem,
     signedRedirectUrl,
+    isSigning,
     setIssuer,
     setDestination,
     setAcsUrl,
@@ -117,26 +119,29 @@ export default function SamlRequestBuilderPage() {
                 </div>
                 <div>
                   <div className="flex justify-between mb-2">
-                    <div className="text-sm">
-                      HTTP-Redirect: URL-encoded(deflate+base64) SAMLRequest
-                    </div>
+                    <div className="text-sm">HTTP-Redirect: DEFLATE + Base64 SAMLRequest</div>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => copy(redirectEncoded, 'Encoded copied')}
-                      disabled={!redirectEncoded}
+                      onClick={() => copy(redirectBase64, 'Encoded copied')}
+                      disabled={!redirectBase64}
                     >
                       Copy
                     </Button>
                   </div>
-                  {!redirectEncoded && (
+                  {redirectEncodingStatus === 'pending' && (
+                    <div className="text-xs text-muted-foreground mb-2">
+                      Encoding the current request…
+                    </div>
+                  )}
+                  {redirectEncodingStatus === 'error' && (
                     <div className="text-xs text-amber-600 dark:text-amber-400 mb-2">
                       Redirect encoding unavailable in this browser (missing CompressionStream). Use
                       POST binding or try a Chromium-based browser.
                     </div>
                   )}
                   <div className="min-w-0">
-                    <JsonDisplay data={redirectEncoded} language="text" maxHeight="200px" />
+                    <JsonDisplay data={redirectBase64} language="text" maxHeight="200px" />
                   </div>
                 </div>
               </div>
@@ -153,6 +158,7 @@ export default function SamlRequestBuilderPage() {
                 sigAlg={sigAlg}
                 privateKeyPem={privateKeyPem}
                 signedRedirectUrl={signedRedirectUrl}
+                isSigning={isSigning}
                 onEnableSigningChange={setEnableSigning}
                 onSigAlgChange={setSigAlg}
                 onPrivateKeyPemChange={setPrivateKeyPem}

@@ -90,10 +90,7 @@ describe('CommandCenter', () => {
 
     expect(screen.getByTestId('location').textContent).toBe(results[1].tool.path)
     expect(screen.queryByTestId('command-center')).toBeNull()
-    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEYS.RECENT_TOOLS) ?? '[]')[0]).toEqual({
-      id: results[1].tool.id,
-      visitedAt: expect.any(Number),
-    })
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEYS.RECENT_TOOLS) ?? '[]')).toEqual([])
   })
 
   test('uses a non-composite empty state for its recovery action', () => {

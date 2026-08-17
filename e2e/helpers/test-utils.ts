@@ -4,8 +4,8 @@ export class TestUtils {
   constructor(private page: Page) {}
 
   async navigateTo(path: string) {
-    await this.page.goto(path)
-    await this.page.waitForLoadState('networkidle')
+    await this.page.goto(path, { waitUntil: 'domcontentloaded' })
+    await expect(this.page).toHaveURL(path)
   }
 
   async clickAndWait(selector: string, waitForSelector?: string) {

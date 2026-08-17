@@ -28,6 +28,7 @@ describe('SCIM PATCH utilities', () => {
     )
 
     expect(result.valid).toBe(true)
+    if (!result.valid) throw new Error('expected valid PATCH document')
     expect(result.operations).toEqual([
       { op: 'add', path: 'members', value: [{ value: 'user-123' }] },
       { op: 'replace', path: 'name.givenName', value: 'Barbara' },
@@ -91,6 +92,7 @@ describe('SCIM PATCH utilities', () => {
     )
 
     expect(result.valid).toBe(true)
+    if (!result.valid) throw new Error('expected valid PATCH document')
     expect(result.operations[0]?.op).toBe('replace')
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({ severity: 'warning', code: 'operation_name_case' })
@@ -106,6 +108,7 @@ describe('SCIM PATCH utilities', () => {
     )
 
     expect(result.valid).toBe(true)
+    if (!result.valid) throw new Error('expected valid PATCH document')
     expect(result.operations).toEqual([{ op: 'remove', path: 'nickName' }])
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({ severity: 'warning', code: 'remove_value_ignored' })

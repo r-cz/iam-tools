@@ -20,7 +20,13 @@ export interface HandoffNavigationState {
 }
 
 interface StoredHandoff<D extends HandoffDestination = HandoffDestination> {
-  version: 1
+  version: 2
+  destination: D
+  createdAt: number
+  payload: HandoffPayloads[D]
+}
+
+interface DecodedHandoff<D extends HandoffDestination = HandoffDestination> {
   destination: D
   createdAt: number
   expiresAt: number
@@ -60,6 +66,52 @@ function isPayloadForDestination<D extends HandoffDestination>(
   }
 
   return isNonEmptyString(payload.leftToken) && isNonEmptyString(payload.rightToken)
+}
+
+function decodeStoredHandoff(
+  serialized: string | null,
+  now: number,
+  expectedDestination?: HandoffDestination
+): DecodedHandoff | null {
+  if (!serialized) return null
+
+  let value: unknown
+  try {
+    value = JSON.parse(serialized)
+  } catch {
+    return null
+  }
+
+  if (
+    !isRecord(value) ||
+    (value.version !== 1 && value.version !== 2) ||
+    !isAllowedDestination(value.destination) ||
+    (expectedDestination !== undefined && value.destination !== expectedDestination) ||
+    !isPayloadForDestination(value.destination, value.payload) ||
+    typeof value.createdAt !== 'number' ||
+    !Number.isFinite(value.createdAt)
+  ) {
+    return null
+  }
+
+  const expiresAt = value.createdAt + HANDOFF_TTL_MS
+  if (
+    value.createdAt > now ||
+    expiresAt <= now ||
+    (value.version === 1 &&
+      (typeof value.expiresAt !== 'number' ||
+        !Number.isFinite(value.expiresAt) ||
+        value.expiresAt !== expiresAt))
+  ) {
+    return null
+  }
+
+  return {
+    destination: value.destination,
+    createdAt: value.createdAt,
+    expiresAt,
+    payload: value.payload,
+  }
 }
 
 function getSessionStorage(): Storage | null {
@@ -136,21 +188,8 @@ export function purgeExpiredHandoffs(now = Date.now()): void {
   for (const key of keys) {
     try {
       const serialized = storage.getItem(key)
-      const handoff: unknown = serialized ? JSON.parse(serialized) : null
-      if (
-        !HANDOFF_ID_PATTERN.test(key.slice(STORAGE_PREFIX.length)) ||
-        !isRecord(handoff) ||
-        handoff.version !== 1 ||
-        !isAllowedDestination(handoff.destination) ||
-        !isPayloadForDestination(handoff.destination, handoff.payload) ||
-        typeof handoff.createdAt !== 'number' ||
-        !Number.isFinite(handoff.createdAt) ||
-        typeof handoff.expiresAt !== 'number' ||
-        !Number.isFinite(handoff.expiresAt) ||
-        handoff.createdAt > now ||
-        handoff.expiresAt <= now ||
-        handoff.expiresAt - handoff.createdAt !== HANDOFF_TTL_MS
-      ) {
+      const handoff = decodeStoredHandoff(serialized, now)
+      if (!HANDOFF_ID_PATTERN.test(key.slice(STORAGE_PREFIX.length)) || !handoff) {
         removeHandoff(storage, key)
       } else {
         scheduleRemoval(storage, key, handoff.expiresAt)
@@ -230,19 +269,17 @@ export function createHandoff<D extends HandoffDestination>(
 
   purgeExpiredHandoffs()
   const createdAt = Date.now()
-  const expiresAt = createdAt + HANDOFF_TTL_MS
   const handoff: StoredHandoff<D> = {
-    version: 1,
+    version: 2,
     destination,
     createdAt,
-    expiresAt,
     payload,
   }
 
   try {
     const key = storageKey(handoffId)
     storage.setItem(key, JSON.stringify(handoff))
-    scheduleRemoval(storage, key, expiresAt)
+    scheduleRemoval(storage, key, createdAt + HANDOFF_TTL_MS)
     return { handoffId }
   } catch {
     return null
@@ -273,27 +310,6 @@ export function consumeHandoff<D extends HandoffDestination>(
 
   if (!serialized) return null
 
-  try {
-    const handoff: unknown = JSON.parse(serialized)
-    if (
-      !isRecord(handoff) ||
-      handoff.version !== 1 ||
-      handoff.destination !== destination ||
-      !isAllowedDestination(handoff.destination) ||
-      typeof handoff.createdAt !== 'number' ||
-      !Number.isFinite(handoff.createdAt) ||
-      typeof handoff.expiresAt !== 'number' ||
-      !Number.isFinite(handoff.expiresAt) ||
-      handoff.createdAt > Date.now() ||
-      handoff.expiresAt <= Date.now() ||
-      handoff.expiresAt - handoff.createdAt !== HANDOFF_TTL_MS ||
-      !isPayloadForDestination(destination, handoff.payload)
-    ) {
-      return null
-    }
-
-    return handoff.payload
-  } catch {
-    return null
-  }
+  const handoff = decodeStoredHandoff(serialized, Date.now(), destination)
+  return handoff ? (handoff.payload as HandoffPayloads[D]) : null
 }

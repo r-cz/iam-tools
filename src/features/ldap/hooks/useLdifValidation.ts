@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { LdifEntry } from '../utils/parse-ldif'
+import type { LdifRecord } from '../utils/parse-ldif'
 import type { ParsedObjectClass } from '../utils/parse-schema'
 
 export interface ValidationSummary {
@@ -17,7 +17,7 @@ interface SchemaDetails {
  * Custom hook for validating LDIF entries against a schema
  */
 export function useLdifValidation(
-  entries: LdifEntry[],
+  records: LdifRecord[],
   schemaDetails: SchemaDetails | null
 ): ValidationSummary {
   return useMemo<ValidationSummary>(() => {
@@ -31,7 +31,16 @@ export function useLdifValidation(
 
     const builtInAttributes = new Set(['dn', 'changetype', 'control'])
 
-    entries.forEach((entry) => {
+    records.forEach((entry) => {
+      if (entry.kind === 'delete') return
+      if (entry.kind === 'modify') {
+        entry.modifications.forEach((modification) => {
+          if (!schemaDetails.attributeMap.has(modification.attribute.toLowerCase())) {
+            unknownAttributes.add(modification.attribute)
+          }
+        })
+        return
+      }
       const entryAttributeKeys = new Set(
         Object.keys(entry.attributes).map((key) => key.toLowerCase())
       )
@@ -88,5 +97,5 @@ export function useLdifValidation(
       unknownObjectClasses: Array.from(unknownObjectClasses).sort(),
       missingRequired,
     }
-  }, [entries, schemaDetails])
+  }, [records, schemaDetails])
 }

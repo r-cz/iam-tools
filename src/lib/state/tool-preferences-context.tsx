@@ -2,6 +2,7 @@ import * as React from 'react'
 
 import { allTools } from '@/config/tool-catalog'
 import { STORAGE_KEYS } from '@/lib/state/constants'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 
 export const MAX_RECENT_TOOLS = 6
 
@@ -73,80 +74,19 @@ export function sanitizeRecentToolRecords(value: unknown): RecentToolRecord[] {
     .slice(0, MAX_RECENT_TOOLS)
 }
 
-function readStoredValue<T>(key: string, sanitize: (value: unknown) => T): T {
-  if (typeof window === 'undefined') return sanitize(undefined)
-
-  try {
-    const storedValue = window.localStorage.getItem(key)
-    return storedValue === null ? sanitize(undefined) : sanitize(JSON.parse(storedValue))
-  } catch (error) {
-    console.warn(`Error reading localStorage key "${key}":`, error)
-    return sanitize(undefined)
-  }
-}
-
-function useSafeStoredValue<T>(
-  key: string,
-  sanitize: (value: unknown) => T
-): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [value, setValue] = React.useState<T>(() => readStoredValue(key, sanitize))
-  const valueRef = React.useRef(value)
-
-  const setStoredValue = React.useCallback<React.Dispatch<React.SetStateAction<T>>>(
-    (nextValue) => {
-      const resolvedValue =
-        typeof nextValue === 'function'
-          ? (nextValue as (current: T) => T)(valueRef.current)
-          : nextValue
-      const safeValue = sanitize(resolvedValue)
-
-      valueRef.current = safeValue
-      setValue(safeValue)
-
-      try {
-        window.localStorage.setItem(key, JSON.stringify(safeValue))
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error)
-      }
-    },
-    [key, sanitize]
-  )
-
-  React.useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key !== key) return
-
-      try {
-        const nextValue =
-          event.newValue === null ? sanitize(undefined) : sanitize(JSON.parse(event.newValue))
-        valueRef.current = nextValue
-        setValue(nextValue)
-      } catch (error) {
-        console.warn(`Error reading localStorage key "${key}" from a storage event:`, error)
-        const fallbackValue = sanitize(undefined)
-        valueRef.current = fallbackValue
-        setValue(fallbackValue)
-      }
-    }
-
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [key, sanitize])
-
-  return [value, setStoredValue]
-}
-
 const ToolPreferencesContext = React.createContext<ToolPreferencesContextValue | undefined>(
   undefined
 )
 
 export function ToolPreferencesProvider({ children }: { children: React.ReactNode }) {
-  const [favoriteToolIds, setFavoriteToolIds] = useSafeStoredValue(
+  const [favoriteToolIds, setFavoriteToolIds] = useLocalStorage(
     STORAGE_KEYS.FAVORITE_TOOL_IDS,
+    [],
     sanitizeFavoriteToolIds
   )
-  const [recentTools, setRecentTools] = useSafeStoredValue(
+  const [recentTools, setRecentTools] = useLocalStorage(
     STORAGE_KEYS.RECENT_TOOLS,
+    [],
     sanitizeRecentToolRecords
   )
 

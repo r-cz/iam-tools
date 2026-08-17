@@ -1,66 +1,56 @@
-// This preload file configures the environment for all Bun tests
-
-// Provide a DOM implementation for tests via happy-dom
-// Try multiple import paths for compatibility across versions
-// If all fail, fall back to a minimal Window shim from happy-dom
-async function setupDom() {
-  try {
-    await import('happy-dom/global')
-    return
-  } catch {}
-  try {
-    await import('happy-dom/global.js')
-    return
-  } catch {}
-  try {
-    const mod: any = await import('happy-dom')
-    const Win = mod.Window || (mod.default && mod.default.Window)
-    if (Win) {
-      const win = new Win()
-      ;(globalThis as any).window = win
-      ;(globalThis as any).document = win.document
-      ;(globalThis as any).navigator = win.navigator
-      ;(globalThis as any).location = win.location
-      ;(globalThis as any).DOMParser = win.DOMParser
-      ;(globalThis as any).Element = win.Element
-      ;(globalThis as any).Node = win.Node
-      return
-    }
-  } catch {}
-  console.warn('happy-dom not available; tests may not have full DOM APIs')
-}
-
-await setupDom()
-
-// Radix components access this constructor directly instead of through window.
-if (!(globalThis as any).HTMLFormElement && globalThis.document) {
-  ;(globalThis as any).HTMLFormElement = globalThis.document.createElement('form').constructor
-}
-
-try {
-  const mod: any = await import('happy-dom')
-  for (const WindowLike of [mod.Window, mod.BrowserWindow]) {
-    if (WindowLike?.prototype && !WindowLike.prototype.SyntaxError) {
-      WindowLike.prototype.SyntaxError = globalThis.SyntaxError
-    }
-  }
-} catch {}
-
-// Import from bun:test
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { GlobalWindow } from 'happy-dom'
 
-// Import DOM setup (this will configure the DOM environment)
-import './utils/dom-setup'
+const window = new GlobalWindow({ url: 'http://localhost:3000/' })
 
-// Set up before all tests
-beforeAll(() => {
-  console.log('⚙️ Test environment initialized')
+const browserGlobals = [
+  'window',
+  'document',
+  'navigator',
+  'location',
+  'localStorage',
+  'sessionStorage',
+  'DOMParser',
+  'XMLSerializer',
+  'Node',
+  'Element',
+  'HTMLElement',
+  'HTMLFormElement',
+  'Event',
+  'CustomEvent',
+  'MouseEvent',
+  'KeyboardEvent',
+  'MutationObserver',
+  'ResizeObserver',
+  'getComputedStyle',
+  'requestAnimationFrame',
+  'cancelAnimationFrame',
+] as const
+
+Object.defineProperty(globalThis, 'window', { configurable: true, value: window })
+for (const name of browserGlobals.slice(1)) {
+  const value = window[name as keyof typeof window]
+  if (value === undefined) throw new Error(`happy-dom is missing required browser global: ${name}`)
+  Object.defineProperty(globalThis, name, {
+    configurable: true,
+    writable: true,
+    value: typeof value === 'function' ? value.bind(window) : value,
+  })
+}
+
+;(globalThis as { __IAM_TOOLS_TEST__?: boolean }).__IAM_TOOLS_TEST__ = true
+
+if (!globalThis.document || !globalThis.DOMParser || !globalThis.HTMLElement) {
+  throw new Error('happy-dom bootstrap did not provide the required DOM contract')
+}
+
+afterEach(() => {
+  document.body.replaceChildren()
+  localStorage.clear()
+  sessionStorage.clear()
 })
 
-// Clean up after all tests
-afterAll(() => {
-  console.log('✅ All tests completed')
-})
+beforeAll(() => console.log('⚙️ Test environment initialized'))
+afterAll(() => console.log('✅ All tests completed'))
 
-// Export the preloaded objects to make them available in tests
 export { beforeAll, afterAll, beforeEach, afterEach, describe, test, expect }

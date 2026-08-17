@@ -26,6 +26,7 @@ export type OidcPreflightReasonCode =
 
 export interface OidcPreflightRequest {
   issuerUrl: string
+  signal?: AbortSignal
   requiredEndpoints?: OidcEndpointName[]
   includeOptionalEndpoints?: boolean
   timeoutMs?: number
@@ -74,6 +75,11 @@ export interface OidcDiscoveredEndpoints {
   introspectionEndpoint?: string
   jwksEndpoint?: string
 }
+
+export type OidcEndpointSelection =
+  | { value: string; source: 'manual' }
+  | { value: string; source: 'demo' }
+  | { value: string; source: 'discovery'; issuerUrl: string }
 
 interface OidcDiscoveryFetchResult {
   normalizedIssuerUrl: string
@@ -228,6 +234,7 @@ export async function runOidcEndpointPreflight(
   try {
     discoveryResult = await fetchOidcDiscoveryConfiguration(normalizedIssuerUrl, fetcher, {
       timeoutMs,
+      signal: request.signal,
     })
     endpoints.push({
       endpoint: 'discovery',
@@ -319,6 +326,7 @@ export async function runOidcEndpointPreflight(
         fetcher: endpointProbeFetcher,
         enableServerAssistedProbes,
         serverAssistedProbeFetcher,
+        signal: request.signal,
       })
     })
   )
@@ -482,11 +490,15 @@ async function probeEndpoint(input: {
   fetcher: OidcFetchFunction
   enableServerAssistedProbes: boolean
   serverAssistedProbeFetcher: OidcFetchFunction
+  signal?: AbortSignal
 }): Promise<OidcEndpointPreflightResult> {
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(), input.timeoutMs)
+  const abortFromRequest = () => controller.abort()
+  input.signal?.addEventListener('abort', abortFromRequest, { once: true })
 
   try {
+    if (input.signal?.aborted) throw createAbortError()
     const requestInit = createProbeRequest(input.endpoint, input.method, controller.signal)
     const response = await input.fetcher(input.url, requestInit)
     const classification = classifyProbeResponse(input.endpoint, response.status, input.required)
@@ -504,6 +516,7 @@ async function probeEndpoint(input: {
       message: classification.message,
     }
   } catch (error) {
+    if (input.signal?.aborted) throw createAbortError()
     const classification = classifyProbeError(error, input.required)
 
     if (classification.reasonCode === 'network_or_cors' && input.enableServerAssistedProbes) {
@@ -513,6 +526,7 @@ async function probeEndpoint(input: {
           url: input.url,
           method: input.method,
           fetcher: input.serverAssistedProbeFetcher,
+          signal: controller.signal,
         })
         const assistedClassification = classifyProbeResponse(
           input.endpoint,
@@ -564,6 +578,7 @@ async function probeEndpoint(input: {
     }
   } finally {
     clearTimeout(timeoutHandle)
+    input.signal?.removeEventListener('abort', abortFromRequest)
   }
 }
 
@@ -613,6 +628,7 @@ async function probeEndpointViaServer(input: {
   url: string
   method: 'GET' | 'HEAD' | 'POST'
   fetcher: OidcFetchFunction
+  signal: AbortSignal
 }): Promise<{ status: number; statusText: string }> {
   const probePayload = createProbePayload(input.endpoint, input.method)
   const response = await input.fetcher(resolveServerAssistedProbeUrl(), {
@@ -626,6 +642,7 @@ async function probeEndpointViaServer(input: {
       headers: probePayload.headers,
       body: probePayload.body,
     }),
+    signal: input.signal,
   })
 
   if (!response.ok) {

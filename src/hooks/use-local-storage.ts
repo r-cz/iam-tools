@@ -1,65 +1,69 @@
 import * as React from 'react'
 
 type SetValue<T> = React.Dispatch<React.SetStateAction<T>>
+export type StoredValueSanitizer<T> = (value: unknown) => T
 
-/**
- * Hook for persistent state using localStorage
- * @param key The localStorage key to store the value under
- * @param initialValue The initial value to use if no value exists in storage
- * @returns A stateful value and a function to update it (like useState)
- */
-export function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
-  // Get stored value from localStorage or use initialValue
-  const readValue = React.useCallback((): T => {
-    if (typeof window === 'undefined') {
-      return initialValue
-    }
+function parseStoredValue<T>(
+  serialized: string | null,
+  fallback: T,
+  sanitize?: StoredValueSanitizer<T>
+): T {
+  const parsed: unknown = serialized === null ? fallback : JSON.parse(serialized)
+  return sanitize ? sanitize(parsed) : (parsed as T)
+}
 
+export function useLocalStorage<T>(
+  key: string,
+  initialValue: T,
+  sanitize?: StoredValueSanitizer<T>
+): [T, SetValue<T>] {
+  const readValue = React.useCallback(() => {
     try {
-      const item = window.localStorage.getItem(key)
-      return item ? (JSON.parse(item) as T) : initialValue
+      return parseStoredValue(window.localStorage.getItem(key), initialValue, sanitize)
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error)
-      return initialValue
+      return sanitize ? sanitize(initialValue) : initialValue
     }
-  }, [initialValue, key])
+  }, [initialValue, key, sanitize])
 
-  // State to store our value
   const [storedValue, setStoredValue] = React.useState<T>(readValue)
+  const valueRef = React.useRef(storedValue)
 
-  // Return a wrapped version of useState's setter function that persists
-  // the new value to localStorage
-  const setValue: SetValue<T> = React.useCallback(
-    (value) => {
-      if (typeof window === 'undefined') {
-        console.warn(`Cannot set localStorage key "${key}" when not in browser`)
-        return
-      }
-
+  const setValue = React.useCallback<SetValue<T>>(
+    (nextValue) => {
+      const resolved =
+        typeof nextValue === 'function'
+          ? (nextValue as (current: T) => T)(valueRef.current)
+          : nextValue
+      const safeValue = sanitize ? sanitize(resolved) : resolved
+      valueRef.current = safeValue
+      setStoredValue(safeValue)
       try {
-        setStoredValue((currentValue) => {
-          const newValue = value instanceof Function ? value(currentValue) : value
-          window.localStorage.setItem(key, JSON.stringify(newValue))
-          return newValue
-        })
+        window.localStorage.setItem(key, JSON.stringify(safeValue))
       } catch (error) {
         console.warn(`Error setting localStorage key "${key}":`, error)
       }
     },
-    [key]
+    [key, sanitize]
   )
 
-  // Watch for changes to localStorage in other tabs/windows
   React.useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === key && e.newValue !== null) {
-        setStoredValue(JSON.parse(e.newValue))
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key !== key) return
+      try {
+        const nextValue = parseStoredValue(event.newValue, initialValue, sanitize)
+        valueRef.current = nextValue
+        setStoredValue(nextValue)
+      } catch (error) {
+        console.warn(`Error reading localStorage key "${key}" from a storage event:`, error)
+        const fallback = sanitize ? sanitize(initialValue) : initialValue
+        valueRef.current = fallback
+        setStoredValue(fallback)
       }
     }
-
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
-  }, [key])
+  }, [initialValue, key, sanitize])
 
   return [storedValue, setValue]
 }

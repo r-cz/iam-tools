@@ -4,6 +4,12 @@ import {
   encodeBase64,
   deflateRawToBase64,
 } from '@/features/saml/utils/saml-request'
+import {
+  buildRedirectSigningInput,
+  buildRedirectUrl,
+  parseRedirectDestination,
+  signRedirectRequest,
+} from '@/features/saml/utils/redirect-signing'
 
 describe('SAML Request Utilities', () => {
   describe('buildAuthnRequestXml', () => {
@@ -270,10 +276,85 @@ describe('SAML Request Utilities', () => {
       // Deflate and encode for HTTP-Redirect binding
       const encoded = await deflateRawToBase64(xml)
 
-      // Should produce URL-safe output after URL encoding
-      const urlEncoded = encodeURIComponent(encoded)
-      expect(urlEncoded).not.toContain('+')
-      expect(urlEncoded).toMatch(/^[A-Za-z0-9%._~-]+$/)
+      const redirectUrl = buildRedirectUrl({
+        destination: 'https://idp.company.com/saml/sso',
+        samlRequest: encoded,
+      })
+      expect(new URL(redirectUrl).searchParams.get('SAMLRequest')).toBe(encoded)
+    })
+  })
+
+  describe('HTTP-Redirect serialization', () => {
+    it('builds the exact ordered signing input with one RFC3986 encoding pass', () => {
+      expect(
+        buildRedirectSigningInput({
+          samlRequest: 'ab+/=',
+          relayState: 'state !',
+          sigAlg: 'rsa-sha256',
+        })
+      ).toBe(
+        'SAMLRequest=ab%2B%2F%3D&RelayState=state%20%21&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
+      )
+    })
+
+    it('preserves destination query parameters without double encoding values', () => {
+      const url = buildRedirectUrl({
+        destination: 'https://idp.example.com/sso?tenant=one',
+        samlRequest: 'ab+/=',
+        relayState: 'state value',
+      })
+
+      expect(url).not.toContain('%252B')
+      expect(url).toContain('?tenant=one&SAMLRequest=ab%2B%2F%3D&RelayState=state%20value')
+      expect(new URL(url).searchParams.get('SAMLRequest')).toBe('ab+/=')
+    })
+
+    it('rejects ambiguous or unsafe destination shapes', () => {
+      expect(() =>
+        parseRedirectDestination('https://idp.example.com/sso?SAMLRequest=existing')
+      ).toThrow('reserved parameter')
+      expect(() => parseRedirectDestination('https://idp.example.com/sso#fragment')).toThrow(
+        'fragment'
+      )
+      expect(() => parseRedirectDestination('ftp://idp.example.com/sso')).toThrow('http://')
+      expect(() => parseRedirectDestination('/relative/sso')).toThrow()
+    })
+
+    it('signs exactly the canonical input and preserves existing query parameters', async () => {
+      const keys = (await crypto.subtle.generateKey(
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: 'SHA-256',
+        },
+        true,
+        ['sign', 'verify']
+      )) as CryptoKeyPair
+      const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', keys.privateKey))
+      const privateKeyPem = `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...pkcs8))}\n-----END PRIVATE KEY-----`
+      const result = await signRedirectRequest({
+        baseUrl: 'https://idp.example.com/sso?tenant=one',
+        samlRequest: 'ab+/=',
+        relayState: 'state value',
+        sigAlg: 'rsa-sha256',
+        privateKeyPem,
+      })
+      const url = new URL(result.url)
+      const signature = Uint8Array.from(atob(url.searchParams.get('Signature')!), (c) =>
+        c.charCodeAt(0)
+      )
+
+      expect(url.searchParams.get('tenant')).toBe('one')
+      expect(result.url).not.toContain('%252B')
+      expect(
+        await crypto.subtle.verify(
+          { name: 'RSASSA-PKCS1-v1_5' },
+          keys.publicKey,
+          signature,
+          new TextEncoder().encode(result.signingInput)
+        )
+      ).toBe(true)
     })
   })
 })

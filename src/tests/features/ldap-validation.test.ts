@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { renderHook } from '@testing-library/react'
 import { useLdifValidation } from '@/features/ldap/hooks/useLdifValidation'
-import type { LdifEntry } from '@/features/ldap/utils/parse-ldif'
+import type { LdifContentRecord } from '@/features/ldap/utils/parse-ldif'
 import type { ParsedObjectClass } from '@/features/ldap/utils/parse-schema'
 
 describe('useLdifValidation', () => {
@@ -32,7 +32,7 @@ describe('useLdifValidation', () => {
         oid: oc.oid || `1.2.3.${Math.random()}`,
         names: [oc.name],
         description: '',
-        type: 'STRUCTURAL',
+        kind: 'STRUCTURAL',
         superior: [],
         must: oc.must || [],
         may: oc.may || [],
@@ -45,8 +45,8 @@ describe('useLdifValidation', () => {
   }
 
   // Helper to create an LDIF entry
-  function createEntry(dn: string, attrs: Record<string, string | string[]>): LdifEntry {
-    const attributes: LdifEntry['attributes'] = {}
+  function createEntry(dn: string, attrs: Record<string, string | string[]>): LdifContentRecord {
+    const attributes: LdifContentRecord['attributes'] = {}
 
     for (const [key, value] of Object.entries(attrs)) {
       const values = Array.isArray(value) ? value : [value]
@@ -59,6 +59,8 @@ describe('useLdifValidation', () => {
     }
 
     return {
+      kind: 'content',
+      sourceOrdinal: 1,
       dn,
       attributes,
       lines: [],
@@ -67,7 +69,9 @@ describe('useLdifValidation', () => {
 
   describe('basic validation', () => {
     it('should return empty results when schema is null', () => {
-      const entries: LdifEntry[] = [createEntry('cn=test,dc=example,dc=com', { cn: 'test' })]
+      const entries: LdifContentRecord[] = [
+        createEntry('cn=test,dc=example,dc=com', { cn: 'test' }),
+      ]
 
       const { result } = renderHook(() => useLdifValidation(entries, null))
 

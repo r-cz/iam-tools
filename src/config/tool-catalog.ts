@@ -326,6 +326,8 @@ function flattenTools(items: ToolCatalogItem[]): ToolCatalogItem[] {
 
 export const allTools = toolCatalog.flatMap((section) => flattenTools(section.tools))
 
+export const toolByPath = new Map(allTools.map((tool) => [tool.path, tool]))
+
 export const routeTitles: Record<string, string> = Object.fromEntries(
   allTools.map((tool) => [tool.path, tool.routeTitle ?? tool.title])
 )

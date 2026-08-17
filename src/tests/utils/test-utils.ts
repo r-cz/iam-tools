@@ -6,9 +6,6 @@ import { BrowserRouter } from 'react-router-dom'
 import '@testing-library/jest-dom'
 import { AppStateProvider } from '@/lib/state'
 
-// Import DOM setup
-import './dom-setup'
-
 // Re-export testing utilities
 export { describe, expect, test, beforeAll, afterAll, beforeEach, afterEach }
 export { screen, waitFor, fireEvent }

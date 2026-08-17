@@ -13,14 +13,14 @@ Please be respectful and considerate of others when contributing to this project
 3. Create a new branch for your changes: `git checkout -b feature/your-feature-name`
 4. Install dependencies: `bun install`
 5. Make your changes
-6. Run tests to ensure everything works: `bun test`
+6. Run tests to ensure everything works: `bun run test`
 
 ## Development Workflow
 
 1. Start the development server: `bun run dev:all`
 2. Make your changes
 3. Write tests for your changes
-4. Run the tests: `bun test`
+4. Run the tests: `bun run test`
 5. Update documentation if necessary
 6. Commit your changes with a descriptive commit message
 7. Push your changes to your fork
@@ -73,11 +73,10 @@ See [file-structure.md](./file-structure.md) for more details.
 ## Pull Request Process
 
 1. Update the README.md or documentation with details of changes if appropriate
-2. Update the CHANGELOG.md file with details of changes
-3. Include relevant issue numbers in your PR description
-4. Wait for a maintainer to review your PR
-5. Address any feedback or requested changes
-6. Once approved, your PR will be merged
+2. Include relevant issue numbers in your PR description
+3. Wait for a maintainer to review your PR
+4. Address any feedback or requested changes
+5. Once approved, your PR will be merged
 
 ### Linting & Formatting
 
@@ -95,7 +94,7 @@ When adding a new feature:
 4. Add tests for your feature
 5. Add documentation in the `docs/feature-guides/` directory
 6. Update the main README.md to mention your feature
-7. Add an entry in the navigation sidebar
+7. Add one entry to `src/config/tool-catalog.ts`; navigation and sitemap output derive from it
 
 ## Reporting Bugs
 

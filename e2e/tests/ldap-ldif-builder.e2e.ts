@@ -56,7 +56,7 @@ cn: Alice Smith
 sn: Smith`)
 
     await expect(page.locator('text=Quick Metrics')).toBeVisible()
-    await expect(page.locator('dt:has-text("Entries")').first()).toBeVisible()
+    await expect(page.locator('dt:has-text("Records")').first()).toBeVisible()
   })
 
   test('should clear LDIF when clear button clicked', async ({ page }) => {
@@ -135,7 +135,7 @@ mail: admin@corp.example.com`)
 
   test('should show empty state when no LDIF provided', async ({ page }) => {
     await expect(page.locator('text=Quick Metrics')).toBeVisible()
-    await expect(page.locator('dt:has-text("Entries")').first()).toBeVisible()
+    await expect(page.locator('dt:has-text("Records")').first()).toBeVisible()
   })
 
   test('should handle base64-encoded attributes in parsed entries', async ({ page }) => {
