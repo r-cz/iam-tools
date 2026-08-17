@@ -17,6 +17,12 @@ export interface CacheOptions {
 }
 
 const DEFAULT_MAX_ENTRIES = 50
+const CACHE_STORAGE_VERSION = 1
+
+interface StoredCache<T> {
+  version: typeof CACHE_STORAGE_VERSION
+  entries: Record<string, CacheEntry<T>>
+}
 
 export class ResourceCache<T> {
   private memoryCache: Map<string, CacheEntry<T>> = new Map()
@@ -163,6 +169,32 @@ export class ResourceCache<T> {
     this.pendingRequests.delete(normalizedKey)
   }
 
+  async getOrLoad(
+    key: string,
+    loader: () => Promise<T>,
+    options: { forceRefresh?: boolean } = {}
+  ): Promise<T> {
+    const normalizedKey = this.normalizeUrl(key)
+    if (!options.forceRefresh) {
+      const cached = this.get(normalizedKey)
+      if (cached !== null) return cached
+      const pending = this.pendingRequests.get(normalizedKey)
+      if (pending) return pending
+    }
+
+    const promise = loader()
+    this.pendingRequests.set(normalizedKey, promise)
+    try {
+      const value = await promise
+      if (this.pendingRequests.get(normalizedKey) === promise) this.set(normalizedKey, value)
+      return value
+    } finally {
+      if (this.pendingRequests.get(normalizedKey) === promise) {
+        this.pendingRequests.delete(normalizedKey)
+      }
+    }
+  }
+
   // Private helper methods
 
   private normalizeUrl(url: string): string {
@@ -173,8 +205,9 @@ export class ResourceCache<T> {
       if (normalizedPath.endsWith('/') && normalizedPath.length > 1) {
         normalizedPath = normalizedPath.slice(0, -1)
       }
-      // Reconstruct URL without query params or hash
-      return `${parsed.protocol}//${parsed.host}${normalizedPath}`
+      parsed.pathname = normalizedPath
+      parsed.hash = ''
+      return parsed.toString()
     } catch {
       // If URL parsing fails, return as-is
       return url
@@ -192,10 +225,11 @@ export class ResourceCache<T> {
         const stored = window.localStorage.getItem(this.options.storageKey)
         if (!stored) return {}
 
-        const parsed = JSON.parse(stored)
+        const parsed = JSON.parse(stored) as Partial<StoredCache<T>>
+        if (parsed.version !== CACHE_STORAGE_VERSION || !parsed.entries) return {}
         // Filter out invalid entries
         const valid: Record<string, CacheEntry<T>> = {}
-        for (const [key, entry] of Object.entries(parsed)) {
+        for (const [key, entry] of Object.entries(parsed.entries)) {
           if (this.isValid(entry as CacheEntry<T>)) {
             valid[key] = entry as CacheEntry<T>
           }
@@ -212,7 +246,8 @@ export class ResourceCache<T> {
   private saveToStorage(cache: Record<string, CacheEntry<T>>): void {
     if (this.hasStorage()) {
       try {
-        window.localStorage.setItem(this.options.storageKey, JSON.stringify(cache))
+        const stored: StoredCache<T> = { version: CACHE_STORAGE_VERSION, entries: cache }
+        window.localStorage.setItem(this.options.storageKey, JSON.stringify(stored))
       } catch (e) {
         console.warn(`Failed to save ${this.options.storageKey} to localStorage:`, e)
       }

@@ -66,7 +66,8 @@ export function encodeBase64(value: string): string {
   return btoa(binary)
 }
 
-// HTTP-Redirect binding requires DEFLATE (raw) then base64, then URL-encode
+// Produces raw DEFLATE + Base64. Redirect URL serialization owns the one and
+// only percent-encoding step.
 export async function deflateRawToBase64(value: string): Promise<string> {
   if (typeof (globalThis as any).CompressionStream === 'undefined') {
     throw new Error('CompressionStream API not available')

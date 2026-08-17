@@ -18,29 +18,33 @@ export interface ScimResourceValidationResult {
 
 export type ScimPatchOperationName = 'add' | 'remove' | 'replace'
 
-export interface ScimPatchOperation {
-  op: ScimPatchOperationName
-  path?: string
-  value?: unknown
-}
+export type ScimPatchOperation =
+  { op: 'add' | 'replace'; path?: string; value: unknown } | { op: 'remove'; path: string }
 
 export type ScimPatchOperationInput =
   | { op: 'add' | 'replace'; path?: string; value: unknown }
   | { op: 'remove'; path: string; value?: never }
 
 export interface ScimPatchDocument {
-  schemas: string[]
+  schemas: [typeof SCIM_PATCH_OP_SCHEMA]
   Operations: ScimPatchOperation[]
 }
 
-export interface ScimPatchValidationResult {
-  valid: boolean
-  parsed: Record<string, unknown> | null
-  operations: ScimPatchOperation[]
-  diagnostics: ScimDiagnostic[]
-}
+export type ScimPatchValidationResult =
+  | {
+      valid: true
+      parsed: Record<string, unknown>
+      operations: ScimPatchOperation[]
+      diagnostics: ScimDiagnostic[]
+    }
+  | {
+      valid: false
+      parsed: Record<string, unknown> | null
+      diagnostics: ScimDiagnostic[]
+    }
 
 export interface ScimPatchBuildResult {
   document: ScimPatchDocument
   json: string
 }
+import type { SCIM_PATCH_OP_SCHEMA } from './constants'

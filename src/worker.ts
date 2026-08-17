@@ -3,13 +3,13 @@
 
 import { DEMO_JWKS } from './lib/jwt/demo-key'
 import { signToken } from './lib/jwt/sign-token'
-import { CSP_INLINE_SCRIPT_SHA256 } from './csp-hashes'
 import { isAllowedDemoRedirectUri } from './features/oauthPlayground/utils/demo-redirect'
 import {
   assessPublicNetworkTarget,
   isPrivateOrLocalHostname,
   parseIpv4Address,
 } from './lib/network/target-safety'
+import { isIdentityMetadataPath } from './lib/network/identity-metadata-path'
 
 type AssetsBinding = { fetch: (request: Request) => Promise<Response> }
 interface Env {
@@ -46,7 +46,7 @@ const CORS_PROXY_ALLOWED_RESPONSE_HEADERS = new Set([
 ])
 const DEMO_RATE_LIMIT: RateLimitConfig = { max: 120, windowMs: 60_000 }
 const OIDC_PREFLIGHT_PROBE_RATE_LIMIT: RateLimitConfig = { max: 90, windowMs: 60_000 }
-const SIGNED_ENVELOPE_VERSION = 'v1'
+const SIGNED_ENVELOPE_VERSION = 'v2'
 const DEMO_JWT_KID = DEMO_JWKS.keys[0]?.kid
 const hmacKeyCache = new Map<string, Promise<CryptoKey>>()
 let demoJwtVerifyKeyPromise: Promise<CryptoKey> | null = null
@@ -333,12 +333,14 @@ const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30
 const DEFAULT_OPENID_SCOPE = 'openid profile email'
 const DEFAULT_API_SCOPE = 'api'
 
+type PkceBinding = { method: 'S256'; challenge: string } | null
+
 type AuthCodePayload = {
+  kind: 'auth_code'
   client_id: string
   redirect_uri: string
   scope?: string
-  code_challenge?: string
-  code_challenge_method?: string
+  pkce: PkceBinding
   nonce?: string
   sub: string
   issued_at: number
@@ -346,6 +348,7 @@ type AuthCodePayload = {
 }
 
 type RefreshTokenPayload = {
+  kind: 'refresh_token'
   client_id: string
   sub: string
   scope?: string
@@ -418,13 +421,17 @@ async function handleAuthorization(request: Request, env: Env): Promise<Response
     )
   }
 
-  if (codeChallengeMethod && codeChallengeMethod !== 'S256') {
+  if (
+    (codeChallenge && !codeChallengeMethod) ||
+    (!codeChallenge && codeChallengeMethod) ||
+    (codeChallengeMethod && codeChallengeMethod !== 'S256')
+  ) {
     return buildAuthorizationError(
       {
         redirectUri,
         state,
         error: 'invalid_request',
-        description: 'Only code_challenge_method=S256 is supported',
+        description: 'code_challenge and code_challenge_method=S256 must be provided together',
       },
       request,
       env
@@ -433,11 +440,14 @@ async function handleAuthorization(request: Request, env: Env): Promise<Response
 
   const now = Math.floor(Date.now() / 1000)
   const payload: AuthCodePayload = {
+    kind: 'auth_code',
     client_id: clientId,
     redirect_uri: redirectUri,
     scope,
-    code_challenge: codeChallenge,
-    code_challenge_method: codeChallengeMethod,
+    pkce:
+      codeChallenge && codeChallengeMethod === 'S256'
+        ? { method: 'S256', challenge: codeChallenge }
+        : null,
     nonce,
     sub: subject,
     issued_at: now,
@@ -505,7 +515,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
       return oauthError('invalid_grant', 'redirect_uri mismatch', request, env)
     }
 
-    if (authCode.code_challenge) {
+    if (authCode.pkce) {
       if (!codeVerifier) {
         return oauthError(
           'invalid_request',
@@ -515,7 +525,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
         )
       }
       const expected = await computeCodeChallenge(codeVerifier)
-      if (expected !== authCode.code_challenge) {
+      if (expected !== authCode.pkce.challenge) {
         return oauthError('invalid_grant', 'code_verifier is invalid', request, env)
       }
     }
@@ -656,23 +666,23 @@ async function handleUserInfo(request: Request, env: Env): Promise<Response> {
     return oauthError('invalid_token', 'Missing bearer token', request, env, 401)
   }
 
-  const payload = decodeJwtPayload(token)
-  if (!payload) {
+  const jwt = parseJwt(token)
+  if (!jwt) {
     return oauthError('invalid_token', 'Token is not a valid JWT', request, env, 401)
   }
 
-  if (isDemoJwtCandidate(token, payload, request)) {
-    const signatureValid = await verifyDemoJwtSignature(token)
+  if (isDemoJwtCandidate(jwt, request)) {
+    const signatureValid = await verifyDemoJwtSignature(jwt)
     if (!signatureValid) {
       return oauthError('invalid_token', 'Token signature is invalid', request, env, 401)
     }
   }
 
-  if (!isTokenActive(payload)) {
+  if (!isTokenActive(jwt.payload)) {
     return oauthError('invalid_token', 'Token has expired', request, env, 401)
   }
 
-  return oauthJson(buildUserInfoResponse(payload), undefined, request, env)
+  return oauthJson(buildUserInfoResponse(jwt.payload), undefined, request, env)
 }
 
 async function handleIntrospection(request: Request, env: Env): Promise<Response> {
@@ -692,16 +702,17 @@ async function handleIntrospection(request: Request, env: Env): Promise<Response
     return oauthError('invalid_request', 'token is required', request, env)
   }
 
-  const jwtPayload = decodeJwtPayload(token)
-  if (jwtPayload && isDemoJwtCandidate(token, jwtPayload, request)) {
-    const signatureValid = await verifyDemoJwtSignature(token)
+  const jwt = parseJwt(token)
+  if (jwt && isDemoJwtCandidate(jwt, request)) {
+    const signatureValid = await verifyDemoJwtSignature(jwt)
     if (!signatureValid) {
       return oauthJson({ active: false }, undefined, request, env)
     }
   }
 
-  const refreshPayload = jwtPayload ? null : await decodeRefreshToken(token, env)
-  const payload = (jwtPayload || refreshPayload) as Record<string, unknown>
+  const refreshPayload = jwt ? null : await decodeRefreshToken(token, env)
+  const payload: Record<string, unknown> | null =
+    jwt?.payload ?? (refreshPayload ? { ...refreshPayload } : null)
 
   if (!payload) {
     return oauthJson({ active: false }, undefined, request, env)
@@ -715,7 +726,7 @@ async function handleIntrospection(request: Request, env: Env): Promise<Response
       scope: typeof payload.scope === 'string' ? payload.scope : undefined,
       client_id: typeof payload.client_id === 'string' ? payload.client_id : undefined,
       username: typeof payload.sub === 'string' ? payload.sub : undefined,
-      token_type: jwtPayload ? 'Bearer' : 'refresh_token',
+      token_type: jwt ? 'Bearer' : 'refresh_token',
       exp: typeof payload.exp === 'number' ? payload.exp : undefined,
       iat: typeof payload.iat === 'number' ? payload.iat : undefined,
       nbf: typeof payload.nbf === 'number' ? payload.nbf : undefined,
@@ -864,6 +875,7 @@ async function issueTokenResponse(opts: {
   if (opts.includeRefreshToken) {
     response.refresh_token = await encodeRefreshToken(
       {
+        kind: 'refresh_token',
         client_id: opts.clientId,
         sub: opts.subject,
         scope: opts.scope,
@@ -908,11 +920,8 @@ async function encodeAuthCode(payload: AuthCodePayload, env: Env): Promise<strin
 
 async function decodeAuthCode(value: string, env: Env): Promise<AuthCodePayload | null> {
   const secret = getDemoTokenSigningSecret(env)
-  if (!secret) {
-    return decodeJson<AuthCodePayload>(value)
-  }
-
-  return await decodeSignedEnvelope<AuthCodePayload>(value, secret)
+  const decoded = secret ? await decodeSignedEnvelope(value, secret) : decodeJson(value)
+  return parseAuthCodePayload(decoded)
 }
 
 async function encodeRefreshToken(payload: RefreshTokenPayload, env: Env): Promise<string> {
@@ -926,12 +935,11 @@ async function encodeRefreshToken(payload: RefreshTokenPayload, env: Env): Promi
 
 async function decodeRefreshToken(token: string, env: Env): Promise<RefreshTokenPayload | null> {
   const secret = getDemoTokenSigningSecret(env)
-  if (!secret) {
-    const raw = token.startsWith('rt_') ? token.slice(3) : token
-    return decodeJson<RefreshTokenPayload>(raw)
-  }
-
-  return await decodeSignedEnvelope<RefreshTokenPayload>(token, secret)
+  if (!secret && !token.startsWith('rt_')) return null
+  const decoded = secret
+    ? await decodeSignedEnvelope(token, secret)
+    : decodeJson(token.slice('rt_'.length))
+  return parseRefreshTokenPayload(decoded)
 }
 
 function extractBearerToken(headers: Headers): string | null {
@@ -942,40 +950,39 @@ function extractBearerToken(headers: Headers): string | null {
   return credentials.trim()
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split('.')
-  if (parts.length < 2) return null
-  return decodeJson<Record<string, unknown>>(parts[1])
+type ParsedJwt = {
+  raw: string
+  encodedHeader: string
+  encodedPayload: string
+  encodedSignature: string
+  header: Record<string, unknown>
+  payload: Record<string, unknown>
 }
 
-function decodeJwtHeader(token: string): Record<string, unknown> | null {
+function parseJwt(token: string): ParsedJwt | null {
   const parts = token.split('.')
-  if (parts.length < 1) return null
-  return decodeJson<Record<string, unknown>>(parts[0])
+  if (parts.length !== 3 || parts.some((part) => !part)) return null
+  const [encodedHeader, encodedPayload, encodedSignature] = parts
+  const header = decodeJsonRecord(encodedHeader)
+  const payload = decodeJsonRecord(encodedPayload)
+  if (!header || !payload) return null
+  return { raw: token, encodedHeader, encodedPayload, encodedSignature, header, payload }
 }
 
-function isDemoJwtCandidate(
-  token: string,
-  payload: Record<string, unknown>,
-  request: Request
-): boolean {
-  const header = decodeJwtHeader(token)
-  const headerKid = typeof header?.kid === 'string' ? header.kid : undefined
-  const issuer = typeof payload.iss === 'string' ? payload.iss : undefined
+function isDemoJwtCandidate(jwt: ParsedJwt, request: Request): boolean {
+  const headerKid = typeof jwt.header.kid === 'string' ? jwt.header.kid : undefined
+  const issuer = typeof jwt.payload.iss === 'string' ? jwt.payload.iss : undefined
   const requestIssuer = getIssuer(request)
-  const hasDemoMarker = payload.is_demo_token === true
+  const hasDemoMarker = jwt.payload.is_demo_token === true
 
   return Boolean(headerKid === DEMO_JWT_KID || hasDemoMarker || issuer === requestIssuer)
 }
 
-async function verifyDemoJwtSignature(token: string): Promise<boolean> {
+async function verifyDemoJwtSignature(jwt: ParsedJwt): Promise<boolean> {
   try {
-    const [header, payload, signature] = token.split('.')
-    if (!header || !payload || !signature) return false
-
     const key = await getDemoJwtVerifyKey()
-    const data = new TextEncoder().encode(`${header}.${payload}`)
-    const signatureBytes = base64UrlDecode(signature)
+    const data = new TextEncoder().encode(`${jwt.encodedHeader}.${jwt.encodedPayload}`)
+    const signatureBytes = base64UrlDecode(jwt.encodedSignature)
 
     return await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, toArrayBuffer(signatureBytes), data)
   } catch {
@@ -1136,7 +1143,7 @@ async function encodeSignedEnvelope(payload: unknown, secret: string): Promise<s
   return `${SIGNED_ENVELOPE_VERSION}.${encodedPayload}.${signature}`
 }
 
-async function decodeSignedEnvelope<T>(value: string, secret: string): Promise<T | null> {
+async function decodeSignedEnvelope(value: string, secret: string): Promise<unknown | null> {
   const parts = value.split('.')
   if (parts.length !== 3) return null
 
@@ -1150,7 +1157,7 @@ async function decodeSignedEnvelope<T>(value: string, secret: string): Promise<T
     return null
   }
 
-  return decodeJson<T>(encodedPayload)
+  return decodeJson(encodedPayload)
 }
 
 async function createHmacSignature(value: string, secret: string): Promise<string> {
@@ -1193,14 +1200,96 @@ function encodeJson(value: unknown): string {
   return base64UrlEncode(new TextEncoder().encode(json))
 }
 
-function decodeJson<T>(value: string): T | null {
+function decodeJson(value: string): unknown | null {
   try {
     const raw = base64UrlDecode(value)
     const json = new TextDecoder().decode(raw)
-    return JSON.parse(json) as T
+    return JSON.parse(json) as unknown
   } catch {
     return null
   }
+}
+
+function decodeJsonRecord(value: string): Record<string, unknown> | null {
+  const decoded = decodeJson(value)
+  return isRecord(decoded) ? decoded : null
+}
+
+function parseAuthCodePayload(value: unknown): AuthCodePayload | null {
+  if (!isRecord(value) || value.kind !== 'auth_code') return null
+  const clientId = readString(value, 'client_id')
+  const redirectUri = readString(value, 'redirect_uri')
+  const subject = readString(value, 'sub')
+  const issuedAt = readNumber(value, 'issued_at')
+  const expiresAt = readNumber(value, 'exp')
+  const scope = readOptionalString(value, 'scope')
+  const nonce = readOptionalString(value, 'nonce')
+  const pkce = parsePkceBinding(value.pkce)
+  if (
+    !clientId ||
+    !redirectUri ||
+    !subject ||
+    issuedAt === null ||
+    expiresAt === null ||
+    !pkce.ok
+  ) {
+    return null
+  }
+  return {
+    kind: 'auth_code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    sub: subject,
+    issued_at: issuedAt,
+    exp: expiresAt,
+    pkce: pkce.value,
+    ...(scope ? { scope } : {}),
+    ...(nonce ? { nonce } : {}),
+  }
+}
+
+function parseRefreshTokenPayload(value: unknown): RefreshTokenPayload | null {
+  if (!isRecord(value) || value.kind !== 'refresh_token') return null
+  const clientId = readString(value, 'client_id')
+  const subject = readString(value, 'sub')
+  const issuedAt = readNumber(value, 'issued_at')
+  const expiresAt = readNumber(value, 'exp')
+  const scope = readOptionalString(value, 'scope')
+  if (!clientId || !subject || issuedAt === null || expiresAt === null) return null
+  return {
+    kind: 'refresh_token',
+    client_id: clientId,
+    sub: subject,
+    issued_at: issuedAt,
+    exp: expiresAt,
+    ...(scope ? { scope } : {}),
+  }
+}
+
+function parsePkceBinding(value: unknown): { ok: true; value: PkceBinding } | { ok: false } {
+  if (value === null) return { ok: true, value: null }
+  if (!isRecord(value) || value.method !== 'S256') return { ok: false }
+  const challenge = readString(value, 'challenge')
+  return challenge ? { ok: true, value: { method: 'S256', challenge } } : { ok: false }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readString(value: Record<string, unknown>, key: string): string | null {
+  const field = value[key]
+  return typeof field === 'string' && field.length > 0 ? field : null
+}
+
+function readOptionalString(value: Record<string, unknown>, key: string): string | undefined {
+  const field = value[key]
+  return typeof field === 'string' && field.length > 0 ? field : undefined
+}
+
+function readNumber(value: Record<string, unknown>, key: string): number | null {
+  const field = value[key]
+  return typeof field === 'number' && Number.isFinite(field) ? field : null
 }
 
 function base64UrlEncode(data: Uint8Array): string {
@@ -1450,23 +1539,7 @@ async function handleCorsProxy(request: Request, env: Env): Promise<Response> {
 
 function isAllowedEndpoint(urlStr: string): boolean {
   const parsed = new URL(urlStr)
-  const isWellKnown = parsed.pathname.includes('/.well-known/')
-  const up = parsed.pathname.toUpperCase()
-  const isJwks =
-    up.includes('/JWKS') ||
-    up.includes('/JWK') ||
-    parsed.pathname.includes('/keys') ||
-    parsed.pathname.includes('/oauth2/v1/certs') ||
-    (parsed.pathname.endsWith('.json') && up.includes('JWK'))
-
-  // Allow SAML metadata (commonly XML) with safe path patterns
-  const lower = parsed.pathname.toLowerCase()
-  const isSamlMeta =
-    lower.endsWith('/federationmetadata/2007-06/federationmetadata.xml') ||
-    lower.includes('/saml/metadata') ||
-    (lower.endsWith('.xml') && (lower.includes('saml') || lower.includes('metadata')))
-
-  return isWellKnown || isJwks || isSamlMeta
+  return isIdentityMetadataPath(parsed.pathname)
 }
 
 function isSafeCorsProxyTarget(url: URL, requireAllowedPath: boolean): boolean {
@@ -1516,18 +1589,11 @@ function withSecurityHeaders(response: Response): Response {
   headers.set('X-Content-Type-Options', 'nosniff')
   headers.set('X-Frame-Options', 'DENY')
   headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
-  const scriptDirectives = ["'self'"]
-  if (CSP_INLINE_SCRIPT_SHA256 && CSP_INLINE_SCRIPT_SHA256.length > 0) {
-    scriptDirectives.push(CSP_INLINE_SCRIPT_SHA256)
-  } else {
-    // Dev/unknown: allow inline to avoid blocking if hash missing
-    scriptDirectives.push("'unsafe-inline'")
-  }
   headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      `script-src ${scriptDirectives.join(' ')}`,
+      "script-src 'self'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self' data:",
@@ -1537,5 +1603,9 @@ function withSecurityHeaders(response: Response): Response {
       "frame-ancestors 'none'",
     ].join('; ')
   )
-  return new Response(response.body, { ...response, headers })
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
 }

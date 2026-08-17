@@ -50,9 +50,7 @@ describe('one-time token handoffs', () => {
     const state = createHandoff(TOKEN_INSPECTOR_DESTINATION, { token: TEST_TOKEN })
     const key = getOnlySessionStorageKey()
     const handoff = JSON.parse(window.sessionStorage.getItem(key)!)
-    const expiredAt = Date.now() - 1
-    handoff.createdAt = expiredAt - HANDOFF_TTL_MS
-    handoff.expiresAt = expiredAt
+    handoff.createdAt = Date.now() - HANDOFF_TTL_MS - 1
     window.sessionStorage.setItem(key, JSON.stringify(handoff))
 
     expect(consumeHandoff(state!.handoffId, TOKEN_INSPECTOR_DESTINATION)).toBeNull()
@@ -102,9 +100,7 @@ describe('one-time token handoffs', () => {
     createHandoff(TOKEN_INSPECTOR_DESTINATION, { token: TEST_TOKEN })
     const key = getOnlySessionStorageKey()
     const handoff = JSON.parse(window.sessionStorage.getItem(key)!)
-    const expiredAt = Date.now() - 1
-    handoff.createdAt = expiredAt - HANDOFF_TTL_MS
-    handoff.expiresAt = expiredAt
+    handoff.createdAt = Date.now() - HANDOFF_TTL_MS - 1
     window.sessionStorage.setItem(key, JSON.stringify(handoff))
 
     initializeHandoffCleanup()
@@ -116,8 +112,7 @@ describe('one-time token handoffs', () => {
     createHandoff(TOKEN_INSPECTOR_DESTINATION, { token: TEST_TOKEN })
     const key = getOnlySessionStorageKey()
     const handoff = JSON.parse(window.sessionStorage.getItem(key)!)
-    handoff.expiresAt = Date.now() + 25
-    handoff.createdAt = handoff.expiresAt - HANDOFF_TTL_MS
+    handoff.createdAt = Date.now() + 25 - HANDOFF_TTL_MS
     window.sessionStorage.setItem(key, JSON.stringify(handoff))
 
     initializeHandoffCleanup()
@@ -131,7 +126,6 @@ describe('one-time token handoffs', () => {
     const expiredKey = getOnlySessionStorageKey()
     const expiredHandoff = JSON.parse(window.sessionStorage.getItem(expiredKey)!)
     expiredHandoff.createdAt = Date.now() - HANDOFF_TTL_MS - 1
-    expiredHandoff.expiresAt = Date.now() - 1
     window.sessionStorage.setItem(expiredKey, JSON.stringify(expiredHandoff))
 
     const current = createHandoff(TOKEN_INSPECTOR_DESTINATION, { token: TEST_TOKEN })
@@ -161,6 +155,19 @@ describe('one-time token handoffs', () => {
     expect(consumeHandoff(state!.handoffId, TOKEN_COMPARISON_DESTINATION)).toBeNull()
     expect(window.sessionStorage.length).toBe(0)
     expect(consumeHandoff(state!.handoffId, TOKEN_INSPECTOR_DESTINATION)).toBeNull()
+  })
+
+  test('consumes a valid version 1 handoff during migration', () => {
+    const state = createHandoff(TOKEN_INSPECTOR_DESTINATION, { token: TEST_TOKEN })
+    const key = getOnlySessionStorageKey()
+    const handoff = JSON.parse(window.sessionStorage.getItem(key)!)
+    handoff.version = 1
+    handoff.expiresAt = handoff.createdAt + HANDOFF_TTL_MS
+    window.sessionStorage.setItem(key, JSON.stringify(handoff))
+
+    expect(consumeHandoff(state!.handoffId, TOKEN_INSPECTOR_DESTINATION)).toEqual({
+      token: TEST_TOKEN,
+    })
   })
 
   test('accepts only opaque handoff IDs from router state', () => {

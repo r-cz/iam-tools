@@ -18,7 +18,7 @@ export interface ParsedObjectClass {
   oid: string
   names: string[]
   description?: string
-  kind?: 'ABSTRACT' | 'STRUCTURAL' | 'AUXILIARY'
+  kind: 'ABSTRACT' | 'STRUCTURAL' | 'AUXILIARY'
   superior?: string[]
   must?: string[]
   may?: string[]
@@ -31,153 +31,248 @@ export interface ParsedSchema {
   errors: string[]
 }
 
-const listPattern = (keyword: string) => new RegExp(`${keyword}\\s+\\(\\s*([^\\)]+)\\)`, 'i')
-const singlePattern = (keyword: string) => new RegExp(`${keyword}\\s+'([^']+)'`, 'i')
-
-function extractList(value: string, keyword: string): string[] | undefined {
-  const listMatch = value.match(listPattern(keyword))
-  if (listMatch) {
-    return listMatch[1]
-      .split(/\s*\$\s*/)
-      .map((entry) => entry.replace(/['\s]/g, ''))
-      .filter(Boolean)
-  }
-
-  const singleMatch = value.match(singlePattern(keyword))
-  if (singleMatch) {
-    return [singleMatch[1]]
-  }
-
-  return undefined
-}
-
-function extractFlag(value: string, keyword: string): boolean {
-  const pattern = new RegExp(`\\b${keyword}\\b`, 'i')
-  return pattern.test(value)
-}
-
-function extractToken(value: string, keyword: string): string | undefined {
-  const pattern = new RegExp(`${keyword}\\s+([^\\s\\)]+)`, 'i')
-  const match = value.match(pattern)
-  if (match) {
-    return match[1].replace(/[,\s]/g, '')
-  }
-  return undefined
-}
+type Token = { kind: 'atom' | 'string' | 'lparen' | 'rparen' | 'dollar'; value: string }
 
 function normalizeLines(input: string): string[] {
   const rawLines = input
     .replace(/\r\n?/g, '\n')
     .split('\n')
-    .map((line) => line.split('\u0000').join(''))
-
+    .map((line) => line.replaceAll('\u0000', ''))
   const unfolded: string[] = []
   for (const line of rawLines) {
-    if (line.startsWith(' ') || line.startsWith('\t')) {
-      const lastIndex = unfolded.length - 1
-      if (lastIndex >= 0) {
-        unfolded[lastIndex] += line.slice(1)
-      }
+    if ((line.startsWith(' ') || line.startsWith('\t')) && unfolded.length > 0) {
+      unfolded[unfolded.length - 1] += line.slice(1)
     } else {
       unfolded.push(line)
     }
   }
-
   return unfolded
 }
 
-function parseAttributeType(value: string): ParsedAttributeType {
-  const oidMatch = value.match(/\(\s*([^\s\)]+)/)
-  const names = extractList(value, 'NAME') ?? []
-  const description = value.match(/DESC\s+'([^']+)'/i)?.[1]
-  const syntax = extractToken(value, 'SYNTAX')
-  const equality = extractToken(value, 'EQUALITY')
-  const ordering = extractToken(value, 'ORDERING')
-  const substr = extractToken(value, 'SUBSTR')
-  const usage = extractToken(value, 'USAGE')
-  const superiorList = extractList(value, 'SUP')
+function tokenize(value: string): Token[] {
+  const tokens: Token[] = []
+  let index = 0
+  while (index < value.length) {
+    const character = value[index]
+    if (/\s/.test(character)) {
+      index++
+      continue
+    }
+    if (character === '(' || character === ')' || character === '$') {
+      tokens.push({
+        kind: character === '(' ? 'lparen' : character === ')' ? 'rparen' : 'dollar',
+        value: character,
+      })
+      index++
+      continue
+    }
+    if (character === "'") {
+      let text = ''
+      index++
+      let closed = false
+      while (index < value.length) {
+        if (value[index] === '\\' && index + 1 < value.length) {
+          text += value[index + 1]
+          index += 2
+        } else if (value[index] === "'") {
+          index++
+          closed = true
+          break
+        } else {
+          text += value[index++]
+        }
+      }
+      if (!closed) throw new Error('Unterminated quoted string')
+      tokens.push({ kind: 'string', value: text })
+      continue
+    }
+    const start = index
+    while (index < value.length && !/[\s()$']/.test(value[index])) index++
+    if (start === index) throw new Error(`Unexpected character ${value[index]}`)
+    tokens.push({ kind: 'atom', value: value.slice(start, index) })
+  }
+  return tokens
+}
 
-  return {
-    oid: oidMatch?.[1] ?? 'unknown',
-    names,
-    description,
-    syntax,
-    equality,
-    ordering,
-    substr,
-    usage,
-    superior: superiorList ? superiorList[0] : undefined,
-    singleValue: extractFlag(value, 'SINGLE-VALUE'),
-    collective: extractFlag(value, 'COLLECTIVE'),
-    noUserModification: extractFlag(value, 'NO-USER-MODIFICATION'),
+class DefinitionReader {
+  private index = 0
+  constructor(private readonly tokens: Token[]) {}
+
+  peek(): Token | undefined {
+    return this.tokens[this.index]
+  }
+
+  take(kind?: Token['kind']): Token {
+    const token = this.tokens[this.index++]
+    if (!token || (kind && token.kind !== kind)) {
+      throw new Error(`Expected ${kind ?? 'token'}`)
+    }
+    return token
+  }
+
+  value(): string {
+    const token = this.take()
+    if (token.kind !== 'atom' && token.kind !== 'string') throw new Error('Expected value')
+    return token.value
+  }
+
+  values(): string[] {
+    if (this.peek()?.kind !== 'lparen') return [this.value()]
+    this.take('lparen')
+    const values: string[] = []
+    while (this.peek() && this.peek()?.kind !== 'rparen') {
+      if (this.peek()?.kind === 'dollar') this.take('dollar')
+      else values.push(this.value())
+    }
+    this.take('rparen')
+    if (values.length === 0) throw new Error('Expected at least one list value')
+    return values
+  }
+
+  finish(): void {
+    this.take('rparen')
+    if (this.peek()) throw new Error('Unexpected content after definition')
+  }
+}
+
+function startDefinition(value: string): { reader: DefinitionReader; oid: string } {
+  const reader = new DefinitionReader(tokenize(value))
+  reader.take('lparen')
+  const oid = reader.value()
+  if (!/^\d+(?:\.\d+)+$/.test(oid)) throw new Error(`Invalid numeric OID: ${oid}`)
+  return { reader, oid }
+}
+
+function skipExtensionValue(reader: DefinitionReader): void {
+  reader.values()
+}
+
+function parseAttributeType(value: string): ParsedAttributeType {
+  const { reader, oid } = startDefinition(value)
+  const result: ParsedAttributeType = {
+    oid,
+    names: [],
+    singleValue: false,
+    collective: false,
+    noUserModification: false,
     raw: value.trim(),
   }
+  while (reader.peek()?.kind !== 'rparen') {
+    const keyword = reader.take('atom').value.toUpperCase()
+    switch (keyword) {
+      case 'NAME':
+        result.names = reader.values()
+        break
+      case 'DESC':
+        result.description = reader.value()
+        break
+      case 'SUP':
+        result.superior = reader.values()[0]
+        break
+      case 'EQUALITY':
+        result.equality = reader.value()
+        break
+      case 'ORDERING':
+        result.ordering = reader.value()
+        break
+      case 'SUBSTR':
+        result.substr = reader.value()
+        break
+      case 'SYNTAX':
+        result.syntax = reader.value()
+        break
+      case 'USAGE':
+        result.usage = reader.value()
+        break
+      case 'SINGLE-VALUE':
+        result.singleValue = true
+        break
+      case 'COLLECTIVE':
+        result.collective = true
+        break
+      case 'NO-USER-MODIFICATION':
+        result.noUserModification = true
+        break
+      case 'OBSOLETE':
+        break
+      default:
+        if (keyword.startsWith('X-')) skipExtensionValue(reader)
+        else throw new Error(`Unexpected attribute type keyword: ${keyword}`)
+    }
+  }
+  reader.finish()
+  return result
 }
 
 function parseObjectClass(value: string): ParsedObjectClass {
-  const oidMatch = value.match(/\(\s*([^\s\)]+)/)
-  const names = extractList(value, 'NAME') ?? []
-  const description = value.match(/DESC\s+'([^']+)'/i)?.[1]
-  const kindMatch = value.match(/(ABSTRACT|STRUCTURAL|AUXILIARY)/i)
-  const superior = extractList(value, 'SUP')
-  const must = extractList(value, 'MUST')
-  const may = extractList(value, 'MAY')
-
-  return {
-    oid: oidMatch?.[1] ?? 'unknown',
-    names,
-    description,
-    kind: kindMatch?.[1]?.toUpperCase() as ParsedObjectClass['kind'],
-    superior,
-    must,
-    may,
-    raw: value.trim(),
+  const { reader, oid } = startDefinition(value)
+  const result: ParsedObjectClass = { oid, names: [], kind: 'STRUCTURAL', raw: value.trim() }
+  while (reader.peek()?.kind !== 'rparen') {
+    const keyword = reader.take('atom').value.toUpperCase()
+    switch (keyword) {
+      case 'NAME':
+        result.names = reader.values()
+        break
+      case 'DESC':
+        result.description = reader.value()
+        break
+      case 'SUP':
+        result.superior = reader.values()
+        break
+      case 'MUST':
+        result.must = reader.values()
+        break
+      case 'MAY':
+        result.may = reader.values()
+        break
+      case 'ABSTRACT':
+        result.kind = 'ABSTRACT'
+        break
+      case 'STRUCTURAL':
+        result.kind = 'STRUCTURAL'
+        break
+      case 'AUXILIARY':
+        result.kind = 'AUXILIARY'
+        break
+      case 'OBSOLETE':
+        break
+      default:
+        if (keyword.startsWith('X-')) skipExtensionValue(reader)
+        else throw new Error(`Unexpected object class keyword: ${keyword}`)
+    }
   }
+  reader.finish()
+  return result
 }
 
 export function parseLdapSchema(input: string): ParsedSchema {
-  if (!input.trim()) {
-    return { attributeTypes: [], objectClasses: [], errors: [] }
-  }
-
-  const lines = normalizeLines(input)
   const attributeTypes: ParsedAttributeType[] = []
   const objectClasses: ParsedObjectClass[] = []
   const errors: string[] = []
+  if (!input.trim()) return { attributeTypes, objectClasses, errors }
 
-  for (const line of lines) {
-    if (!line || line.startsWith('#')) {
-      continue
+  normalizeLines(input).forEach((line, index) => {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) return
+    const attributeMatch = /^attributeTypes\s*:\s*(.*)$/i.exec(trimmed)
+    const objectClassMatch = /^objectClasses\s*:\s*(.*)$/i.exec(trimmed)
+    if (!attributeMatch && !objectClassMatch) return
+    const value = (attributeMatch ?? objectClassMatch)![1]
+    if (!value) {
+      errors.push(`Line ${index + 1}: Definition is empty`)
+      return
     }
-
-    if (/^attributeTypes\s*:/i.test(line)) {
-      const value = line.replace(/^attributeTypes\s*:/i, '').trim()
-      if (value) {
-        try {
-          attributeTypes.push(parseAttributeType(value))
-        } catch (error) {
-          errors.push(
-            `Failed to parse attribute type definition: ${
-              error instanceof Error ? error.message : String(error)
-            }`
-          )
-        }
-      }
-    } else if (/^objectClasses\s*:/i.test(line)) {
-      const value = line.replace(/^objectClasses\s*:/i, '').trim()
-      if (value) {
-        try {
-          objectClasses.push(parseObjectClass(value))
-        } catch (error) {
-          errors.push(
-            `Failed to parse object class definition: ${
-              error instanceof Error ? error.message : String(error)
-            }`
-          )
-        }
-      }
+    try {
+      if (attributeMatch) attributeTypes.push(parseAttributeType(value))
+      else objectClasses.push(parseObjectClass(value))
+    } catch (error) {
+      const kind = attributeMatch ? 'attribute type' : 'object class'
+      errors.push(
+        `Line ${index + 1}: Failed to parse ${kind}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
     }
-  }
-
+  })
   return { attributeTypes, objectClasses, errors }
 }

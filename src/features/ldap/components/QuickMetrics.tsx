@@ -1,13 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface QuickMetricsProps {
-  entryCount: number
+  recordCount: number
   attributeValueCount: number
   schemaEnabled: boolean
 }
 
 export function QuickMetrics({
-  entryCount,
+  recordCount,
   attributeValueCount,
   schemaEnabled,
 }: QuickMetricsProps) {
@@ -20,8 +20,8 @@ export function QuickMetrics({
       <CardContent>
         <dl className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border bg-muted/40 p-4 text-center">
-            <dt className="text-sm text-muted-foreground">Entries</dt>
-            <dd className="text-2xl font-semibold">{entryCount}</dd>
+            <dt className="text-sm text-muted-foreground">Records</dt>
+            <dd className="text-2xl font-semibold">{recordCount}</dd>
           </div>
           <div className="rounded-lg border bg-muted/40 p-4 text-center">
             <dt className="text-sm text-muted-foreground">Attribute values</dt>

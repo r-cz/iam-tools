@@ -52,12 +52,11 @@ describe('LDAP Built-in Schemas', () => {
 
       const attributeNames = result.attributeTypes.flatMap((at) => at.names)
 
-      // Note: Parser concatenates multi-name attrs like ( 'cn' 'commonName' ) -> 'cncommonName'
-      // So we check for inclusion pattern rather than exact match
-      expect(attributeNames.some((n) => n.includes('cn'))).toBe(true)
-      expect(attributeNames.some((n) => n.includes('sn'))).toBe(true)
-      expect(attributeNames.some((n) => n.includes('mail'))).toBe(true)
-      expect(attributeNames.some((n) => n.includes('uid'))).toBe(true)
+      expect(attributeNames).toContain('cn')
+      expect(attributeNames).toContain('commonName')
+      expect(attributeNames).toContain('sn')
+      expect(attributeNames).toContain('mail')
+      expect(attributeNames).toContain('uid')
       expect(attributeNames).toContain('objectClass')
     })
 
@@ -79,8 +78,7 @@ describe('LDAP Built-in Schemas', () => {
       const attributeNames = result.attributeTypes.flatMap((at) => at.names)
 
       expect(attributeNames).toContain('sAMAccountName')
-      // userPrincipalName has alias UPN so parser concatenates them
-      expect(attributeNames.some((n) => n.includes('UPN'))).toBe(true)
+      expect(attributeNames).toContain('userPrincipalName')
       expect(attributeNames).toContain('userAccountControl')
     })
 

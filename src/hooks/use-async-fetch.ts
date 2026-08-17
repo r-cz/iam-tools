@@ -35,12 +35,14 @@ export function useAsyncFetch<T>(
   const [data, setData] = useState<T | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const invocationRef = useRef(0)
 
   // Use ref to track if component is mounted
   const isMountedRef = useRef(true)
 
   const execute = useCallback(
     async (...args: unknown[]): Promise<T | null> => {
+      const invocation = ++invocationRef.current
       // Check if we should execute
       if (shouldExecute && !shouldExecute(...args)) {
         return null
@@ -50,12 +52,13 @@ export function useAsyncFetch<T>(
       if (cache && getCacheKey) {
         const cacheKey = getCacheKey(...args)
         const cached = cache.get(cacheKey)
-        if (cached) {
-          setData(cached)
+        if (cache.has(cacheKey)) {
+          const cachedValue = cached as T
+          setData(cachedValue)
           setError(null)
           setIsLoading(false)
-          onSuccess?.(cached)
-          return cached
+          onSuccess?.(cachedValue)
+          return cachedValue
         }
       }
 
@@ -65,7 +68,7 @@ export function useAsyncFetch<T>(
       try {
         const result = await asyncFunction(...args)
 
-        if (!isMountedRef.current) {
+        if (!isMountedRef.current || invocationRef.current !== invocation) {
           return null
         }
 
@@ -80,7 +83,7 @@ export function useAsyncFetch<T>(
         onSuccess?.(result)
         return result
       } catch (err) {
-        if (!isMountedRef.current) {
+        if (!isMountedRef.current || invocationRef.current !== invocation) {
           return null
         }
 
@@ -90,7 +93,7 @@ export function useAsyncFetch<T>(
         onError?.(error)
         return null
       } finally {
-        if (isMountedRef.current) {
+        if (isMountedRef.current && invocationRef.current === invocation) {
           setIsLoading(false)
         }
       }
@@ -99,6 +102,7 @@ export function useAsyncFetch<T>(
   )
 
   const reset = useCallback(() => {
+    invocationRef.current++
     setData(null)
     setError(null)
     setIsLoading(false)

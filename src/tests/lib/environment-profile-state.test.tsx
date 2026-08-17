@@ -6,7 +6,7 @@ import { STORAGE_KEYS } from '@/lib/state/constants'
 import { findButtonByName } from '../utils/test-utils'
 
 function EnvironmentProfilesHarness() {
-  const { profiles, saveProfile, updateProfile, markProfileUsed, removeProfile } =
+  const { profiles, saveProfile, replaceProfile, markProfileUsed, removeProfile } =
     useEnvironmentProfiles()
 
   return (
@@ -51,9 +51,11 @@ function EnvironmentProfilesHarness() {
             return
           }
 
-          updateProfile(alphaProfile.id, {
+          replaceProfile(alphaProfile.id, {
             name: 'Alpha Updated',
+            issuerUrl: alphaProfile.issuerUrl,
             clientId: 'alpha-client',
+            scopes: alphaProfile.scopes,
           })
         }}
       >
@@ -140,6 +142,8 @@ describe('environment profile state', () => {
 
       expect(alphaProfile.name).toBe('Alpha Updated')
       expect(alphaProfile.clientId).toBe('alpha-client')
+      expect(alphaProfile.authorizationEndpoint).toBeUndefined()
+      expect(alphaProfile.tokenEndpoint).toBeUndefined()
     })
 
     fireEvent.click(findButtonByName('Mark Alpha Used', view.container)!)

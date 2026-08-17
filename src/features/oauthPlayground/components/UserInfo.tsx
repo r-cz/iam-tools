@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Clock, Globe, Mail, MapPin, User, UserRound } from 'lucide-react'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
-import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { getIssuerBaseUrl } from '../utils/demo-issuer'
 import {
   InputGroup,
   InputGroupAddon,
@@ -20,7 +20,6 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
-import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import {
   Item,
@@ -31,10 +30,7 @@ import {
   ItemTitle,
 } from '@/components/ui/item'
 import EndpointPreflightPanel from './EndpointPreflightPanel'
-import {
-  extractDiscoveredEndpoints,
-  fetchOidcDiscoveryConfiguration,
-} from '../utils/oidc-preflight'
+import { extractDiscoveredEndpoints, type OidcEndpointSelection } from '../utils/oidc-preflight'
 import { createHandoff, TOKEN_INSPECTOR_DESTINATION } from '@/lib/handoff'
 
 interface UserInfoResponse {
@@ -70,6 +66,12 @@ interface UserInfoResponse {
   [key: string]: any
 }
 
+type UserInfoRequest = { endpoint: string; accessToken: string; demoMode: boolean }
+type UserInfoRun =
+  | { status: 'idle' }
+  | { status: 'running'; id: number; request: UserInfoRequest }
+  | { status: 'complete'; id: number; request: UserInfoRequest; response: UserInfoResponse }
+
 export function UserInfo() {
   const navigate = useNavigate()
   const { addIssuer } = useIssuerHistory()
@@ -77,16 +79,21 @@ export function UserInfo() {
 
   // Form state
   const [issuerUrl, setIssuerUrl] = useState('')
-  const [userInfoEndpoint, setUserInfoEndpoint] = useState('')
+  const [userInfoEndpoint, setUserInfoEndpoint] = useState<OidcEndpointSelection>({
+    value: '',
+    source: 'manual',
+  })
   const [accessToken, setAccessToken] = useState('')
 
   // UI state
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<UserInfoResponse | null>(null)
+  const [run, setRun] = useState<UserInfoRun>({ status: 'idle' })
+  const runIdRef = useRef(0)
   const [isDemoMode, setIsDemoMode] = useState(false)
-  const [configLoading, setConfigLoading] = useState(false)
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false)
   const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
+  const loading = run.status === 'running'
+  const result = run.status === 'complete' ? run.response : null
+  const resultRequest = run.status === 'complete' ? run.request : null
 
   const loadDemoToken = async () => {
     setIsLoadingDemoToken(true)
@@ -108,34 +115,16 @@ export function UserInfo() {
     setIsDemoMode(enabled)
     if (!enabled) return
 
-    setUserInfoEndpoint(`${getIssuerBaseUrl()}/userinfo`)
+    setUserInfoEndpoint({ value: `${getIssuerBaseUrl()}/userinfo`, source: 'demo' })
     if (!accessToken) {
       void loadDemoToken()
     }
   }
 
   // Handle issuer selection from history
-  const handleSelectIssuer = async (issuerUrl: string) => {
-    setIssuerUrl(issuerUrl)
-    setConfigLoading(true)
-
-    try {
-      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(issuerUrl)
-      const endpoints = extractDiscoveredEndpoints(config)
-      setIssuerUrl(normalizedIssuerUrl)
-
-      if (endpoints.userInfoEndpoint) {
-        setUserInfoEndpoint(endpoints.userInfoEndpoint)
-        addIssuer(normalizedIssuerUrl)
-        setPreflightAutoRunTrigger((value) => value + 1)
-      } else {
-        toast.error('This issuer does not have a userinfo endpoint configured')
-      }
-    } catch (error) {
-      toast.error('Error fetching OIDC configuration: ' + (error as Error).message)
-    } finally {
-      setConfigLoading(false)
-    }
+  const handleSelectIssuer = (selectedIssuerUrl: string) => {
+    setIssuerUrl(selectedIssuerUrl)
+    setPreflightAutoRunTrigger((value) => value + 1)
   }
 
   // Handle token selection from history
@@ -145,34 +134,42 @@ export function UserInfo() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setResult(null)
+    const id = ++runIdRef.current
+    const endpoint = isDemoMode ? `${getIssuerBaseUrl()}/userinfo` : userInfoEndpoint.value
+    const request = { endpoint, accessToken, demoMode: isDemoMode }
 
     if (!accessToken) {
-      setResult({
-        error: 'missing_token',
-        error_description: 'Access token is required',
+      setRun({
+        status: 'complete',
+        id,
+        request,
+        response: {
+          error: 'missing_token',
+          error_description: 'Access token is required',
+        },
       })
-      setLoading(false)
       return
     }
-
-    const endpoint = isDemoMode ? `${getIssuerBaseUrl()}/userinfo` : userInfoEndpoint
 
     if (!endpoint) {
-      setResult({
-        error: 'missing_endpoint',
-        error_description: 'UserInfo endpoint is required',
+      setRun({
+        status: 'complete',
+        id,
+        request,
+        response: {
+          error: 'missing_endpoint',
+          error_description: 'UserInfo endpoint is required',
+        },
       })
-      setLoading(false)
       return
     }
 
+    setRun({ status: 'running', id, request })
     try {
       const res = await proxyFetch(endpoint, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${request.accessToken}`,
         },
       })
 
@@ -183,20 +180,25 @@ export function UserInfo() {
         )
       }
 
-      const data = await res.json()
-      setResult(data)
+      const data: UserInfoResponse = await res.json()
+      if (runIdRef.current !== id) return
+      setRun({ status: 'complete', id, request, response: data })
 
-      if (accessToken) {
-        addToken(accessToken)
+      if (request.accessToken) {
+        addToken(request.accessToken)
       }
     } catch (err: any) {
-      setResult({
-        error: 'request_failed',
-        error_description: err.message || 'Failed to fetch user info',
+      if (runIdRef.current !== id) return
+      setRun({
+        status: 'complete',
+        id,
+        request,
+        response: {
+          error: 'request_failed',
+          error_description: err.message || 'Failed to fetch user info',
+        },
       })
     }
-
-    setLoading(false)
   }
 
   // Function to handle inspecting the token
@@ -327,11 +329,9 @@ export function UserInfo() {
                   <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
-                      configLoading={configLoading}
                       disabled={isDemoMode}
                       compact
                     />
-                    {configLoading && <Spinner size="sm" thickness="thin" aria-hidden="true" />}
                   </div>
                 )}
               </InputGroupAddon>
@@ -339,18 +339,19 @@ export function UserInfo() {
                 id="userinfo-endpoint"
                 data-testid="oauth-userinfo-endpoint-input"
                 type="url"
-                value={userInfoEndpoint}
-                onChange={(e) => setUserInfoEndpoint(e.target.value)}
+                value={userInfoEndpoint.value}
+                onChange={(e) => setUserInfoEndpoint({ value: e.target.value, source: 'manual' })}
                 required={!isDemoMode}
                 disabled={isDemoMode}
                 placeholder={
                   isDemoMode ? 'Demo endpoint (auto-filled)' : 'https://example.com/oauth/userinfo'
                 }
               />
-              {userInfoEndpoint && !isDemoMode && (
+              {userInfoEndpoint.value && !isDemoMode && (
                 <InputGroupAddon align="block-end" className="w-full justify-end bg-transparent">
                   <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
-                    len: {userInfoEndpoint.length}
+                    {userInfoEndpoint.source === 'discovery' ? 'discovered · ' : ''}len:{' '}
+                    {userInfoEndpoint.value.length}
                   </InputGroupText>
                 </InputGroupAddon>
               )}
@@ -366,7 +367,11 @@ export function UserInfo() {
                   const endpoints = extractDiscoveredEndpoints(config)
                   setIssuerUrl(normalizedIssuerUrl)
                   if (endpoints.userInfoEndpoint) {
-                    setUserInfoEndpoint(endpoints.userInfoEndpoint)
+                    setUserInfoEndpoint({
+                      value: endpoints.userInfoEndpoint,
+                      source: 'discovery',
+                      issuerUrl: normalizedIssuerUrl,
+                    })
                     addIssuer(normalizedIssuerUrl)
                   }
                 }}
@@ -425,7 +430,8 @@ export function UserInfo() {
               <FieldLegend>UserInfo Result</FieldLegend>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <FieldDescription className="text-xs text-muted-foreground">
-                  Claims returned from the UserInfo endpoint.
+                  Claims returned from {resultRequest?.endpoint}; submitted token length{' '}
+                  {resultRequest?.accessToken.length ?? 0}.
                 </FieldDescription>
                 {isDemoMode && (
                   <Badge

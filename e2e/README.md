@@ -130,7 +130,7 @@ await page.click(selectors.buttons.primary)
 
 - The app uses shadcn/ui components with Tailwind CSS
 - Wait for elements to be visible before interacting
-- Use `networkidle` for pages that load external data
+- Let each test's first visible page assertion define readiness; avoid global `networkidle`
 - Add screenshots for debugging: `await page.screenshot({ path: 'debug.png' })`
 - Tests run against `http://127.0.0.1:5174` by default to avoid colliding with a normal Vite dev server. Override with `E2E_APP_PORT` if needed.
 
@@ -169,7 +169,7 @@ await page.waitForSelector('text=Result', { timeout: 5000 })
 await expect(page.locator('text=Ready')).toBeVisible()
 
 // Wait for network idle after navigation
-await page.waitForLoadState('networkidle')
+await expect(page.getByRole('heading', { name: 'OIDC Configuration Explorer' })).toBeVisible()
 ```
 
 ### Demo Mode Testing

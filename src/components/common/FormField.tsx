@@ -1,4 +1,4 @@
-import { ReactNode, forwardRef } from 'react'
+import { ReactNode, forwardRef, useId } from 'react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
@@ -11,10 +11,15 @@ export interface FormFieldProps {
   className?: string
   children?: ReactNode
   htmlFor?: string
+  descriptionId?: string
+  errorId?: string
 }
 
 export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(
-  ({ label, description, error, required, className, children, htmlFor }, ref) => {
+  (
+    { label, description, error, required, className, children, htmlFor, descriptionId, errorId },
+    ref
+  ) => {
     return (
       <Field ref={ref} className={cn('gap-2', className)}>
         <FieldLabel htmlFor={htmlFor} className="flex items-center gap-1 text-sm font-medium">
@@ -22,8 +27,8 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(
           {required && <span className="text-destructive">*</span>}
         </FieldLabel>
         {children}
-        {description && <FieldDescription>{description}</FieldDescription>}
-        {error && <FieldError>{error}</FieldError>}
+        {description && <FieldDescription id={descriptionId}>{description}</FieldDescription>}
+        {error && <FieldError id={errorId}>{error}</FieldError>}
       </Field>
     )
   }
@@ -41,6 +46,14 @@ interface FormFieldInputProps extends React.InputHTMLAttributes<HTMLInputElement
 
 export const FormFieldInput = forwardRef<HTMLInputElement, FormFieldInputProps>(
   ({ label, description, error, required, containerClassName, className, ...props }, ref) => {
+    const generatedId = useId()
+    const inputId = props.id ?? generatedId
+    const descriptionId = description ? `${inputId}-description` : undefined
+    const errorId = error ? `${inputId}-error` : undefined
+    const describedBy = [props['aria-describedby'], descriptionId, errorId]
+      .filter(Boolean)
+      .join(' ')
+
     return (
       <FormField
         label={label}
@@ -48,13 +61,17 @@ export const FormFieldInput = forwardRef<HTMLInputElement, FormFieldInputProps>(
         error={error}
         required={required}
         className={containerClassName}
-        htmlFor={props.id}
+        htmlFor={inputId}
+        descriptionId={descriptionId}
+        errorId={errorId}
       >
         <Input
           ref={ref}
           className={cn(error && 'border-destructive', className)}
           aria-invalid={!!error}
-          aria-describedby={error ? `${props.id}-error` : undefined}
+          aria-describedby={describedBy || undefined}
+          id={inputId}
+          required={required}
           {...props}
         />
       </FormField>
@@ -74,6 +91,12 @@ export const FormFieldTextarea = forwardRef<
     containerClassName?: string
   }
 >(({ label, description, error, required, containerClassName, className, ...props }, ref) => {
+  const generatedId = useId()
+  const inputId = props.id ?? generatedId
+  const descriptionId = description ? `${inputId}-description` : undefined
+  const errorId = error ? `${inputId}-error` : undefined
+  const describedBy = [props['aria-describedby'], descriptionId, errorId].filter(Boolean).join(' ')
+
   return (
     <FormField
       label={label}
@@ -81,6 +104,9 @@ export const FormFieldTextarea = forwardRef<
       error={error}
       required={required}
       className={containerClassName}
+      htmlFor={inputId}
+      descriptionId={descriptionId}
+      errorId={errorId}
     >
       <textarea
         ref={ref}
@@ -90,7 +116,9 @@ export const FormFieldTextarea = forwardRef<
           className
         )}
         aria-invalid={!!error}
-        aria-describedby={error ? `${props.id}-error` : undefined}
+        aria-describedby={describedBy || undefined}
+        id={inputId}
+        required={required}
         {...props}
       />
     </FormField>

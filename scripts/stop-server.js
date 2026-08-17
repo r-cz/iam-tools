@@ -1,74 +1,57 @@
 #!/usr/bin/env node
 
-/**
- * Stops development servers that were started with start-server.js
- * Usage: bun scripts/stop-server.js
- *
- * This script finds and terminates Vite and Wrangler processes that were
- * started by the dev scripts.
- */
+import { existsSync, unlinkSync } from 'node:fs'
+import process from 'node:process'
+import {
+  manifestPath,
+  processIdentity,
+  readManifest,
+  serviceDefinitions,
+  writeManifest,
+} from './dev-services.js'
 
-import { exec } from 'child_process'
-import { promisify } from 'util'
-import process from 'process'
-
-const execAsync = promisify(exec)
-
-// Log with timestamp
-const log = (message, type = 'info') => {
-  const now = new Date().toISOString().replace('T', ' ').substring(0, 19)
-  const prefix = type === 'error' ? '❌ ' : type === 'success' ? '✅ ' : '🔄 '
-  console[type === 'error' ? 'error' : 'log'](`${prefix}[${now}] ${message}`)
+const manifest = readManifest()
+if (!manifest) {
+  if (existsSync(manifestPath)) throw new Error('Development service manifest is invalid')
+  console.log('[dev] No owned development services found')
+  process.exit(0)
 }
 
-// Find and kill processes
-const killProcesses = async () => {
-  log('Looking for development server processes...')
-
+const isAlive = (pid) => {
   try {
-    // Find all vite, wrangler, and bun dev processes
-    const findCmd =
-      process.platform === 'darwin' || process.platform === 'linux'
-        ? `ps aux | grep -E '(vite|wrangler|bun run dev)' | grep -v grep | awk '{print $2}'`
-        : `tasklist /fi "imagename eq node.exe" /fo csv | findstr /i "vite wrangler"`
-
-    const { stdout } = await execAsync(findCmd)
-    const pids = stdout.trim().split('\n').filter(Boolean)
-
-    if (pids.length === 0) {
-      log('No development server processes found.', 'info')
-      return
-    }
-
-    log(`Found ${pids.length} development server process(es) to terminate.`)
-
-    // Kill each process
-    for (const pid of pids) {
-      if (!pid.trim()) continue
-
-      try {
-        const killCmd = process.platform === 'win32' ? `taskkill /F /PID ${pid}` : `kill -9 ${pid}`
-
-        await execAsync(killCmd)
-        log(`Terminated process ${pid}`, 'success')
-      } catch (err) {
-        log(`Failed to terminate process ${pid}: ${err.message}`, 'error')
-      }
-    }
-
-    log('All development server processes terminated.', 'success')
-  } catch (error) {
-    log(`Error: ${error.message}`, 'error')
-    process.exit(1)
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
   }
 }
 
-// Main function
-const main = async () => {
-  await killProcesses()
+const remainingServices = {}
+for (const [key, owned] of Object.entries(manifest.services ?? {})) {
+  if (!serviceDefinitions[key] || !Number.isInteger(owned.pid) || owned.pid <= 1) continue
+  if (!isAlive(owned.pid)) {
+    console.log(`[dev] Removed stale ${key} manifest entry`)
+    continue
+  }
+  if (processIdentity(owned.pid) !== owned.startIdentity) {
+    console.error(`[dev] Refusing to stop ${key}: PID ${owned.pid} has been reused`)
+    remainingServices[key] = owned
+    continue
+  }
+  const target = process.platform === 'win32' ? owned.pid : -(owned.processGroup ?? owned.pid)
+  try {
+    process.kill(target, 'SIGTERM')
+    const deadline = Date.now() + 3000
+    while (isAlive(owned.pid) && Date.now() < deadline) {
+      await new Promise((resolveWait) => setTimeout(resolveWait, 100))
+    }
+    if (isAlive(owned.pid)) process.kill(target, 'SIGKILL')
+    console.log(`[dev] Stopped owned ${key} service`)
+  } catch (error) {
+    console.error(`[dev] Failed to stop ${key}: ${error instanceof Error ? error.message : error}`)
+    remainingServices[key] = owned
+  }
 }
 
-main().catch((err) => {
-  log(`Unhandled error: ${err.message}`, 'error')
-  process.exit(1)
-})
+if (Object.keys(remainingServices).length > 0) writeManifest(remainingServices)
+else if (existsSync(manifestPath)) unlinkSync(manifestPath)

@@ -5,18 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { CodeBlock } from '@/components/ui/code-block'
 import { toast } from 'sonner'
-import { OAUTH_PLAYGROUND_REDIRECT_STATE_KEY, OAuthRedirectState } from '../utils/types'
-
-const readRedirectState = (): OAuthRedirectState | null => {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const stored = sessionStorage.getItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
-    return stored ? (JSON.parse(stored) as OAuthRedirectState) : null
-  } catch {
-    return null
-  }
-}
+import {
+  consumeOAuthRedirectTransaction,
+  readOAuthRedirectTransaction,
+  validateOAuthRedirectCallback,
+} from '../utils/redirect-transaction'
 
 export function CallbackPage() {
   const [searchParams] = useSearchParams()
@@ -29,8 +22,18 @@ export function CallbackPage() {
   const errorDescription = searchParams.get('error_description')
 
   useEffect(() => {
+    const transaction = readOAuthRedirectTransaction()
+    const callbackIsValid = validateOAuthRedirectCallback(transaction, {
+      state,
+      origin: window.location.origin,
+    })
     // Check for parent window to postMessage to
     if (window.opener && !window.opener.closed) {
+      if (!callbackIsValid) {
+        setProcessingCallback(false)
+        toast.error('OAuth callback could not be matched to an active authorization request')
+        return
+      }
       // Send message to opener with code or error
       window.opener.postMessage(
         {
@@ -58,14 +61,14 @@ export function CallbackPage() {
   }, [code, state, error, errorDescription])
 
   const handleContinue = () => {
-    const storedState = readRedirectState()
-    const flowPath = storedState?.flowPath || '/oauth-playground'
+    const transaction = consumeOAuthRedirectTransaction({
+      state,
+      origin: window.location.origin,
+    })
 
-    if (code) {
-      // Navigate to the appropriate flow page with the code
-      navigate(flowPath, { state: { code, state } })
+    if (code && transaction) {
+      navigate(transaction.flowPath, { state: { code, transaction } })
     } else {
-      // If there was an error, just go to the OAuth Playground home
       navigate('/oauth-playground')
     }
   }

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { IssuerHistory, JsonDisplay, FormFieldInput } from '@/components/common'
 import { useIssuerHistory } from '@/lib/state'
 import { proxyFetch } from '@/lib/proxy-fetch'
-import { generateSignedToken, getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { getIssuerBaseUrl } from '../utils/demo-issuer'
 import { toast } from 'sonner'
 import {
   InputGroup,
@@ -17,7 +17,6 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
-import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import {
   Item,
@@ -31,10 +30,7 @@ import { cn } from '@/lib/utils'
 import { Clock, Hash, Layers, ShieldCheck } from 'lucide-react'
 import { ButtonGroup } from '@/components/ui/button-group'
 import EndpointPreflightPanel from './EndpointPreflightPanel'
-import {
-  extractDiscoveredEndpoints,
-  fetchOidcDiscoveryConfiguration,
-} from '../utils/oidc-preflight'
+import { extractDiscoveredEndpoints, type OidcEndpointSelection } from '../utils/oidc-preflight'
 import { createHandoff, TOKEN_INSPECTOR_DESTINATION } from '@/lib/handoff'
 
 interface TokenResponse {
@@ -51,7 +47,10 @@ export function ClientCredentialsFlow() {
   const navigate = useNavigate() // Instantiate useNavigate
   const { addIssuer } = useIssuerHistory()
   const [issuerUrl, setIssuerUrl] = useState('')
-  const [tokenEndpoint, setTokenEndpoint] = useState('')
+  const [tokenEndpoint, setTokenEndpoint] = useState<OidcEndpointSelection>({
+    value: '',
+    source: 'manual',
+  })
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [scope, setScope] = useState('')
@@ -60,20 +59,19 @@ export function ClientCredentialsFlow() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<TokenResponse | null>(null)
   const [isDemoMode, setIsDemoMode] = useState(false) // Add state for demo mode
-  const [configLoading, setConfigLoading] = useState(false)
   const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
 
   // Update values when demo mode changes
   React.useEffect(() => {
     if (isDemoMode) {
       const demoIssuer = getIssuerBaseUrl()
-      setTokenEndpoint(`${demoIssuer}/token`)
+      setTokenEndpoint({ value: `${demoIssuer}/token`, source: 'demo' })
       setClientId('demo-client-credentials-client')
       setClientSecret('demo-client-secret')
       setScope('api:read api:write')
     } else {
       // Clear demo values when switching off
-      setTokenEndpoint('')
+      setTokenEndpoint({ value: '', source: 'manual' })
       setClientId('')
       setClientSecret('')
       setScope('')
@@ -81,27 +79,9 @@ export function ClientCredentialsFlow() {
   }, [isDemoMode])
 
   // Handle issuer selection from history
-  const handleSelectIssuer = async (issuerUrl: string) => {
-    setIssuerUrl(issuerUrl)
-    setConfigLoading(true)
-
-    try {
-      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(issuerUrl)
-      const endpoints = extractDiscoveredEndpoints(config)
-      setIssuerUrl(normalizedIssuerUrl)
-
-      if (endpoints.tokenEndpoint) {
-        setTokenEndpoint(endpoints.tokenEndpoint)
-        addIssuer(normalizedIssuerUrl)
-        setPreflightAutoRunTrigger((value) => value + 1)
-      } else {
-        toast.error('This issuer does not have a token endpoint configured')
-      }
-    } catch (error) {
-      toast.error('Error fetching OIDC configuration: ' + (error as Error).message)
-    } finally {
-      setConfigLoading(false)
-    }
+  const handleSelectIssuer = (selectedIssuerUrl: string) => {
+    setIssuerUrl(selectedIssuerUrl)
+    setPreflightAutoRunTrigger((value) => value + 1)
   }
 
   const validateClaims = () => {
@@ -123,23 +103,12 @@ export function ClientCredentialsFlow() {
     }
   }
 
-  const buildDemoTokenFallback = async (): Promise<TokenResponse> => {
-    const normalizedScope = scope.trim() || 'api'
-    const accessToken = await generateSignedToken({ scope: normalizedScope })
-    return {
-      access_token: accessToken,
-      token_type: 'Bearer',
-      expires_in: 60 * 60,
-      scope: normalizedScope,
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setResult(null)
 
-    if (!tokenEndpoint) {
+    if (!tokenEndpoint.value) {
       setResult({
         error: 'missing_endpoint',
         error_description: 'Token endpoint is required',
@@ -172,7 +141,7 @@ export function ClientCredentialsFlow() {
       if (scope) params.append('scope', scope)
       if (claimsValue) params.append('claims', claimsValue)
 
-      const res = await proxyFetch(tokenEndpoint, {
+      const res = await proxyFetch(tokenEndpoint.value, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -183,23 +152,11 @@ export function ClientCredentialsFlow() {
       const data = await res.json()
       setResult(data)
     } catch (err: any) {
-      if (isDemoMode) {
-        try {
-          const fallback = await buildDemoTokenFallback()
-          setResult(fallback)
-          return
-        } catch (fallbackError: any) {
-          setResult({
-            error: 'network_error',
-            error_description: fallbackError?.message || 'Network error',
-          })
-          return
-        }
-      }
-
       setResult({
         error: 'network_error',
-        error_description: err.message || 'Network error',
+        error_description: isDemoMode
+          ? 'The demo Worker is unavailable. Start the local proxy or retry the deployed Worker.'
+          : err.message || 'Network error',
       })
     } finally {
       setLoading(false)
@@ -319,11 +276,9 @@ export function ClientCredentialsFlow() {
                   <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
-                      configLoading={configLoading}
                       disabled={isDemoMode}
                       compact
                     />
-                    {configLoading && <Spinner size="sm" thickness="thin" aria-hidden="true" />}
                   </div>
                 )}
               </InputGroupAddon>
@@ -331,18 +286,19 @@ export function ClientCredentialsFlow() {
                 id="token-endpoint"
                 data-testid="oauth-client-credentials-token-endpoint-input"
                 type="url"
-                value={tokenEndpoint}
-                onChange={(e) => setTokenEndpoint(e.target.value)}
+                value={tokenEndpoint.value}
+                onChange={(e) => setTokenEndpoint({ value: e.target.value, source: 'manual' })}
                 required={!isDemoMode}
                 disabled={isDemoMode}
                 placeholder={
                   isDemoMode ? 'Demo endpoint (auto-filled)' : 'https://example.com/oauth/token'
                 }
               />
-              {tokenEndpoint && !isDemoMode && (
+              {tokenEndpoint.value && !isDemoMode && (
                 <InputGroupAddon align="block-end" className="w-full justify-end bg-transparent">
                   <InputGroupText className="tracking-normal font-mono normal-case text-muted-foreground">
-                    len: {tokenEndpoint.length}
+                    {tokenEndpoint.source === 'discovery' ? 'discovered · ' : ''}len:{' '}
+                    {tokenEndpoint.value.length}
                   </InputGroupText>
                 </InputGroupAddon>
               )}
@@ -358,7 +314,11 @@ export function ClientCredentialsFlow() {
                   const endpoints = extractDiscoveredEndpoints(config)
                   setIssuerUrl(normalizedIssuerUrl)
                   if (endpoints.tokenEndpoint) {
-                    setTokenEndpoint(endpoints.tokenEndpoint)
+                    setTokenEndpoint({
+                      value: endpoints.tokenEndpoint,
+                      source: 'discovery',
+                      issuerUrl: normalizedIssuerUrl,
+                    })
                     addIssuer(normalizedIssuerUrl)
                   }
                 }}
@@ -428,7 +388,9 @@ export function ClientCredentialsFlow() {
             </FieldSet>
             <Button
               type="submit"
-              disabled={loading || (!isDemoMode && (!tokenEndpoint || !clientId || !clientSecret))}
+              disabled={
+                loading || (!isDemoMode && (!tokenEndpoint.value || !clientId || !clientSecret))
+              }
               data-testid="oauth-client-credentials-submit-button"
             >
               {loading ? 'Requesting...' : isDemoMode ? 'Request Demo Token' : 'Request Token'}

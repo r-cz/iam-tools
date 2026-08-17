@@ -1,35 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import {
-  OAuthConfig,
-  OAuthRedirectState,
-  OAUTH_PLAYGROUND_REDIRECT_STATE_KEY,
-  PkceParams,
-} from '../utils/types'
+import { OAuthConfig, PkceParams } from '../utils/types'
+import { decodeOAuthRedirectTransaction } from '../utils/redirect-transaction'
 import ConfigurationForm from './ConfigurationForm'
 import AuthorizationRequest from './AuthorizationRequest'
 import TokenExchange from './TokenExchange'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-const readRedirectState = (): OAuthRedirectState | null => {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const stored = sessionStorage.getItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
-    return stored ? (JSON.parse(stored) as OAuthRedirectState) : null
-  } catch {
-    return null
-  }
-}
-
-const clearRedirectState = () => {
-  if (typeof window === 'undefined') return
-  sessionStorage.removeItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
-}
-
 export function AuthCodeWithPkceFlow() {
   const location = useLocation()
   const callbackCode = typeof location.state?.code === 'string' ? location.state.code : null
+  const callbackTransaction = decodeOAuthRedirectTransaction(location.state?.transaction)
   const [flowState, setFlowState] = useState<{
     activeTab: string
     config: OAuthConfig | null
@@ -46,21 +27,16 @@ export function AuthCodeWithPkceFlow() {
   useEffect(() => {
     if (!callbackCode) return
 
-    const redirectState = readRedirectState()
     setFlowState((currentState) => {
-      if (!redirectState) {
-        return { ...currentState, authCode: callbackCode }
-      }
-
-      clearRedirectState()
+      if (!callbackTransaction) return currentState
       return {
         activeTab: 'token',
         authCode: callbackCode,
-        config: redirectState.config,
-        pkce: redirectState.pkce,
+        config: callbackTransaction.config,
+        pkce: callbackTransaction.pkce,
       }
     })
-  }, [callbackCode])
+  }, [callbackCode, callbackTransaction])
 
   // Handle configuration completion
   const handleConfigComplete = (newConfig: OAuthConfig, newPkce: PkceParams) => {

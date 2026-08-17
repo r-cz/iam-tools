@@ -21,6 +21,7 @@ export function useOidcConfig(options: UseOidcConfigOptions = {}): UseOidcConfig
 
   const fetchConfig = useCallback(
     async (issuerUrl: string) => {
+      const requestId = ++requestIdRef.current
       if (!issuerUrl || issuerUrl.trim().length === 0) {
         setCurrentIssuer(null)
         setData(null)
@@ -45,33 +46,15 @@ export function useOidcConfig(options: UseOidcConfigOptions = {}): UseOidcConfig
 
       setCurrentIssuer(normalizedIssuerUrl)
 
-      // Check cache first
-      const cachedConfig = oidcConfigCache.get(normalizedIssuerUrl)
-      if (cachedConfig) {
-        if (import.meta?.env?.DEV) {
-          console.log('Using cached OIDC configuration for:', normalizedIssuerUrl)
-        }
-        setData(cachedConfig)
-        setError(null)
-        setIsLoading(false)
-        return
-      }
-
       setIsLoading(true)
       setError(null)
       setData(null)
 
-      const requestId = ++requestIdRef.current
-
       try {
-        const { config } = await fetchDiscoveryConfiguration(normalizedIssuerUrl)
-        const configData = config as OidcConfiguration
-
-        // Store in cache for future use
-        oidcConfigCache.set(normalizedIssuerUrl, configData)
-        if (import.meta?.env?.DEV) {
-          console.log('Cached OIDC configuration for:', normalizedIssuerUrl)
-        }
+        const configData = await oidcConfigCache.getOrLoad(normalizedIssuerUrl, async () => {
+          const { config } = await fetchDiscoveryConfiguration(normalizedIssuerUrl)
+          return config as OidcConfiguration
+        })
 
         if (requestIdRef.current === requestId) {
           setData(configData)
@@ -80,8 +63,10 @@ export function useOidcConfig(options: UseOidcConfigOptions = {}): UseOidcConfig
         if (import.meta?.env?.DEV) {
           console.error('Error fetching OIDC config:', err)
         }
-        setError(err instanceof Error ? err : new Error('An unknown error occurred'))
-        setData(null)
+        if (requestIdRef.current === requestId) {
+          setError(err instanceof Error ? err : new Error('An unknown error occurred'))
+          setData(null)
+        }
       } finally {
         if (requestIdRef.current === requestId) {
           setIsLoading(false)

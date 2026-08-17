@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,59 +6,80 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { toast } from 'sonner'
-import { verifySamlMetadataSignature } from '@/features/saml/utils/signature-verify'
+import {
+  verifySamlMetadataSignature,
+  type SignatureVerificationOutcome,
+} from '@/features/saml/utils/signature-verify'
 import { PageContainer, PageHeader } from '@/components/page'
 import { BadgeCheck } from 'lucide-react'
 import { JsonDisplay } from '@/components/common/JsonDisplay'
 import { formatXml } from '@/lib/format/xml'
+import { parseSamlMetadata } from '@/features/saml/utils/metadata-parser'
 
-type ParsedKey = {
-  use?: string
-  x509?: string
-}
-
-type ParsedSso = {
-  binding: string
-  location: string
-}
+type FetchState = { status: 'idle' } | { status: 'running'; url: string }
+type VerifyState =
+  | { status: 'idle' }
+  | { status: 'running'; key: string }
+  | { status: 'complete'; key: string; result: SignatureVerificationOutcome }
 
 export default function SamlMetadataValidatorPage() {
   const [url, setUrl] = useState('')
   const [xml, setXml] = useState('')
-  const [parsingError, setParsingError] = useState<string | null>(null)
   const [certPem, setCertPem] = useState('')
-  const [verifyResult, setVerifyResult] = useState<null | {
-    present: boolean
-    valid: boolean | null
-    error?: string
-  }>(null)
+  const [fetchState, setFetchState] = useState<FetchState>({ status: 'idle' })
+  const [verifyState, setVerifyState] = useState<VerifyState>({ status: 'idle' })
+  const fetchGeneration = useRef(0)
+  const verifyGeneration = useRef(0)
+  const verificationKey = `${xml}\u0000${certPem}`
 
   const fetchMetadata = async () => {
     if (!url) return
+    const requestedUrl = url
+    const generation = ++fetchGeneration.current
+    setFetchState({ status: 'running', url: requestedUrl })
     try {
-      const resp = await proxyFetch(url)
+      const resp = await proxyFetch(requestedUrl)
       if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`)
       const text = await resp.text()
+      if (fetchGeneration.current !== generation) return
+      verifyGeneration.current += 1
       setXml(text)
-      setParsingError(null)
+      setFetchState({ status: 'idle' })
       toast.success('Metadata fetched')
-    } catch (e: any) {
-      toast.error('Fetch failed', { description: e?.message })
+    } catch (error) {
+      if (fetchGeneration.current !== generation) return
+      setFetchState({ status: 'idle' })
+      toast.error('Fetch failed', {
+        description: error instanceof Error ? error.message : String(error),
+      })
     }
   }
 
-  const parsed = useMemo(() => parseMetadata(xml), [xml])
+  const parsed = useMemo(() => parseSamlMetadata(xml), [xml])
+  const verifyResult =
+    verifyState.status === 'complete' && verifyState.key === verificationKey
+      ? verifyState.result
+      : null
+  const isVerifying = verifyState.status === 'running' && verifyState.key === verificationKey
 
   const onVerify = async () => {
+    const key = verificationKey
+    const generation = ++verifyGeneration.current
+    setVerifyState({ status: 'running', key })
     try {
       const res = await verifySamlMetadataSignature(xml, certPem)
-      setVerifyResult(res)
-      if (res.present && res.valid) toast.success('Metadata signature is valid')
-      else if (res.present && res.valid === false) toast.error('Invalid metadata signature')
+      if (verifyGeneration.current !== generation) return
+      setVerifyState({ status: 'complete', key, result: res })
+      if (res.status === 'valid') toast.success('Metadata signature is valid')
+      else if (res.status === 'invalid') toast.error('Invalid metadata signature')
+      else if (res.status === 'error')
+        toast.error('Verification failed', { description: res.message })
       else toast.info('No signature element found in metadata')
-    } catch (e: any) {
-      setVerifyResult({ present: true, valid: false, error: e?.message })
-      toast.error('Verification failed', { description: e?.message })
+    } catch (error) {
+      if (verifyGeneration.current !== generation) return
+      const message = error instanceof Error ? error.message : 'Verification failed'
+      setVerifyState({ status: 'complete', key, result: { status: 'error', message } })
+      toast.error('Verification failed', { description: message })
     }
   }
 
@@ -80,10 +101,18 @@ export default function SamlMetadataValidatorPage() {
                 id="metadata-url"
                 placeholder="https://idp.example.com/FederationMetadata/2007-06/FederationMetadata.xml"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => {
+                  fetchGeneration.current += 1
+                  setUrl(e.target.value)
+                }}
               />
             </div>
-            <Button onClick={fetchMetadata}>Fetch</Button>
+            <Button
+              onClick={fetchMetadata}
+              disabled={!url.trim() || fetchState.status === 'running'}
+            >
+              {fetchState.status === 'running' ? 'Fetching…' : 'Fetch'}
+            </Button>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="metadata-xml" className="text-sm">
@@ -92,7 +121,10 @@ export default function SamlMetadataValidatorPage() {
             <Textarea
               id="metadata-xml"
               value={xml}
-              onChange={(e) => setXml(e.target.value)}
+              onChange={(e) => {
+                verifyGeneration.current += 1
+                setXml(e.target.value)
+              }}
               rows={10}
               className="font-mono"
             />
@@ -104,46 +136,48 @@ export default function SamlMetadataValidatorPage() {
             )}
           </div>
 
-          {parsingError && <div className="text-sm text-red-600">{parsingError}</div>}
+          {parsed.status === 'invalid' && (
+            <div className="text-sm text-red-600">{parsed.message}</div>
+          )}
 
-          {parsed && (
+          {parsed.status === 'valid' && (
             <div className="grid gap-4">
               <div>
                 <div className="text-sm text-muted-foreground">Entity</div>
                 <div className="text-sm">
-                  entityID: <span className="font-mono">{parsed.entityId || '—'}</span>
+                  entityID: <span className="font-mono">{parsed.value.entityId || '—'}</span>
                 </div>
-                <div className="text-sm">IDP Present: {parsed.hasIdp ? 'Yes' : 'No'}</div>
-                <div className="text-sm">SP Present: {parsed.hasSp ? 'Yes' : 'No'}</div>
+                <div className="text-sm">IDP Present: {parsed.value.hasIdp ? 'Yes' : 'No'}</div>
+                <div className="text-sm">SP Present: {parsed.value.hasSp ? 'Yes' : 'No'}</div>
               </div>
               <div>
                 <div className="text-sm font-medium mb-1">SingleSignOnService</div>
                 <ul className="text-sm list-disc pl-5">
-                  {parsed.sso.map((s) => (
+                  {parsed.value.sso.map((s) => (
                     <li key={`${s.binding}-${s.location}`}>
                       <span className="font-mono">{s.binding}</span> →{' '}
                       <span className="font-mono">{s.location}</span>
                     </li>
                   ))}
-                  {parsed.sso.length === 0 && <li>None</li>}
+                  {parsed.value.sso.length === 0 && <li>None</li>}
                 </ul>
               </div>
               <div>
                 <div className="text-sm font-medium mb-1">SingleLogoutService</div>
                 <ul className="text-sm list-disc pl-5">
-                  {parsed.slo.map((s) => (
+                  {parsed.value.slo.map((s) => (
                     <li key={`${s.binding}-${s.location}`}>
                       <span className="font-mono">{s.binding}</span> →{' '}
                       <span className="font-mono">{s.location}</span>
                     </li>
                   ))}
-                  {parsed.slo.length === 0 && <li>None</li>}
+                  {parsed.value.slo.length === 0 && <li>None</li>}
                 </ul>
               </div>
               <div>
                 <div className="text-sm font-medium mb-1">Keys</div>
                 <ul className="text-sm list-disc pl-5 break-all">
-                  {parsed.keys.map((k) => (
+                  {parsed.value.keys.map((k) => (
                     <li key={`${k.use ?? 'none'}-${k.x509 ?? 'none'}`}>
                       use: <span className="font-mono">{k.use || '—'}</span>
                       {k.x509 && (
@@ -154,15 +188,15 @@ export default function SamlMetadataValidatorPage() {
                       )}
                     </li>
                   ))}
-                  {parsed.keys.length === 0 && <li>None</li>}
+                  {parsed.value.keys.length === 0 && <li>None</li>}
                 </ul>
               </div>
 
               <div>
                 <div className="text-sm font-medium mb-1">Checks</div>
                 <ul className="text-sm list-disc pl-5">
-                  {parsed.warnings.length === 0 && <li>No obvious issues found</li>}
-                  {parsed.warnings.map((w) => (
+                  {parsed.value.warnings.length === 0 && <li>No obvious issues found</li>}
+                  {parsed.value.warnings.map((w) => (
                     <li key={w} className="text-amber-700 dark:text-amber-400">
                       {w}
                     </li>
@@ -177,22 +211,22 @@ export default function SamlMetadataValidatorPage() {
                   rows={6}
                   placeholder={'-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----'}
                   value={certPem}
-                  onChange={(e) => setCertPem(e.target.value)}
+                  onChange={(e) => {
+                    verifyGeneration.current += 1
+                    setCertPem(e.target.value)
+                  }}
                   className="font-mono"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={onVerify} disabled={!xml.trim() || !certPem.trim()}>
-                    Verify
+                  <Button
+                    onClick={onVerify}
+                    disabled={!xml.trim() || !certPem.trim() || isVerifying}
+                  >
+                    {isVerifying ? 'Verifying…' : 'Verify'}
                   </Button>
                   {verifyResult && (
                     <span className="text-sm">
-                      Result:{' '}
-                      {verifyResult.present
-                        ? verifyResult.valid
-                          ? 'Valid'
-                          : 'Invalid'
-                        : 'No signature'}
-                      {verifyResult.error ? ` — ${verifyResult.error}` : ''}
+                      Result: {formatVerificationOutcome(verifyResult)}
                     </span>
                   )}
                 </div>
@@ -205,103 +239,15 @@ export default function SamlMetadataValidatorPage() {
   )
 }
 
-function parseMetadata(xml: string): {
-  entityId?: string
-  hasIdp: boolean
-  hasSp: boolean
-  sso: ParsedSso[]
-  slo: ParsedSso[]
-  keys: ParsedKey[]
-  warnings: string[]
-} | null {
-  if (!xml.trim()) return null
-  try {
-    const safeXml = sanitizeXmlInput(xml)
-    const doc = new DOMParser().parseFromString(safeXml, 'application/xml')
-    const parserError = doc.getElementsByTagName('parsererror')[0]
-    if (parserError) throw new Error('XML parse error')
-
-    const $ = (q: string) => Array.from(doc.getElementsByTagName(q))
-    const entity = $('EntityDescriptor')[0]
-    const entityId = entity?.getAttribute('entityID') ?? undefined
-
-    const idp = $('IDPSSODescriptor')[0]
-    const sp = $('SPSSODescriptor')[0]
-
-    const toServices = (nodes: Element[], tag: string): ParsedSso[] =>
-      nodes
-        .flatMap((n) => Array.from(n.getElementsByTagName(tag)))
-        .map((n) => ({
-          binding: n.getAttribute('Binding') || '',
-          location: n.getAttribute('Location') || '',
-        }))
-
-    const sso = toServices([idp].filter(Boolean) as Element[], 'SingleSignOnService')
-    const slo = toServices([idp, sp].filter(Boolean) as Element[], 'SingleLogoutService')
-
-    const keys: ParsedKey[] = Array.from(doc.getElementsByTagName('KeyDescriptor')).map((kd) => {
-      const use = kd.getAttribute('use') || undefined
-      const x509 = kd.getElementsByTagName('X509Certificate')[0]?.textContent || undefined
-      return { use, x509 }
-    })
-
-    const warnings: string[] = []
-    if (!entityId) warnings.push('Missing entityID')
-    if (!idp && !sp) warnings.push('No IDPSSODescriptor or SPSSODescriptor found')
-    if (idp && sso.length === 0) warnings.push('IDPSSODescriptor missing SingleSignOnService')
-    if (keys.length === 0) warnings.push('No signing/encryption keys present')
-
-    const validUntil = entity?.getAttribute('validUntil') || undefined
-    if (validUntil) {
-      const parsedDate = new Date(validUntil)
-      if (Number.isNaN(parsedDate.getTime())) {
-        warnings.push('validUntil is not a valid date')
-      } else {
-        const msRemaining = parsedDate.getTime() - Date.now()
-        if (msRemaining <= 0) {
-          warnings.push('Metadata validUntil has expired')
-        } else if (msRemaining < 1000 * 60 * 60 * 24 * 30) {
-          warnings.push('Metadata validUntil expires within 30 days')
-        }
-      }
-    }
-
-    const signingKeys = keys.filter((key) => !key.use || key.use === 'signing')
-    if (signingKeys.length > 1) {
-      warnings.push('Multiple signing keys detected; ensure your SP/IdP supports key rollover')
-    }
-    if (keys.some((key) => !key.use)) {
-      warnings.push('KeyDescriptor entries without a use attribute should be reviewed')
-    }
-
-    return { entityId, hasIdp: !!idp, hasSp: !!sp, sso, slo, keys, warnings }
-  } catch {
-    return {
-      entityId: undefined,
-      hasIdp: false,
-      hasSp: false,
-      sso: [],
-      slo: [],
-      keys: [],
-      warnings: ['Failed to parse metadata'],
-    }
+function formatVerificationOutcome(result: SignatureVerificationOutcome): string {
+  switch (result.status) {
+    case 'unsigned':
+      return 'No signature'
+    case 'valid':
+      return 'Valid'
+    case 'invalid':
+      return 'Invalid'
+    case 'error':
+      return `Error — ${result.message}`
   }
-}
-
-/**
- * Basic XML sanitizer: removes <!DOCTYPE ...>, <!ENTITY ...>, and trims leading/trailing whitespace.
- * Only allows parsing if the root tag is EntityDescriptor (SAML metadata).
- */
-function sanitizeXmlInput(xml: string): string {
-  // Remove DOCTYPE declarations
-  let cleaned = xml.replace(/<!DOCTYPE[\s\S]*?>/gi, '')
-  // Remove ENTITY declarations
-  cleaned = cleaned.replace(/<!ENTITY[\s\S]*?>/gi, '')
-  // Trim whitespace
-  cleaned = cleaned.trim()
-  // Optionally: enforce root tag (can be customized for SAML metadata)
-  if (!/^<\s*EntityDescriptor[\s>]/.test(cleaned)) {
-    throw new Error('Invalid SAML metadata XML: Root element must be EntityDescriptor')
-  }
-  return cleaned
 }

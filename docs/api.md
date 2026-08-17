@@ -9,7 +9,7 @@ The CORS proxy allows the frontend to make requests to external APIs that don't 
 ### Endpoint
 
 ```
-GET /api/cors-proxy/:url
+GET|HEAD /api/cors-proxy/:encoded-url
 ```
 
 Where `:url` is the URL-encoded target endpoint you want to access.
@@ -129,21 +129,16 @@ The JWKS endpoint is implemented in `src/worker.ts`. It:
 
 ## Error Handling
 
-All API endpoints follow consistent error handling patterns:
+HTTP status codes carry the transport result. Demo OAuth endpoints use the standard flat OAuth
+shape (`error` and optional `error_description`); proxy and infrastructure routes may return a
+route-specific JSON error. Callers should not assume one nested error envelope across all routes.
 
 - **400 Bad Request**: When the request is malformed or missing required parameters
 - **404 Not Found**: When the requested resource doesn't exist
 - **500 Internal Server Error**: For unexpected server errors
 
-Errors are returned as JSON with a consistent format:
-
 ```json
-{
-  "error": {
-    "code": "invalid_request",
-    "message": "Detailed error message"
-  }
-}
+{ "error": "invalid_request", "error_description": "Detailed error message" }
 ```
 
 ## Rate Limiting
@@ -151,6 +146,7 @@ Errors are returned as JSON with a consistent format:
 Rate limiting is enforced in-worker (per instance):
 
 - CORS proxy: 60 requests/min per client IP
+- OIDC endpoint preflight probe: 90 requests/min per client IP
 - Demo OAuth/OIDC endpoints: 120 requests/min per client IP
 
 When exceeded, the API responds with `429` and a `Retry-After` header. Local development on `localhost` is not rate limited. For global enforcement across regions, consider Cloudflare's rate limiting products.
@@ -167,6 +163,14 @@ IAM Tools also ships a demo OAuth/OIDC provider for local testing and the OAuth 
 - `POST /api/introspect` (RFC 7662-style response)
 - `POST /api/revoke` (always returns 200)
 
+## OIDC Endpoint Preflight Probe
+
+`POST /api/oidc-preflight-probe` performs the Worker-assisted fallback used when a browser cannot
+directly probe a discovered endpoint because of CORS or network policy. The JSON body supplies the
+target `url`, probe `method`, and sanitized probe headers/body. The Worker accepts only HTTP(S)
+targets that pass its public-network checks and returns `{ "ok": true, "status", "statusText" }`
+or `{ "ok": false, "error" }`. This route is not a general proxy.
+
 The demo token endpoints accept an optional `claims` JSON object; reserved standard claims are ignored.
 
 ### Demo Token/Auth Code Integrity
@@ -174,7 +178,8 @@ The demo token endpoints accept an optional `claims` JSON object; reserved stand
 - Access tokens and ID tokens are JWTs signed with the demo RSA key.
 - `/api/userinfo` and `/api/introspect` verify signature integrity for demo-issued JWTs before treating them as active.
 - Authorization codes and refresh tokens operate in two modes:
-  - Compatibility mode (default): legacy unsigned payload encoding.
-  - Strict mode (`DEMO_TOKEN_SIGNING_SECRET` set): HMAC-signed envelopes in `v1.<payload>.<sig>` format.
-- In strict mode, tampered or legacy-form auth codes/refresh tokens are rejected with OAuth errors (`invalid_grant` for token exchange).
+  - Compatibility mode (default): tagged payload encoding without an integrity signature.
+  - Strict mode (`DEMO_TOKEN_SIGNING_SECRET` set): HMAC-signed, artifact-tagged envelopes in `v2.<payload>.<sig>` format.
+- Auth codes and refresh tokens carry distinct `kind` tags and cannot be exchanged through the wrong grant.
+- In strict mode, tampered, legacy, or wrong-kind artifacts are rejected with `invalid_grant`.
 - Demo authorization redirects default to this app's exact `/oauth-playground/callback` URI (with localhost/127.0.0.1 cross-port support in local development). Additional exact callback URIs can be registered with the comma-separated `DEMO_REDIRECT_URIS` Worker variable.

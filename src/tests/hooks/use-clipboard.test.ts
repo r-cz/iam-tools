@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { copyTextToClipboard, useClipboard } from '@/hooks/use-clipboard'
-import '../utils/dom-setup'
 
 const originalClipboard = navigator.clipboard
 const originalExecCommand = document.execCommand

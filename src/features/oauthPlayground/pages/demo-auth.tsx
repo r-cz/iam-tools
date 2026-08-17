@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { getIssuerBaseUrl } from '../utils/demo-issuer'
 import { isAllowedDemoRedirectUri } from '../utils/demo-redirect'
 
 export function DemoAuthPage() {

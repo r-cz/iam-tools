@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import worker from '@/worker'
-import { CSP_INLINE_SCRIPT_SHA256 } from '@/csp-hashes'
 
 const originalFetch = globalThis.fetch
 let fetchCalls: Array<Request | string> = []
@@ -377,10 +376,11 @@ describe('worker api', () => {
 
     const csp = response.headers.get('Content-Security-Policy') ?? ''
     expect(csp).toContain("default-src 'self'")
-    expect(csp).toContain("script-src 'self'")
-    if (CSP_INLINE_SCRIPT_SHA256) {
-      expect(csp).toContain(CSP_INLINE_SCRIPT_SHA256)
-    }
+    const scriptDirective = csp
+      .split(';')
+      .map((directive) => directive.trim())
+      .find((directive) => directive.startsWith('script-src'))
+    expect(scriptDirective).toBe("script-src 'self'")
   })
 
   test('accepts signed auth code and rejects tampered auth code in strict mode', async () => {
@@ -547,7 +547,7 @@ describe('worker api', () => {
     expect(introspectionData.active).toBe(false)
   })
 
-  test('keeps legacy auth-code and refresh-token behavior when strict secret is unset', async () => {
+  test('uses unsigned typed auth-code and refresh-token artifacts when strict secret is unset', async () => {
     const env = createEnv()
     const redirectUri = 'https://app.test/oauth-playground/callback'
 
@@ -595,5 +595,122 @@ describe('worker api', () => {
     expect(refreshResponse.status).toBe(200)
     const refreshedData = await refreshResponse.json()
     expect(typeof refreshedData.access_token).toBe('string')
+  })
+
+  test('rejects grant artifacts used in the wrong grant flow', async () => {
+    for (const env of [
+      createEnv(),
+      createEnv({ DEMO_TOKEN_SIGNING_SECRET: 'strict-signing-secret' }),
+    ]) {
+      const redirectUri = 'https://app.test/oauth-playground/callback'
+      const authResponse = await worker.fetch(
+        buildRequest(
+          `/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20offline_access`
+        ),
+        env
+      )
+      const authLocation = authResponse.headers.get('Location')
+      const authCode = authLocation ? new URL(authLocation).searchParams.get('code') : null
+      expect(authCode).toBeTruthy()
+
+      const wrongRefreshResponse = await worker.fetch(
+        buildRequest('/api/token', {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: authCode!,
+            client_id: 'demo-client',
+          }).toString(),
+        }),
+        env
+      )
+      expect(wrongRefreshResponse.status).toBe(400)
+      expect((await wrongRefreshResponse.json()).error).toBe('invalid_grant')
+
+      const exchangeResponse = await worker.fetch(
+        buildRequest('/api/token', {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: authCode!,
+            redirect_uri: redirectUri,
+            client_id: 'demo-client',
+          }).toString(),
+        }),
+        env
+      )
+      const exchangeData = await exchangeResponse.json()
+      expect(typeof exchangeData.refresh_token).toBe('string')
+
+      const wrongCodeResponse = await worker.fetch(
+        buildRequest('/api/token', {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: exchangeData.refresh_token,
+            redirect_uri: redirectUri,
+            client_id: 'demo-client',
+          }).toString(),
+        }),
+        env
+      )
+      expect(wrongCodeResponse.status).toBe(400)
+      expect((await wrongCodeResponse.json()).error).toBe('invalid_grant')
+    }
+  })
+
+  test('requires a complete S256 PKCE pair', async () => {
+    const redirectUri = 'https://app.test/oauth-playground/callback'
+    const incompleteQueries = [`code_challenge=${'a'.repeat(43)}`, 'code_challenge_method=S256']
+
+    for (const incompleteQuery of incompleteQueries) {
+      const response = await worker.fetch(
+        buildRequest(
+          `/api/auth?response_type=code&client_id=demo-client&redirect_uri=${encodeURIComponent(redirectUri)}&${incompleteQuery}`
+        ),
+        createEnv()
+      )
+      expect(response.status).toBe(302)
+      const location = response.headers.get('Location')
+      expect(location).toBeTruthy()
+      expect(new URL(location!).searchParams.get('error')).toBe('invalid_request')
+    }
+  })
+
+  test('rejects JWTs with extra segments as one invalid snapshot', async () => {
+    const env = createEnv({ DEMO_TOKEN_SIGNING_SECRET: 'strict-signing-secret' })
+    const generationResponse = await worker.fetch(
+      buildRequest('/api/token/generate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subject: 'demo-user', client_id: 'demo-client' }),
+      }),
+      env
+    )
+    const generated = await generationResponse.json()
+    const malformedToken = `${generated.access_token}.extra`
+
+    const userInfoResponse = await worker.fetch(
+      buildRequest('/api/userinfo', {
+        headers: { Authorization: `Bearer ${malformedToken}` },
+      }),
+      env
+    )
+    expect(userInfoResponse.status).toBe(401)
+    expect((await userInfoResponse.json()).error).toBe('invalid_token')
+
+    const introspectionResponse = await worker.fetch(
+      buildRequest('/api/introspect', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: malformedToken }).toString(),
+      }),
+      env
+    )
+    expect(introspectionResponse.status).toBe(200)
+    expect((await introspectionResponse.json()).active).toBe(false)
   })
 })

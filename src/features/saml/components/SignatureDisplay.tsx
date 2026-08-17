@@ -4,34 +4,56 @@ import { Badge } from '@/components/ui/badge'
 import { Shield, AlertCircle } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
-import { verifySamlResponseSignatures } from '../utils/signature-verify'
+import { useEffect, useRef, useState } from 'react'
+import {
+  verifySamlResponseSignatures,
+  type ResponseVerifyResult,
+  type SignatureVerificationOutcome,
+} from '../utils/signature-verify'
 
 interface SignatureDisplayProps {
   response: DecodedSamlResponse
+  verifySignatures?: typeof verifySamlResponseSignatures
 }
 
-export function SignatureDisplay({ response }: SignatureDisplayProps) {
+export function SignatureDisplay({
+  response,
+  verifySignatures = verifySamlResponseSignatures,
+}: SignatureDisplayProps) {
   const [certPem, setCertPem] = useState('')
-  const [verifying, setVerifying] = useState(false)
-  const [result, setResult] = useState<{
-    response?: { present: boolean; valid: boolean | null; error?: string }
-    assertions?: Array<{ id?: string; present: boolean; valid: boolean | null; error?: string }>
-  } | null>(null)
+  const [verification, setVerification] = useState<VerificationState>({ status: 'idle' })
+  const requestIdRef = useRef(0)
+
+  useEffect(() => {
+    requestIdRef.current += 1
+    setVerification({ status: 'idle' })
+  }, [response.xml])
 
   const onVerify = async () => {
+    const requestId = ++requestIdRef.current
+    const submittedXml = response.xml
+    const submittedCert = certPem
+    setVerification({ status: 'running', requestId })
     try {
-      setVerifying(true)
-      const r = await verifySamlResponseSignatures(response.xml, certPem)
-      setResult({
-        response: r.response,
-        assertions: r.assertions.map((a) => ({ id: a.id, ...a.result })),
-      })
-    } catch (e: any) {
-      setResult({ response: { present: true, valid: false, error: e?.message } })
-    } finally {
-      setVerifying(false)
+      const result = await verifySignatures(submittedXml, submittedCert)
+      if (requestIdRef.current === requestId) {
+        setVerification({ status: 'complete', requestId, result })
+      }
+    } catch (error) {
+      if (requestIdRef.current === requestId) {
+        setVerification({
+          status: 'failed',
+          requestId,
+          message: error instanceof Error ? error.message : 'Verification failed',
+        })
+      }
     }
+  }
+
+  const onCertificateChange = (value: string) => {
+    requestIdRef.current += 1
+    setCertPem(value)
+    setVerification({ status: 'idle' })
   }
 
   const hasAnySignature = response.hasSignature || response.assertions.some((a) => a.hasSignature)
@@ -53,12 +75,15 @@ export function SignatureDisplay({ response }: SignatureDisplayProps) {
           rows={6}
           placeholder={'-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----'}
           value={certPem}
-          onChange={(e) => setCertPem(e.target.value)}
+          onChange={(e) => onCertificateChange(e.target.value)}
           className="font-mono"
         />
         <div>
-          <Button onClick={onVerify} disabled={!certPem.trim() || verifying}>
-            {verifying ? 'Verifying…' : 'Verify Signatures'}
+          <Button
+            onClick={onVerify}
+            disabled={!certPem.trim() || verification.status === 'running'}
+          >
+            {verification.status === 'running' ? 'Verifying…' : 'Verify Signatures'}
           </Button>
         </div>
       </div>
@@ -105,25 +130,43 @@ export function SignatureDisplay({ response }: SignatureDisplayProps) {
       )}
 
       {/* Results */}
-      {result && (
+      {verification.status === 'complete' && (
         <div className="space-y-2">
           <div className="text-sm font-medium">Verification Results</div>
-          <div className="text-sm">Response: {formatResult(result.response)}</div>
-          {result.assertions?.map((a, assertionIndex) => (
-            <div key={a.id ?? `${a.present}-${a.valid}-${a.error ?? 'none'}`} className="text-sm">
-              Assertion {a.id ? `(${a.id})` : `#${assertionIndex + 1}`}: {formatResult(a)}
+          <div className="text-sm">Response: {formatResult(verification.result.response)}</div>
+          {verification.result.assertions.map((assertion, assertionIndex) => (
+            <div key={assertion.id ?? `assertion-${assertionIndex + 1}`} className="text-sm">
+              Assertion {assertion.id ? `(${assertion.id})` : `#${assertionIndex + 1}`}:{' '}
+              {formatResult(assertion.result)}
             </div>
           ))}
         </div>
+      )}
+      {verification.status === 'failed' && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{verification.message}</AlertDescription>
+        </Alert>
       )}
     </div>
   )
 }
 
-function formatResult(r?: { present?: boolean; valid?: boolean | null; error?: string }) {
-  if (!r) return '—'
-  if (!r.present) return 'No signature'
-  if (r.valid === true) return 'Valid'
-  if (r.valid === false) return `Invalid${r.error ? ` — ${r.error}` : ''}`
-  return 'Unknown'
+type VerificationState =
+  | { status: 'idle' }
+  | { status: 'running'; requestId: number }
+  | { status: 'complete'; requestId: number; result: ResponseVerifyResult }
+  | { status: 'failed'; requestId: number; message: string }
+
+function formatResult(result: SignatureVerificationOutcome) {
+  switch (result.status) {
+    case 'unsigned':
+      return 'No signature'
+    case 'valid':
+      return 'Valid'
+    case 'invalid':
+      return 'Invalid'
+    case 'error':
+      return `Error — ${result.message}`
+  }
 }

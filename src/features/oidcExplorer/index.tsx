@@ -62,7 +62,7 @@ export function OidcExplorer() {
   const oidcConfigHook = useOidcConfig()
   const { data: jwksData, error: jwksError, fetchJwks, isLoading: isJwksLoading } = useJwks()
   const { addIssuer } = useIssuerHistory()
-  const { profiles, saveProfile, updateProfile } = useEnvironmentProfiles()
+  const { profiles, saveProfile, replaceProfile } = useEnvironmentProfiles()
 
   // Local state for derived/UI data
   const [inputIssuerUrl, setInputIssuerUrl] = useState<string>('')
@@ -86,19 +86,16 @@ export function OidcExplorer() {
     lastConfigSignatureRef.current = configSignature
 
     const processedUrlSet = getProcessedUrls(processedUrls)
-    if (
-      inputIssuerUrl &&
-      inputIssuerUrl.trim().length > 0 &&
-      !processedUrlSet.has(inputIssuerUrl)
-    ) {
-      processedUrlSet.add(inputIssuerUrl)
-      addIssuer(inputIssuerUrl)
+    const submittedIssuer = oidcConfigHook.currentIssuer
+    if (submittedIssuer && !processedUrlSet.has(submittedIssuer)) {
+      processedUrlSet.add(submittedIssuer)
+      addIssuer(submittedIssuer)
     }
 
     if (config.jwks_uri) {
       fetchJwks(config.jwks_uri)
     }
-  }, [addIssuer, fetchJwks, inputIssuerUrl, oidcConfigHook.data])
+  }, [addIssuer, fetchJwks, oidcConfigHook.currentIssuer, oidcConfigHook.data])
 
   // Effect for handling errors from either hook
   useEffect(() => {
@@ -120,7 +117,7 @@ export function OidcExplorer() {
     oidcConfigHook.fetchConfig(issuerUrl)
   }
 
-  const currentIssuerUrl = oidcConfigHook.data?.issuer ?? inputIssuerUrl
+  const currentIssuerUrl = oidcConfigHook.currentIssuer ?? ''
   const matchedProfile = useMemo(() => {
     if (!currentIssuerUrl) {
       return null
@@ -290,11 +287,9 @@ export function OidcExplorer() {
         submitLabel={matchedProfile ? 'Update Environment' : 'Save Environment'}
         onSave={(profile) => {
           if (matchedProfile) {
-            const updatedProfile = updateProfile(matchedProfile.id, profile)
-            if (updatedProfile) {
-              setSelectedProfileId(updatedProfile.id)
-              toast.success('Environment updated')
-            }
+            replaceProfile(matchedProfile.id, profile)
+            setSelectedProfileId(matchedProfile.id)
+            toast.success('Environment updated')
             return
           }
 

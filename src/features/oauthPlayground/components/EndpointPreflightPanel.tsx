@@ -53,6 +53,8 @@ export function EndpointPreflightPanel({
   const [report, setReport] = useState<OidcPreflightReport | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const lastAutoRunTriggerRef = useRef<string | number | undefined>(undefined)
+  const runIdRef = useRef(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const summaryText = useMemo(() => {
     if (!report) return null
@@ -69,12 +71,19 @@ export function EndpointPreflightPanel({
         return
       }
 
+      const runId = ++runIdRef.current
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
       setIsRunning(true)
       try {
         const preflightReport = await preflightRunner({
           issuerUrl,
           requiredEndpoints,
+          signal: controller.signal,
         })
+
+        if (runId !== runIdRef.current) return
 
         setReport(preflightReport)
         onReport?.(preflightReport)
@@ -91,12 +100,16 @@ export function EndpointPreflightPanel({
           toast.success('Endpoint preflight passed')
         }
       } catch (error) {
+        if (runId !== runIdRef.current || controller.signal.aborted) return
         setReport(null)
         toast.error(
           error instanceof Error ? error.message : 'Failed to run endpoint preflight checks'
         )
       } finally {
-        setIsRunning(false)
+        if (runId === runIdRef.current) {
+          setIsRunning(false)
+          abortControllerRef.current = null
+        }
       }
     },
     [issuerUrl, onConfigResolved, onReport, preflightRunner, requiredEndpoints]
@@ -114,6 +127,8 @@ export function EndpointPreflightPanel({
     lastAutoRunTriggerRef.current = autoRunTrigger
     void runPreflight('auto')
   }, [autoRunTrigger, runPreflight])
+
+  useEffect(() => () => abortControllerRef.current?.abort(), [])
 
   return (
     <Card className="border-dashed" data-testid="oidc-preflight-panel">

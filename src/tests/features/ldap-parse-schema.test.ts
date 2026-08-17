@@ -275,5 +275,18 @@ attributeTypes: ( 2.16.840.1.113730.3.1.2001 NAME 'employeeNumber' DESC 'Employe
       expect(result.errors).toHaveLength(0)
       expect(result.attributeTypes).toHaveLength(1)
     })
+
+    it('reports malformed definitions without publishing partial schema objects', () => {
+      const result = parseLdapSchema(`
+attributeTypes: ( not-an-oid NAME 'bad' )
+attributeTypes: ( 1.2.3 NAME 'unfinished'
+objectClasses: ( 1.2.4 NAME 'badClass' SURPRISE value )`)
+
+      expect(result.attributeTypes).toHaveLength(0)
+      expect(result.objectClasses).toHaveLength(0)
+      expect(result.errors).toHaveLength(3)
+      expect(result.errors[0]).toContain('Invalid numeric OID')
+      expect(result.errors[2]).toContain('Unexpected object class keyword')
+    })
   })
 })

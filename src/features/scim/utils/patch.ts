@@ -201,11 +201,11 @@ function normalizeOperation(
     )
   }
 
-  return {
-    op,
-    ...(path ? { path } : {}),
-    ...(op !== 'remove' && hasValue ? { value: value.value } : {}),
+  if (op === 'remove') {
+    return path ? { op, path } : null
   }
+  if (!hasValue) return null
+  return { op, ...(path ? { path } : {}), value: value.value }
 }
 
 /** Validate an RFC 7644 PATCH request represented as JSON text. */
@@ -213,7 +213,7 @@ export function validateScimPatch(input: string): ScimPatchValidationResult {
   const diagnostics: ScimDiagnostic[] = []
   if (!input.trim()) {
     diagnostic(diagnostics, 'error', '$', 'empty_input', 'Enter a SCIM PATCH document as JSON.')
-    return { valid: false, parsed: null, operations: [], diagnostics }
+    return { valid: false, parsed: null, diagnostics }
   }
 
   let value: unknown
@@ -222,7 +222,7 @@ export function validateScimPatch(input: string): ScimPatchValidationResult {
   } catch (error) {
     const detail = error instanceof Error ? ` ${error.message}` : ''
     diagnostic(diagnostics, 'error', '$', 'invalid_json', `Input is not valid JSON.${detail}`)
-    return { valid: false, parsed: null, operations: [], diagnostics }
+    return { valid: false, parsed: null, diagnostics }
   }
 
   if (!isObject(value)) {
@@ -233,7 +233,7 @@ export function validateScimPatch(input: string): ScimPatchValidationResult {
       'patch_type',
       'A SCIM PATCH document must be a JSON object.'
     )
-    return { valid: false, parsed: null, operations: [], diagnostics }
+    return { valid: false, parsed: null, diagnostics }
   }
 
   parsePatchSchemas(value, diagnostics)
@@ -277,12 +277,10 @@ export function validateScimPatch(input: string): ScimPatchValidationResult {
     )
   }
 
-  return {
-    valid: !diagnostics.some((item) => item.severity === 'error'),
-    parsed: value,
-    operations,
-    diagnostics,
+  if (diagnostics.some((item) => item.severity === 'error')) {
+    return { valid: false, parsed: value, diagnostics }
   }
+  return { valid: true, parsed: value, operations, diagnostics }
 }
 
 /** Build a validated, canonical RFC 7644 PATCH document and formatted JSON. */
@@ -313,11 +311,8 @@ export function buildScimPatch(
       throw new TypeError(`${op} operation ${index + 1} requires a value.`)
     }
 
-    return {
-      op,
-      ...(path ? { path } : {}),
-      ...(op !== 'remove' ? { value: operation.value } : {}),
-    }
+    if (op === 'remove') return { op, path: path! }
+    return { op, ...(path ? { path } : {}), value: operation.value }
   })
 
   const document: ScimPatchDocument = {

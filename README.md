@@ -37,6 +37,10 @@ bun run dev:detach:proxy # Only proxy
 # Stop all running development servers
 bun run dev:stop
 
+# Inspect detached service state and logs
+cat .logs/dev-services.json
+tail -f .logs/vite.log .logs/proxy.log
+
 # Build for production
 bun run build
 
@@ -87,17 +91,17 @@ The project uses a comprehensive testing strategy with two complementary approac
 Powered by Bun's built-in test runner with React Testing Library:
 
 ```bash
-# Run all unit tests
-bun test
+# Run all unit and integration tests
+bun run test
 
 # Run tests in watch mode
-bun test:watch
+bun run test:watch
 
 # Run tests with coverage
-bun test:coverage
+bun run test:coverage
 
 # Update snapshots
-bun test:update
+bun run test:update
 ```
 
 Unit tests are located in `src/tests/` and include:
@@ -115,8 +119,11 @@ Powered by Playwright for full user flow testing:
 # Install Playwright browsers (first time setup)
 bun run e2e:install
 
-# Run E2E tests (Chromium only)
+# Run the full E2E suite (Chromium)
 bun run e2e
+
+# Run the smaller Chromium smoke set
+bun run e2e:smoke
 
 # Run E2E tests on all browsers
 bun run e2e:all
@@ -152,10 +159,14 @@ The application includes a CORS proxy for accessing external APIs that don't hav
 
 The proxy works by:
 
-1. Receiving requests from our frontend at `/api/cors-proxy/{url}`
+1. Receiving GET/HEAD requests from our frontend at `/api/cors-proxy/{encoded-url}`
 2. Forwarding the request to the target URL
 3. Adding the necessary CORS headers to the response
 4. Returning the modified response to our frontend
+
+The proxy is intentionally limited to identity metadata paths (well-known discovery and
+JWKS/certificate documents). It is not a general-purpose HTTP proxy and does not forward
+credentials or arbitrary request headers.
 
 ### Local Development
 

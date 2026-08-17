@@ -17,6 +17,7 @@ export const LDIF_TEMPLATES: LdifTemplate[] = [
     flavor: 'PingDirectory',
     highlights: ['inetOrgPerson', 'userPassword', 'mail'],
     sample: `dn: uid=jdoe,ou=people,dc=example,dc=com
+changetype: add
 objectClass: top
 objectClass: person
 objectClass: inetOrgPerson
@@ -86,6 +87,7 @@ member: CN=John Doe,OU=Users,DC=example,DC=com`,
     flavor: 'Generic LDAP',
     highlights: ['olcAccess', 'pwdPolicySubentry'],
     sample: `dn: uid=svc-app,ou=service-accounts,dc=example,dc=com
+changetype: add
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson

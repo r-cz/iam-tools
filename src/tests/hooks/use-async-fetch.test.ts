@@ -423,6 +423,32 @@ describe('useAsyncApiFetch', () => {
     )
   })
 
+  it('publishes only the latest invocation when requests complete out of order', async () => {
+    const resolvers = new Map<string, (value: string) => void>()
+    const asyncFunction = (key: unknown) =>
+      new Promise<string>((resolve) => resolvers.set(String(key), resolve))
+    const { result } = renderHook(() => useAsyncFetch(asyncFunction))
+
+    let first!: Promise<string | null>
+    let second!: Promise<string | null>
+    act(() => {
+      first = result.current.execute('first')
+      second = result.current.execute('second')
+    })
+    await act(async () => {
+      resolvers.get('second')?.('new')
+      await second
+    })
+    await act(async () => {
+      resolvers.get('first')?.('old')
+      await first
+    })
+
+    expect(result.current.data).toBe('new')
+    expect(result.current.error).toBeNull()
+    expect(result.current.isLoading).toBe(false)
+  })
+
   // Restore fetch after tests
   afterEach(() => {
     globalThis.fetch = originalFetch

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   Check,
   ChevronDown,
@@ -29,6 +29,13 @@ import {
 } from './report'
 
 const CUSTOM_ENVIRONMENT = '__custom_environment__'
+
+type HealthRun =
+  | { status: 'idle' }
+  | { status: 'running'; id: number; issuer: string }
+  | { status: 'completed'; id: number; issuer: string; report: OidcPreflightReport }
+  | { status: 'unavailable'; id: number; issuer: string }
+  | { status: 'error'; id: number; issuer: string; message: string }
 
 export interface EnvironmentHealthPageProps {
   preflightRunner?: typeof runOidcEndpointPreflight
@@ -86,11 +93,13 @@ export default function EnvironmentHealthPage({
     initialProfile?.id ?? CUSTOM_ENVIRONMENT
   )
   const [issuerUrl, setIssuerUrl] = useState(initialProfile?.issuerUrl ?? '')
-  const [runState, setRunState] = useState<EnvironmentHealthRunState>('idle')
-  const [report, setReport] = useState<OidcPreflightReport | null>(null)
+  const [run, setRun] = useState<HealthRun>({ status: 'idle' })
+  const runIdRef = useRef(0)
   const [copiedReport, setCopiedReport] = useState<OidcPreflightReport | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string>()
   const { copy, copied } = useClipboard()
+  const runState: EnvironmentHealthRunState = run.status
+  const report = run.status === 'completed' ? run.report : null
+  const errorMessage = run.status === 'error' ? run.message : undefined
 
   const redactedReport = useMemo(
     () => (report ? serializeRedactedEnvironmentHealthReport(report) : ''),
@@ -98,10 +107,9 @@ export default function EnvironmentHealthPage({
   )
 
   const resetResults = () => {
-    setReport(null)
+    runIdRef.current++
     setCopiedReport(null)
-    setErrorMessage(undefined)
-    setRunState('idle')
+    setRun({ status: 'idle' })
   }
 
   const handleEnvironmentChange = (profileId: string) => {
@@ -123,44 +131,53 @@ export default function EnvironmentHealthPage({
 
   const handleRun = async () => {
     setCopiedReport(null)
+    const id = ++runIdRef.current
+    const submittedIssuer = issuerUrl.trim()
 
-    if (!issuerUrl.trim()) {
-      setReport(null)
-      setErrorMessage('Enter an issuer URL before running the health check.')
-      setRunState('error')
+    if (!submittedIssuer) {
+      setRun({
+        status: 'error',
+        id,
+        issuer: submittedIssuer,
+        message: 'Enter an issuer URL before running the health check.',
+      })
       return
     }
 
-    setReport(null)
-    setErrorMessage(undefined)
-    setRunState('running')
+    setRun({ status: 'running', id, issuer: submittedIssuer })
 
     try {
       const nextReport = await preflightRunner({
-        issuerUrl,
+        issuerUrl: submittedIssuer,
         requiredEndpoints: ['authorization_endpoint', 'token_endpoint', 'jwks_uri'],
         includeOptionalEndpoints: true,
         enableServerAssistedProbes: false,
       })
 
+      if (runIdRef.current !== id) return
       if (!isOnline() && reportIndicatesNetworkUnavailable(nextReport)) {
-        setReport(null)
-        setRunState('unavailable')
+        setRun({ status: 'unavailable', id, issuer: submittedIssuer })
         return
       }
 
-      setReport(prepareEnvironmentHealthReport(nextReport))
-      setRunState('completed')
+      setRun({
+        status: 'completed',
+        id,
+        issuer: submittedIssuer,
+        report: prepareEnvironmentHealthReport(nextReport),
+      })
     } catch (error) {
-      setReport(null)
+      if (runIdRef.current !== id) return
       if (!isOnline() && errorIndicatesNetworkUnavailable(error)) {
-        setErrorMessage(undefined)
-        setRunState('unavailable')
+        setRun({ status: 'unavailable', id, issuer: submittedIssuer })
       } else {
-        setErrorMessage(
-          'The check stopped before it produced a report. Confirm the issuer URL and try again.'
-        )
-        setRunState('error')
+        setRun({
+          status: 'error',
+          id,
+          issuer: submittedIssuer,
+          message:
+            'The check stopped before it produced a report. Confirm the issuer URL and try again.',
+        })
       }
     }
   }

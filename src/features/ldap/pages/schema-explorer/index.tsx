@@ -38,6 +38,7 @@ import {
 import { PageContainer, PageHeader } from '@/components/page'
 import { useSavedSchemas } from '../../hooks/useSavedSchemas'
 import { parseLdapSchema, type ParsedObjectClass } from '../../utils/parse-schema'
+import { compileLdapSchema } from '../../utils/compile-schema'
 import { BUILTIN_SCHEMAS, getCombinedSchema } from '../../data/builtin-schemas'
 
 function withOccurrenceKeys(values: string[]) {
@@ -164,18 +165,9 @@ export default function LdapSchemaExplorerPage() {
 
   const { schemas, upsertSchema, removeSchema } = useSavedSchemas()
 
-  const parsed = useMemo(() => parseLdapSchema(schemaText), [schemaText])
-  const objectClassByName = useMemo(() => {
-    const map = new Map<string, ParsedObjectClass>()
-
-    for (const objectClass of parsed.objectClasses) {
-      for (const name of objectClass.names) {
-        map.set(name.toLowerCase(), objectClass)
-      }
-    }
-
-    return map
-  }, [parsed.objectClasses])
+  const compiled = useMemo(() => compileLdapSchema(schemaText), [schemaText])
+  const parsed = compiled.parsed
+  const objectClassByName = compiled.objectClassMap
   const hasInput = schemaText.trim().length > 0
 
   // Filter object classes and attributes based on search

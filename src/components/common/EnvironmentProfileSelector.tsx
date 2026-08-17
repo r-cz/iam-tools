@@ -182,7 +182,7 @@ export function EnvironmentProfileSelector({
   label = 'Environments',
   buttonVariant = 'default',
 }: EnvironmentProfileSelectorProps) {
-  const { profiles, updateProfile, removeProfile, markProfileUsed } = useEnvironmentProfiles()
+  const { profiles, replaceProfile, removeProfile, markProfileUsed } = useEnvironmentProfiles()
   const [isOpen, setIsOpen] = useState(false)
   const [editingProfile, setEditingProfile] = useState<EnvironmentProfile | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -197,8 +197,8 @@ export function EnvironmentProfileSelector({
   }
 
   const handleSelectProfile = (profile: EnvironmentProfile) => {
-    const updatedProfile = markProfileUsed(profile.id) ?? profile
-    onSelectProfile(updatedProfile)
+    markProfileUsed(profile.id)
+    onSelectProfile(profile)
     setIsOpen(false)
   }
 
@@ -311,7 +311,7 @@ export function EnvironmentProfileSelector({
             return
           }
 
-          updateProfile(editingProfile.id, profile)
+          replaceProfile(editingProfile.id, profile)
           setEditingProfile(null)
         }}
       />

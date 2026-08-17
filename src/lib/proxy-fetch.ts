@@ -1,3 +1,5 @@
+import { isIdentityMetadataPath } from './network/identity-metadata-path'
+
 /**
  * Utility for fetching resources through the CORS proxy
  */
@@ -72,25 +74,7 @@ function needsProxy(url: string): boolean {
       return false
     }
 
-    // Check if it's a well-known configuration or jwks endpoint
-    const isWellKnown = urlObj.pathname.includes('/.well-known/')
-    // Make the JWKS check case-insensitive and more inclusive
-    const pathnameUpperCase = urlObj.pathname.toUpperCase()
-    const isJwks =
-      pathnameUpperCase.includes('/JWKS') ||
-      pathnameUpperCase.includes('/JWK') ||
-      urlObj.pathname.includes('/keys') ||
-      urlObj.pathname.includes('/oauth2/v1/certs') ||
-      (urlObj.pathname.endsWith('.json') && pathnameUpperCase.includes('JWK'))
-
-    // SAML metadata and endpoints often live under /FederationMetadata/.../FederationMetadata.xml or /saml/metadata
-    const lower = urlObj.pathname.toLowerCase()
-    const isSamlMeta =
-      lower.endsWith('/federationmetadata/2007-06/federationmetadata.xml') ||
-      lower.includes('/saml/metadata') ||
-      (lower.endsWith('.xml') && (lower.includes('saml') || lower.includes('metadata')))
-
-    return isWellKnown || isJwks || isSamlMeta
+    return isIdentityMetadataPath(urlObj.pathname)
   } catch {
     // If the URL is invalid, don't proxy
     return false

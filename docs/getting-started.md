@@ -7,7 +7,6 @@ This guide will help you set up the IAM Tools project for local development.
 Before you begin, ensure you have the following installed:
 
 - [Bun](https://bun.sh/) (v1.0.0 or later)
-- [Node.js](https://nodejs.org/) (v18 or later, though Bun is the primary runtime)
 - Git
 
 ## Installation
@@ -15,7 +14,7 @@ Before you begin, ensure you have the following installed:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/iam-tools.git
+git clone https://github.com/r-cz/iam-tools.git
 cd iam-tools
 ```
 
@@ -57,11 +56,12 @@ This will start:
 - `bun run dev:all` - Start both the development server and CORS proxy
 - `bun run dev:detach` - Start both servers in background
 - `bun run dev:stop` - Stop all running servers
+- `bun run clean:dry` - Preview generated files that cleanup would remove
 - `bun run build` - Build the application for production
 - `bun run preview` - Preview the production build
-- `bun test` - Run the test suite
-- `bun test:watch` - Run tests in watch mode
-- `bun test:coverage` - Run tests with coverage reporting
+- `bun run test` - Run the test suite
+- `bun run test:watch` - Run tests in watch mode
+- `bun run test:coverage` - Run tests with coverage reporting
 - `bun run clean` - Clean build artifacts and node_modules
 
 ## Project Structure
@@ -81,18 +81,18 @@ See [file-structure.md](./file-structure.md) for a more detailed breakdown.
 This project doesn't require any environment variables for basic development. However, if you're deploying your own instance, you may want to configure:
 
 - `CORS_ALLOWED_ORIGINS` - Comma-separated allowlist for API origins (disallowed origins receive `403`)
-- `DEMO_TOKEN_SIGNING_SECRET` - Enables strict signed demo auth-code and refresh-token envelopes (`v1.<payload>.<sig>`)
+- `DEMO_TOKEN_SIGNING_SECRET` - Enables strict signed, tagged demo grant envelopes (`v2.<payload>.<sig>`)
+- `DEMO_REDIRECT_URIS` - Comma-separated additional exact callback URLs accepted by the demo provider
+
+Set Worker secrets with `bunx wrangler secret put NAME`; do not commit them to the repository.
 
 ## Working with Features
 
 ### Using Existing Features
 
-The application currently includes these main features:
-
-1. **Token Inspector** - For analyzing JWT tokens
-2. **OIDC Explorer** - For exploring OpenID Connect configurations
-3. **CORS Proxy** - For accessing external APIs with CORS restrictions
-4. **OAuth Endpoint Preflight** - For checking OIDC discovery and endpoint reachability before running flows
+The authoritative feature and route inventory is `src/config/tool-catalog.ts`. Narrative guides for
+the OAuth/OIDC, SAML, LDAP, SCIM, redirect, token-comparison, and TOTP tools live under
+`docs/feature-guides/`; the Worker API contract is documented separately in `docs/api.md`.
 
 ### Creating a New Feature
 
@@ -110,6 +110,8 @@ To add a new feature:
    ```
 3. Export your feature from `src/features/index.ts`
 4. Add a route in `src/main.tsx`
+5. Add the tool once to `src/config/tool-catalog.ts`; home, sidebar, command search, route titles,
+   recent tools, and the generated sitemap consume that catalog
 
 ## Next Steps
 

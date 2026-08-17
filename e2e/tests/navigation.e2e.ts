@@ -134,7 +134,6 @@ test.describe('Navigation and Homepage', () => {
   test('should highlight active navigation item', async ({ page }) => {
     // Navigate to Token Inspector
     await page.click(selectors.nav.tokenInspector)
-    await page.waitForLoadState('networkidle')
 
     // The active navigation item might use different styling
     // Let's check if we're on the right page instead
@@ -143,7 +142,6 @@ test.describe('Navigation and Homepage', () => {
 
     // Navigate to OIDC Explorer
     await page.click(selectors.nav.oidcExplorer)
-    await page.waitForLoadState('networkidle')
 
     // Verify we're on the OIDC Explorer page
     await expect(page).toHaveURL(/oidc-explorer/)

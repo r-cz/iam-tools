@@ -8,12 +8,12 @@ import {
   CardFooter,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { OAuthConfig, PkceParams } from '../utils/types'
 import {
-  OAuthConfig,
-  OAuthRedirectState,
-  OAUTH_PLAYGROUND_REDIRECT_STATE_KEY,
-  PkceParams,
-} from '../utils/types'
+  consumeOAuthRedirectTransaction,
+  createOAuthRedirectTransaction,
+  storeOAuthRedirectTransaction,
+} from '../utils/redirect-transaction'
 import { CodeBlock } from '@/components/ui/code-block'
 import {
   Table,
@@ -76,12 +76,19 @@ export function AuthorizationRequest({
   // Listen for messages from the popup window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Make sure the message is from our domain
-      if (event.origin !== window.location.origin) return
+      if (event.origin !== window.location.origin || event.source !== authWindowRef.current) return
 
       // Check if it's our OAuth callback message
-      if (event.data?.type === 'oauth_callback' && event.data?.code) {
-        sessionStorage.removeItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY)
+      if (
+        event.data?.type === 'oauth_callback' &&
+        typeof event.data.code === 'string' &&
+        typeof event.data.state === 'string'
+      ) {
+        const transaction = consumeOAuthRedirectTransaction({
+          state: event.data.state,
+          origin: event.origin,
+        })
+        if (!transaction) return
         onAuthorizationComplete(event.data.code)
 
         // Close the popup if it's still open
@@ -101,14 +108,7 @@ export function AuthorizationRequest({
     if (typeof window === 'undefined') return
 
     try {
-      const { clientSecret: _clientSecret, ...configForStorage } = config
-      const redirectState: OAuthRedirectState = {
-        config: configForStorage,
-        pkce,
-        flowPath: window.location.pathname,
-        createdAt: Date.now(),
-      }
-      sessionStorage.setItem(OAUTH_PLAYGROUND_REDIRECT_STATE_KEY, JSON.stringify(redirectState))
+      storeOAuthRedirectTransaction(createOAuthRedirectTransaction(config, pkce))
     } catch (error) {
       if (import.meta?.env?.DEV) {
         console.warn('Unable to persist OAuth redirect state:', error)

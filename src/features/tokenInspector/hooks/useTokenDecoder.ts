@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type * as jose from 'jose'
 import { decodeJWT } from '@/lib/jwt/decode-token'
 import { validateToken, determineTokenType } from '../utils/token-validation'
 import { verifySignatureWithRefresh } from '@/lib/jwt/verify-signature-with-refresh'
-import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { getIssuerBaseUrl } from '@/features/oauthPlayground/utils/demo-issuer'
 import type { TokenType, DecodedToken, ValidationResult } from '@/types'
 
 export interface TokenDecoderState {
@@ -12,6 +12,14 @@ export interface TokenDecoderState {
   validationResults: ValidationResult[]
   isDemoToken: boolean
   issuerUrl: string
+}
+
+const EMPTY_DECODER_STATE: TokenDecoderState = {
+  decodedToken: null,
+  tokenType: 'unknown',
+  validationResults: [],
+  isDemoToken: false,
+  issuerUrl: '',
 }
 
 export interface UseTokenDecoderReturn extends TokenDecoderState {
@@ -28,18 +36,12 @@ export interface UseTokenDecoderReturn extends TokenDecoderState {
  * Custom hook for decoding and validating JWT tokens
  */
 export function useTokenDecoder(): UseTokenDecoderReturn {
-  const [decodedToken, setDecodedToken] = useState<DecodedToken | null>(null)
-  const [tokenType, setTokenType] = useState<TokenType>('unknown')
-  const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
-  const [isDemoToken, setIsDemoToken] = useState(false)
-  const [issuerUrl, setIssuerUrl] = useState('')
+  const [state, setState] = useState<TokenDecoderState>(EMPTY_DECODER_STATE)
+  const inspectionIdRef = useRef(0)
 
   const resetState = useCallback(() => {
-    setDecodedToken(null)
-    setValidationResults([])
-    setTokenType('unknown')
-    setIsDemoToken(false)
-    setIssuerUrl('')
+    inspectionIdRef.current += 1
+    setState(EMPTY_DECODER_STATE)
   }, [])
 
   const decodeToken = useCallback(
@@ -54,6 +56,8 @@ export function useTokenDecoder(): UseTokenDecoderReturn {
         return
       }
 
+      const inspectionId = ++inspectionIdRef.current
+
       try {
         const decoded = decodeJWT(token)
         if (!decoded) throw new Error('Invalid JWT format')
@@ -65,17 +69,15 @@ export function useTokenDecoder(): UseTokenDecoderReturn {
         const isLikelyDemo =
           payload.is_demo_token === true ||
           (payload.iss && typeof payload.iss === 'string' && payload.iss === demoIssuerUrl)
-        setIsDemoToken(Boolean(isLikelyDemo))
+        const isDemoToken = Boolean(isLikelyDemo)
 
         // Determine token type and perform basic claim validation
         const detectedTokenType = determineTokenType(header, payload)
-        setTokenType(detectedTokenType)
         const validationResults = validateToken(header, payload, detectedTokenType)
 
         // Set issuer URL (use demo issuer if it's a demo token)
         const issuerFromPayload = typeof payload.iss === 'string' ? payload.iss : ''
         const currentIssuer = isLikelyDemo ? demoIssuerUrl : issuerOverride || issuerFromPayload
-        setIssuerUrl(currentIssuer)
 
         // Perform signature validation if JWKS are available
         let signatureValid = false
@@ -124,36 +126,41 @@ export function useTokenDecoder(): UseTokenDecoderReturn {
         }
 
         // Update state with decoded results
-        setDecodedToken({
-          header,
-          payload,
-          signature: { valid: signatureValid, error: signatureError },
-          raw: token,
-        })
-        setValidationResults(validationResults)
+        if (inspectionId === inspectionIdRef.current) {
+          setState({
+            decodedToken: {
+              header,
+              payload,
+              signature: { valid: signatureValid, error: signatureError },
+              raw: token,
+            },
+            tokenType: detectedTokenType,
+            validationResults,
+            isDemoToken,
+            issuerUrl: currentIssuer,
+          })
+        }
       } catch (err: any) {
-        setDecodedToken(null)
-        setIsDemoToken(false)
-        setTokenType('unknown')
-        setValidationResults([
-          {
-            claim: 'format',
-            valid: false,
-            message: `Invalid token: ${err.message}`,
-            severity: 'error',
-          },
-        ])
+        if (inspectionId === inspectionIdRef.current) {
+          setState({
+            ...EMPTY_DECODER_STATE,
+            validationResults: [
+              {
+                claim: 'format',
+                valid: false,
+                message: `Invalid token: ${err.message}`,
+                severity: 'error',
+              },
+            ],
+          })
+        }
       }
     },
     [resetState]
   )
 
   return {
-    decodedToken,
-    tokenType,
-    validationResults,
-    isDemoToken,
-    issuerUrl,
+    ...state,
     decodeToken,
     resetState,
   }

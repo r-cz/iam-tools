@@ -1,3 +1,5 @@
+import { findDirectXmlDsigSignature, findSamlAssertionElements } from './signature-targets'
+
 export interface DecodedSamlResponse {
   raw: string
   xml: string
@@ -137,11 +139,11 @@ function extractStatusMessage(element: Element): string | undefined {
 }
 
 function hasSignature(element: Element): boolean {
-  return !!findElement(element, 'Signature', true)
+  return findDirectXmlDsigSignature(element) !== null
 }
 
 function extractAssertions(responseElement: Element): SamlAssertion[] {
-  const assertionElements = findElements(responseElement, 'Assertion')
+  const assertionElements = findSamlAssertionElements(responseElement)
   return assertionElements.map(extractAssertion)
 }
 

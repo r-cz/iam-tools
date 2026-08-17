@@ -50,17 +50,23 @@ export default function LdifBuilderPage() {
   const schemaSummaries = useSchemaSummaries(schemas)
   const schemaDetails = useMergedSchemaDetails(schemas, selectedSchemaIds, selectedBuiltinIds)
   const ldifResult = useMemo(() => parseLdif(ldifText), [ldifText])
-  const validation = useLdifValidation(ldifResult.entries, schemaDetails)
+  const validation = useLdifValidation(ldifResult.records, schemaDetails)
 
   const attributeLineCount = useMemo(() => {
     let count = 0
-    ldifResult.entries.forEach((entry) => {
-      Object.values(entry.attributes).forEach((attribute) => {
-        count += attribute.values.length
-      })
+    ldifResult.records.forEach((record) => {
+      if (record.kind === 'content' || record.kind === 'add') {
+        Object.values(record.attributes).forEach((attribute) => {
+          count += attribute.values.length
+        })
+      } else if (record.kind === 'modify') {
+        record.modifications.forEach((modification) => {
+          count += modification.values.length
+        })
+      }
     })
     return count
-  }, [ldifResult.entries])
+  }, [ldifResult.records])
 
   const selectedSchemaNames = useMemo(() => {
     const names: string[] = []
@@ -442,7 +448,7 @@ export default function LdifBuilderPage() {
         )}
 
         <QuickMetrics
-          entryCount={ldifResult.entries.length}
+          recordCount={ldifResult.records.length}
           attributeValueCount={attributeLineCount}
           schemaEnabled={hasSchemaSelected}
         />
@@ -453,35 +459,38 @@ export default function LdifBuilderPage() {
         />
 
         {/* Entry Details - replacing the redundant Entry Preview */}
-        {ldifResult.entries.length > 0 && (
+        {ldifResult.records.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Parsed Entries</CardTitle>
               <CardDescription>
-                {ldifResult.entries.length} entry{ldifResult.entries.length === 1 ? '' : 'ies'}{' '}
+                {ldifResult.records.length} record{ldifResult.records.length === 1 ? '' : 's'}{' '}
                 detected with {attributeLineCount} attribute value
                 {attributeLineCount === 1 ? '' : 's'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {ldifResult.entries.map((entry) => {
-                const objectClasses = entry.attributes['objectclass']?.values ?? []
-                const attrCount = Object.values(entry.attributes).reduce(
-                  (sum, attr) => sum + attr.values.length,
-                  0
-                )
+              {ldifResult.records.map((entry) => {
+                const attributes =
+                  entry.kind === 'content' || entry.kind === 'add' ? entry.attributes : null
+                const objectClasses = attributes?.['objectclass']?.values ?? []
+                const attrCount = attributes
+                  ? Object.values(attributes).reduce((sum, attr) => sum + attr.values.length, 0)
+                  : entry.kind === 'modify'
+                    ? entry.modifications.reduce((sum, item) => sum + item.values.length, 0)
+                    : 0
 
                 return (
                   <details
-                    key={entry.dn}
+                    key={entry.sourceOrdinal}
                     className="rounded-lg border bg-muted/20"
-                    open={ldifResult.entries.length <= 3}
+                    open={ldifResult.records.length <= 3}
                   >
                     <summary className="cursor-pointer p-4 hover:bg-muted/40 transition">
                       <div className="inline-flex items-center gap-3">
                         <span className="font-mono text-sm font-medium">{entry.dn}</span>
                         <Badge variant="outline" className="text-[10px]">
-                          {attrCount} attr{attrCount === 1 ? '' : 's'}
+                          {entry.kind} · {attrCount} value{attrCount === 1 ? '' : 's'}
                         </Badge>
                         {objectClasses.length > 0 && (
                           <Badge variant="secondary" className="text-[10px]">
@@ -492,26 +501,54 @@ export default function LdifBuilderPage() {
                     </summary>
                     <div className="border-t p-4 space-y-2">
                       <div className="grid gap-2 text-sm">
-                        {Object.values(entry.attributes).map((attr) => (
-                          <div key={attr.name} className="grid grid-cols-[160px_1fr] gap-2">
-                            <span className="font-medium text-muted-foreground truncate">
-                              {attr.name}
-                              {attr.values.length > 1 && (
-                                <span className="text-xs ml-1">({attr.values.length})</span>
-                              )}
-                            </span>
-                            <div className="space-y-1">
-                              {attr.values.map((value) => (
-                                <code
-                                  key={`${attr.name}-${value}`}
-                                  className="block text-xs bg-muted/60 rounded px-2 py-1 break-all"
-                                >
-                                  {value}
-                                </code>
-                              ))}
+                        {attributes &&
+                          Object.values(attributes).map((attr) => (
+                            <div key={attr.name} className="grid grid-cols-[160px_1fr] gap-2">
+                              <span className="font-medium text-muted-foreground truncate">
+                                {attr.name}
+                                {attr.values.length > 1 && (
+                                  <span className="text-xs ml-1">({attr.values.length})</span>
+                                )}
+                              </span>
+                              <div className="space-y-1">
+                                {attr.values.map((value) => (
+                                  <code
+                                    key={`${attr.name}-${value}`}
+                                    className="block text-xs bg-muted/60 rounded px-2 py-1 break-all"
+                                  >
+                                    {value}
+                                  </code>
+                                ))}
+                              </div>
                             </div>
+                          ))}
+                        {entry.kind === 'modify' &&
+                          entry.modifications.map((modification, index) => (
+                            <div
+                              key={`${entry.sourceOrdinal}-${index}`}
+                              className="grid grid-cols-[160px_1fr] gap-2"
+                            >
+                              <span className="font-medium text-muted-foreground truncate">
+                                {modification.operation}: {modification.attribute}
+                              </span>
+                              <div className="space-y-1">
+                                {modification.values.length === 0 && <code>—</code>}
+                                {modification.values.map((value, valueIndex) => (
+                                  <code
+                                    key={`${entry.sourceOrdinal}-${index}-${valueIndex}`}
+                                    className="block text-xs bg-muted/60 rounded px-2 py-1 break-all"
+                                  >
+                                    {value}
+                                  </code>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        {entry.kind === 'delete' && (
+                          <div className="text-sm text-muted-foreground">
+                            Deletes this distinguished name; no attributes are carried.
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
                   </details>
@@ -521,7 +558,7 @@ export default function LdifBuilderPage() {
           </Card>
         )}
 
-        {ldifText.trim() && ldifResult.entries.length === 0 && (
+        {ldifText.trim() && ldifResult.records.length === 0 && (
           <Card>
             <CardContent className="py-8">
               <Empty className="border-dashed">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useAppState, useIssuerHistory } from '@/lib/state'
 import { CheckCircle, XCircle } from 'lucide-react'
 import { proxyFetch } from '@/lib/proxy-fetch'
-import { getIssuerBaseUrl } from '@/lib/jwt/generate-signed-token'
+import { getIssuerBaseUrl } from '../utils/demo-issuer'
 import { generateFreshToken } from '@/features/tokenInspector/utils/generate-token'
 import { toast } from 'sonner'
 import {
@@ -24,7 +24,6 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
-import { Spinner } from '@/components/ui/spinner'
 import { FieldSet, FieldLegend, FieldDescription } from '@/components/ui/field'
 import {
   Item,
@@ -36,10 +35,7 @@ import {
 } from '@/components/ui/item'
 import { cn } from '@/lib/utils'
 import EndpointPreflightPanel from './EndpointPreflightPanel'
-import {
-  extractDiscoveredEndpoints,
-  fetchOidcDiscoveryConfiguration,
-} from '../utils/oidc-preflight'
+import { extractDiscoveredEndpoints, type OidcEndpointSelection } from '../utils/oidc-preflight'
 import { createHandoff, TOKEN_INSPECTOR_DESTINATION } from '@/lib/handoff'
 
 interface IntrospectionResponse {
@@ -60,6 +56,23 @@ interface IntrospectionResponse {
   [key: string]: any
 }
 
+type IntrospectionRequest = {
+  endpoint: string
+  token: string
+  clientId: string
+  demoMode: boolean
+}
+
+type IntrospectionRun =
+  | { status: 'idle' }
+  | { status: 'running'; id: number; request: IntrospectionRequest }
+  | {
+      status: 'complete'
+      id: number
+      request: IntrospectionRequest
+      response: IntrospectionResponse
+    }
+
 export function TokenIntrospection() {
   const navigate = useNavigate()
   const { addToken } = useAppState()
@@ -67,18 +80,23 @@ export function TokenIntrospection() {
 
   // Endpoint state
   const [issuerUrl, setIssuerUrl] = useState('')
-  const [introspectionEndpoint, setIntrospectionEndpoint] = useState('')
+  const [introspectionEndpoint, setIntrospectionEndpoint] = useState<OidcEndpointSelection>({
+    value: '',
+    source: 'manual',
+  })
   const [token, setToken] = useState('')
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
 
   // UI state
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<IntrospectionResponse | null>(null)
+  const [run, setRun] = useState<IntrospectionRun>({ status: 'idle' })
+  const runIdRef = useRef(0)
   const [isDemoMode, setIsDemoMode] = useState(false)
-  const [configLoading, setConfigLoading] = useState(false)
   const [isLoadingDemoToken, setIsLoadingDemoToken] = useState(false)
   const [preflightAutoRunTrigger, setPreflightAutoRunTrigger] = useState(0)
+  const loading = run.status === 'running'
+  const result = run.status === 'complete' ? run.response : null
+  const resultRequest = run.status === 'complete' ? run.request : null
 
   const loadDemoToken = async () => {
     setIsLoadingDemoToken(true)
@@ -100,7 +118,7 @@ export function TokenIntrospection() {
     setIsDemoMode(enabled)
     if (!enabled) return
 
-    setIntrospectionEndpoint(`${getIssuerBaseUrl()}/introspect`)
+    setIntrospectionEndpoint({ value: `${getIssuerBaseUrl()}/introspect`, source: 'demo' })
     if (!clientId) {
       setClientId('demo-client')
     }
@@ -115,57 +133,47 @@ export function TokenIntrospection() {
   }
 
   // Handle issuer selection from history
-  const handleSelectIssuer = async (issuerUrl: string) => {
-    setIssuerUrl(issuerUrl)
-    setConfigLoading(true)
-
-    try {
-      const { config, normalizedIssuerUrl } = await fetchOidcDiscoveryConfiguration(issuerUrl)
-      const endpoints = extractDiscoveredEndpoints(config)
-      setIssuerUrl(normalizedIssuerUrl)
-
-      if (endpoints.introspectionEndpoint) {
-        setIntrospectionEndpoint(endpoints.introspectionEndpoint)
-        addIssuer(normalizedIssuerUrl)
-        setPreflightAutoRunTrigger((value) => value + 1)
-      } else {
-        toast.error('This issuer does not have an introspection endpoint configured')
-      }
-    } catch (error) {
-      toast.error('Error fetching OIDC configuration: ' + (error as Error).message)
-    } finally {
-      setConfigLoading(false)
-    }
+  const handleSelectIssuer = (selectedIssuerUrl: string) => {
+    setIssuerUrl(selectedIssuerUrl)
+    setPreflightAutoRunTrigger((value) => value + 1)
   }
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setResult(null)
+    const id = ++runIdRef.current
+    const endpoint = isDemoMode ? `${getIssuerBaseUrl()}/introspect` : introspectionEndpoint.value
+    const request = { endpoint, token, clientId, demoMode: isDemoMode }
 
     if (!token) {
-      setResult({
-        active: false,
-        error: 'missing_token',
-        error_description: 'Token is required',
+      setRun({
+        status: 'complete',
+        id,
+        request,
+        response: {
+          active: false,
+          error: 'missing_token',
+          error_description: 'Token is required',
+        },
       })
-      setLoading(false)
       return
     }
-
-    const endpoint = isDemoMode ? `${getIssuerBaseUrl()}/introspect` : introspectionEndpoint
 
     if (!endpoint) {
-      setResult({
-        active: false,
-        error: 'missing_endpoint',
-        error_description: 'Introspection endpoint is required',
+      setRun({
+        status: 'complete',
+        id,
+        request,
+        response: {
+          active: false,
+          error: 'missing_endpoint',
+          error_description: 'Introspection endpoint is required',
+        },
       })
-      setLoading(false)
       return
     }
 
+    setRun({ status: 'running', id, request })
     try {
       const params = new URLSearchParams()
       params.append('token', token)
@@ -186,21 +194,26 @@ export function TokenIntrospection() {
         body: params.toString(),
       })
 
-      const data = await res.json()
-      setResult(data)
+      const data: IntrospectionResponse = await res.json()
+      if (runIdRef.current !== id) return
+      setRun({ status: 'complete', id, request, response: data })
 
-      if (token && data.active !== false) {
-        addToken(token)
+      if (request.token && data.active !== false) {
+        addToken(request.token)
       }
     } catch (err: any) {
-      setResult({
-        active: false,
-        error: 'network_error',
-        error_description: err.message || 'Network error',
+      if (runIdRef.current !== id) return
+      setRun({
+        status: 'complete',
+        id,
+        request,
+        response: {
+          active: false,
+          error: 'network_error',
+          error_description: err.message || 'Network error',
+        },
       })
     }
-
-    setLoading(false)
   }
 
   // Handle inspection of token in token inspector
@@ -346,11 +359,9 @@ export function TokenIntrospection() {
                   <div className="flex items-center gap-1.5">
                     <IssuerHistory
                       onSelectIssuer={handleSelectIssuer}
-                      configLoading={configLoading}
                       disabled={isDemoMode}
                       compact
                     />
-                    {configLoading && <Spinner size="sm" thickness="thin" aria-hidden="true" />}
                   </div>
                 )}
               </InputGroupAddon>
@@ -358,8 +369,10 @@ export function TokenIntrospection() {
                 id="introspection-endpoint"
                 data-testid="oauth-introspection-endpoint-input"
                 type="url"
-                value={introspectionEndpoint}
-                onChange={(e) => setIntrospectionEndpoint(e.target.value)}
+                value={introspectionEndpoint.value}
+                onChange={(e) =>
+                  setIntrospectionEndpoint({ value: e.target.value, source: 'manual' })
+                }
                 required={!isDemoMode}
                 disabled={isDemoMode}
                 placeholder={
@@ -380,7 +393,11 @@ export function TokenIntrospection() {
                   const endpoints = extractDiscoveredEndpoints(config)
                   setIssuerUrl(normalizedIssuerUrl)
                   if (endpoints.introspectionEndpoint) {
-                    setIntrospectionEndpoint(endpoints.introspectionEndpoint)
+                    setIntrospectionEndpoint({
+                      value: endpoints.introspectionEndpoint,
+                      source: 'discovery',
+                      issuerUrl: normalizedIssuerUrl,
+                    })
                     addIssuer(normalizedIssuerUrl)
                   }
                 }}
@@ -475,7 +492,8 @@ export function TokenIntrospection() {
               <FieldLegend>Introspection Result</FieldLegend>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <FieldDescription className="text-xs text-muted-foreground">
-                  Complete response from the introspection endpoint.
+                  Complete response from {resultRequest?.endpoint}; submitted token length{' '}
+                  {resultRequest?.token.length ?? 0}.
                 </FieldDescription>
                 {isDemoMode && (
                   <Badge

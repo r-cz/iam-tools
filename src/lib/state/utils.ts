@@ -15,6 +15,10 @@ export function generateId(): string {
   return uuidv4()
 }
 
+function boundedMru<T>(items: T[], item: T, isSame: (candidate: T) => boolean, maxItems: number) {
+  return [item, ...items.filter((candidate) => !isSame(candidate))].slice(0, Math.max(0, maxItems))
+}
+
 /**
  * Add a token to history, maintaining max size
  * @param history Current token history
@@ -32,13 +36,11 @@ export function addTokenToHistory(
   const timestamp = Date.now()
 
   if (existingIndex >= 0) {
-    // Update existing token's lastUsedAt
-    const updatedHistory = [...history]
-    updatedHistory[existingIndex] = {
-      ...updatedHistory[existingIndex],
+    const updatedItem = {
+      ...history[existingIndex],
       lastUsedAt: timestamp,
     }
-    return updatedHistory
+    return boundedMru(history, updatedItem, (item) => item.token === token, maxItems)
   }
 
   // Try to extract subject and issuer from token
@@ -69,7 +71,7 @@ export function addTokenToHistory(
   }
 
   // Add new item and limit history size
-  return [newItem, ...history].slice(0, maxItems)
+  return boundedMru(history, newItem, (item) => item.token === token, maxItems)
 }
 
 /**
@@ -89,13 +91,11 @@ export function addIssuerToHistory(
   const timestamp = Date.now()
 
   if (existingIndex >= 0) {
-    // Update existing URL's lastUsedAt
-    const updatedHistory = [...history]
-    updatedHistory[existingIndex] = {
-      ...updatedHistory[existingIndex],
+    const updatedItem = {
+      ...history[existingIndex],
       lastUsedAt: timestamp,
     }
-    return updatedHistory
+    return boundedMru(history, updatedItem, (item) => item.url === url, maxItems)
   }
 
   // Add new URL to history
@@ -107,7 +107,7 @@ export function addIssuerToHistory(
   }
 
   // Add new item and limit history size
-  return [newItem, ...history].slice(0, maxItems)
+  return boundedMru(history, newItem, (item) => item.url === url, maxItems)
 }
 
 function normalizeOptionalString(value?: string): string | undefined {
@@ -168,10 +168,10 @@ export function saveEnvironmentProfile(
   }
 }
 
-export function updateEnvironmentProfile(
+export function replaceEnvironmentProfile(
   profiles: EnvironmentProfile[],
   id: string,
-  updates: Partial<EnvironmentProfileDraft>
+  replacement: EnvironmentProfileDraft
 ): {
   profiles: EnvironmentProfile[]
   updatedProfile: EnvironmentProfile | null
@@ -182,17 +182,7 @@ export function updateEnvironmentProfile(
   }
 
   const timestamp = Date.now()
-  const sanitizedProfile = sanitizeEnvironmentProfileDraft({
-    name: updates.name ?? existingProfile.name,
-    issuerUrl: updates.issuerUrl ?? existingProfile.issuerUrl,
-    authorizationEndpoint: updates.authorizationEndpoint ?? existingProfile.authorizationEndpoint,
-    tokenEndpoint: updates.tokenEndpoint ?? existingProfile.tokenEndpoint,
-    jwksEndpoint: updates.jwksEndpoint ?? existingProfile.jwksEndpoint,
-    introspectionEndpoint: updates.introspectionEndpoint ?? existingProfile.introspectionEndpoint,
-    userInfoEndpoint: updates.userInfoEndpoint ?? existingProfile.userInfoEndpoint,
-    clientId: updates.clientId ?? existingProfile.clientId,
-    scopes: updates.scopes ?? existingProfile.scopes,
-  })
+  const sanitizedProfile = sanitizeEnvironmentProfileDraft(replacement)
 
   const updatedProfile: EnvironmentProfile = {
     ...existingProfile,

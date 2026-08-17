@@ -47,6 +47,19 @@ export const generateState = (): string => {
   return base64UrlEncode(array)
 }
 
+export async function generatePkceParams(): Promise<{
+  codeVerifier: string
+  codeChallenge: string
+  state: string
+}> {
+  const codeVerifier = generateCodeVerifier()
+  const [codeChallenge, state] = await Promise.all([
+    generateCodeChallenge(codeVerifier),
+    Promise.resolve(generateState()),
+  ])
+  return { codeVerifier, codeChallenge, state }
+}
+
 /**
  * Validates that a state parameter matches the expected value
  * @param receivedState The state received in the callback

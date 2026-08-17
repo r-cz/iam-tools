@@ -14,7 +14,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { allTools, routeTitles } from '@/config/tool-catalog'
+import { routeTitles, toolByPath } from '@/config/tool-catalog'
 import { ToolPreferencesProvider, useToolPreferences } from '@/lib/state'
 
 function LayoutContent() {
@@ -26,7 +26,7 @@ function LayoutContent() {
     if (lastTrackedPath.current === location.pathname) return
     lastTrackedPath.current = location.pathname
 
-    const activeTool = allTools.find((tool) => tool.path === location.pathname)
+    const activeTool = toolByPath.get(location.pathname)
     if (activeTool) recordRecent(activeTool.id)
   }, [location.pathname, recordRecent])
 
