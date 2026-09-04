@@ -1,5 +1,6 @@
 export const XMLDSIG_NAMESPACE = 'http://www.w3.org/2000/09/xmldsig#'
 export const SAML_ASSERTION_NAMESPACE = 'urn:oasis:names:tc:SAML:2.0:assertion'
+export const SAML_PROTOCOL_NAMESPACE = 'urn:oasis:names:tc:SAML:2.0:protocol'
 export const SAML_METADATA_NAMESPACE = 'urn:oasis:names:tc:SAML:2.0:metadata'
 
 export function findDirectXmlDsigSignature(owner: Element): Element | null {
@@ -11,7 +12,7 @@ export function findDirectXmlDsigSignature(owner: Element): Element | null {
 }
 
 export function findSamlAssertionElements(response: Element): Element[] {
-  return Array.from(response.getElementsByTagName('*')).filter(
+  return Array.from(response.children).filter(
     (element) =>
       element.namespaceURI === SAML_ASSERTION_NAMESPACE && element.localName === 'Assertion'
   )

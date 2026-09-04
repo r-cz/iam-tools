@@ -74,23 +74,27 @@ function parseAttributeLine(line: string) {
   return { attribute, options: options.filter(Boolean), value: decodeValue(line.slice(separator)) }
 }
 
+function parseAttributeSafely(line: string, errors: string[]) {
+  try {
+    return parseAttributeLine(line)
+  } catch (error) {
+    errors.push(`${error instanceof Error ? error.message : String(error)}: "${line}"`)
+    return null
+  }
+}
+
 function ordinaryAttributes(
   lines: string[],
   errors: string[],
   ignored = new Set<string>()
 ): Record<string, LdifAttribute> {
-  const attributes: Record<string, LdifAttribute> = {}
+  const attributes: Record<string, LdifAttribute> = Object.create(null)
   for (const line of lines) {
     if (!line.trim() || line.startsWith('#') || line.trim() === '-') continue
-    let parsed: ReturnType<typeof parseAttributeLine>
-    try {
-      parsed = parseAttributeLine(line)
-    } catch (error) {
-      errors.push(`${error instanceof Error ? error.message : String(error)}: "${line}"`)
-      continue
-    }
+    const errorCount = errors.length
+    const parsed = parseAttributeSafely(line, errors)
     if (!parsed) {
-      errors.push(`Could not parse line: "${line}"`)
+      if (errors.length === errorCount) errors.push(`Could not parse line: "${line}"`)
       continue
     }
     const key = parsed.attribute.toLowerCase()
@@ -113,14 +117,9 @@ function ordinaryAttributes(
 
 function headerValue(lines: string[], name: string, errors: string[]): string | undefined {
   for (const line of lines) {
-    let parsed: ReturnType<typeof parseAttributeLine>
-    try {
-      parsed = parseAttributeLine(line)
-    } catch (error) {
-      errors.push(`${error instanceof Error ? error.message : String(error)}: "${line}"`)
-      return undefined
-    }
-    if (parsed?.attribute.toLowerCase() === name) return parsed.value
+    // Decode only this header. A malformed body value must not hide later headers.
+    if (line.slice(0, line.indexOf(':')).trim().toLowerCase() !== name) continue
+    return parseAttributeSafely(line, errors)?.value
   }
   return undefined
 }
@@ -128,14 +127,15 @@ function headerValue(lines: string[], name: string, errors: string[]): string | 
 function parseModify(lines: string[], base: LdifRecordBase, errors: string[]): LdifModifyRecord {
   const modifications: LdifModifyOperation[] = []
   const bodyStart =
-    lines.findIndex((line) => parseAttributeLine(line)?.attribute.toLowerCase() === 'changetype') +
-    1
+    lines.findIndex(
+      (line) => line.slice(0, line.indexOf(':')).trim().toLowerCase() === 'changetype'
+    ) + 1
   let block: string[] = []
   const flush = () => {
     const meaningful = block.filter((line) => line.trim() && !line.startsWith('#'))
     block = []
     if (meaningful.length === 0) return
-    const declaration = parseAttributeLine(meaningful[0])
+    const declaration = parseAttributeSafely(meaningful[0], errors)
     const operation = declaration?.attribute.toLowerCase()
     if (
       !declaration ||
@@ -144,11 +144,29 @@ function parseModify(lines: string[], base: LdifRecordBase, errors: string[]): L
       errors.push(`Record ${base.sourceOrdinal}: Invalid modify operation declaration`)
       return
     }
-    const target = declaration.value.toLowerCase()
+    const [attribute, ...options] = declaration.value.split(';')
+    if (!attribute || options.some((option) => !option)) {
+      errors.push(`Record ${base.sourceOrdinal}: Invalid modify attribute description`)
+      return
+    }
+    const target = attribute.toLowerCase()
+    const targetOptions = options
+      .map((option) => option.toLowerCase())
+      .sort()
+      .join(';')
     const values: string[] = []
     for (const line of meaningful.slice(1)) {
-      const parsed = parseAttributeLine(line)
-      if (!parsed || parsed.attribute.toLowerCase() !== target) {
+      const errorCount = errors.length
+      const parsed = parseAttributeSafely(line, errors)
+      if (!parsed && errors.length > errorCount) continue
+      if (
+        !parsed ||
+        parsed.attribute.toLowerCase() !== target ||
+        parsed.options
+          .map((option) => option.toLowerCase())
+          .sort()
+          .join(';') !== targetOptions
+      ) {
         errors.push(
           `Record ${base.sourceOrdinal}: Modify value does not match ${declaration.value}`
         )
@@ -158,8 +176,8 @@ function parseModify(lines: string[], base: LdifRecordBase, errors: string[]): L
     }
     modifications.push({
       operation,
-      attribute: declaration.value,
-      options: declaration.options,
+      attribute,
+      options,
       values,
       rawLines: meaningful,
     })
@@ -179,7 +197,7 @@ function parseRecord(
 ): { record: LdifRecord | null; errors: string[] } {
   const errors: string[] = []
   const dn = headerValue(lines, 'dn', errors)
-  if (!dn)
+  if (dn === undefined)
     return {
       record: null,
       errors: [...errors, `Record ${sourceOrdinal}: Missing distinguished name (dn)`],
@@ -220,6 +238,7 @@ export function parseLdif(input: string): LdifParseResult {
   if (!input.trim()) return { records, errors }
   let current: string[] = []
   let ordinal = 0
+  let hasContent = false
   const seenDns = new Map<string, number>()
   const flush = () => {
     if (current.length === 0) return
@@ -235,8 +254,18 @@ export function parseLdif(input: string): LdifParseResult {
     records.push(result.record)
   }
   for (const line of normalizeLines(input)) {
+    if (line.startsWith('#')) continue
+    if (!hasContent && /^version:/i.test(line)) {
+      if (!/^version: *1 *$/i.test(line))
+        errors.push('Unsupported LDIF version; expected version: 1')
+      hasContent = true
+      continue
+    }
     if (!line.trim()) flush()
-    else current.push(line)
+    else {
+      hasContent = true
+      current.push(line)
+    }
   }
   flush()
   return { records, errors }

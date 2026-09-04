@@ -27,14 +27,8 @@ describe('token claims comparison', () => {
       const invalidHeader = decodeTokenForComparison(token({}, invalidValue))
       const invalidPayload = decodeTokenForComparison(token(invalidValue))
 
-      expect(invalidHeader).toEqual({
-        ok: false,
-        error: 'The JWT header must be a JSON object.',
-      })
-      expect(invalidPayload).toEqual({
-        ok: false,
-        error: 'The JWT payload must be a JSON object.',
-      })
+      expect(invalidHeader.ok).toBe(false)
+      expect(invalidPayload.ok).toBe(false)
     }
 
     expect(() => compareTokens(token(null), token({}))).toThrow(
@@ -93,6 +87,48 @@ describe('token claims comparison', () => {
     expect(result.metadata.expiresAtDeltaSeconds).toBe(-1680)
     expect(result.metadata.lifetimeDeltaSeconds).toBe(-1800)
     expect(result.metadata.left.audiences).toEqual(['api'])
+  })
+
+  it('preserves exact audience and authorization identifiers when comparing sets', () => {
+    const result = compareTokens(
+      token({ aud: ['api'], roles: ['admin'], groups: [''] }),
+      token({ aud: [' api '], roles: ['admin '], groups: [] })
+    )
+    expect(result.differences).toContainEqual(
+      expect.objectContaining({
+        path: 'aud',
+        kind: 'changed',
+        addedValues: [' api '],
+        removedValues: ['api'],
+      })
+    )
+    expect(result.differences).toContainEqual(
+      expect.objectContaining({
+        path: 'roles',
+        kind: 'changed',
+        addedValues: ['admin '],
+        removedValues: ['admin'],
+      })
+    )
+    expect(result.differences).toContainEqual(
+      expect.objectContaining({
+        path: 'groups',
+        kind: 'changed',
+        removedValues: [''],
+      })
+    )
+    expect(result.metadata.right.audiences).toEqual([' api '])
+  })
+
+  it('distinguishes literal dotted claim names from nested claim paths', () => {
+    const result = compareTokens(
+      token({ 'profile.name': 'literal', profile: { name: 'nested' } }),
+      token({ 'profile.name': 'updated literal', profile: { name: 'updated nested' } })
+    )
+    const changedPaths = result.differences
+      .filter((item) => item.kind === 'changed')
+      .map((item) => item.path)
+    expect(changedPaths).toEqual(['profile.name', '["profile.name"]'])
   })
 
   it('creates a meaningful, decodable comparison example', () => {

@@ -49,6 +49,56 @@ describe('SCIM PATCH utilities', () => {
     expect(isValidScimPath('name..givenName')).toBe(false)
   })
 
+  it('parses JSON comparison values without confusing quoted brackets with path syntax', () => {
+    for (const path of [
+      'emails[value eq "[work]"].value',
+      'members[value eq "right]bracket"]',
+      'members[value eq "escaped\\\"[bracket]"]',
+      'members[value eq "Unicode \\u0041"]',
+      'members[value eq 1.2e+3]',
+      'emails[primary eq false]',
+      'emails[value pr]',
+    ]) {
+      expect(isValidScimPath(path)).toBe(true)
+      expect(validateScimPatch(buildScimPatch([{ op: 'remove', path }]).json).valid).toBe(true)
+    }
+    for (const path of [
+      'members[value eq "bad\\q"]',
+      'members[value eq "bad\\u123Z"]',
+      'members[value eq "literal\nnewline"]',
+      'members[value eq 01]',
+      'members[value eq [1]]',
+      'members[value eq {}]',
+      'emails[value pr "unexpected"]',
+      'emails[value eq "work"]]extra',
+      'emails[value eq "work"][]',
+    ]) {
+      expect(isValidScimPath(path)).toBe(false)
+    }
+  })
+
+  it('requires resource attributes in an object when add or replace has no path', () => {
+    for (const op of ['add', 'replace'] as const) {
+      for (const value of [null, false, 3, 'name', [{ value: 'user-1' }]]) {
+        const result = validateScimPatch(
+          JSON.stringify({
+            schemas: [SCIM_PATCH_OP_SCHEMA],
+            Operations: [{ op, value }],
+          })
+        )
+        expect(result.valid).toBe(false)
+        expect(result.diagnostics.map((item) => item.code)).toContain('pathless_value_type')
+        expect(() => buildScimPatch([{ op, value }])).toThrow('requires an object')
+      }
+      expect(
+        validateScimPatch(buildScimPatch([{ op, value: { displayName: 'Name' } }]).json).valid
+      ).toBe(true)
+      expect(
+        validateScimPatch(buildScimPatch([{ op, path: 'active', value: false }]).json).valid
+      ).toBe(true)
+    }
+  })
+
   it('rejects invalid documents, schemas, and empty operation lists', () => {
     expect(diagnosticCodes('{bad-json')).toContain('invalid_json')
     expect(diagnosticCodes('[]')).toContain('patch_type')

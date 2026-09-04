@@ -190,6 +190,15 @@ function normalizeOperation(
       `${op} operations require a value.`
     )
   }
+  if ((op === 'add' || op === 'replace') && hasValue && !path && !isObject(value.value)) {
+    diagnostic(
+      diagnostics,
+      'error',
+      `${operationPath}.value`,
+      'pathless_value_type',
+      `${op} operations without a path require an object containing resource attributes.`
+    )
+  }
 
   if (op === 'remove' && hasValue) {
     diagnostic(
@@ -309,6 +318,9 @@ export function buildScimPatch(
     }
     if ((op === 'add' || op === 'replace') && operation.value === undefined) {
       throw new TypeError(`${op} operation ${index + 1} requires a value.`)
+    }
+    if ((op === 'add' || op === 'replace') && !path && !isObject(operation.value)) {
+      throw new TypeError(`${op} operation ${index + 1} without a path requires an object value.`)
     }
 
     if (op === 'remove') return { op, path: path! }

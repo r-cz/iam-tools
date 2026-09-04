@@ -234,6 +234,8 @@ export function parseOtpauthUri(value: string): OtpauthTotpConfig {
   if (separatorIndex !== -1 && !labelIssuer) {
     throw new Error('otpauth label issuer cannot be empty')
   }
+  normalizeRequiredLabel(accountName, 'account name')
+  if (labelIssuer) normalizeRequiredLabel(labelIssuer, 'issuer')
 
   const rawSecret = uri.searchParams.get('secret')
   if (!rawSecret) {
@@ -363,12 +365,11 @@ export async function verifyTotp(
   )
   const currentCounter = Math.floor(resolved.timestampSeconds / resolved.period)
   for (const delta of deltas) {
-    const candidate = await generateTotpForCounter(
-      key,
-      currentCounter + delta,
-      resolved.digits,
-      cryptoApi
-    )
+    const counter = currentCounter + delta
+    // At the Unix epoch the previous time step does not exist. A drift window
+    // should still check the current/future steps and reject unmatched codes.
+    if (delta !== 0 && (counter < 0 || !Number.isSafeInteger(counter))) continue
+    const candidate = await generateTotpForCounter(key, counter, resolved.digits, cryptoApi)
 
     if (constantTimeEqual(normalizedCode, candidate)) {
       return { valid: true, delta }
@@ -408,6 +409,9 @@ function normalizeRequiredLabel(value: string, fieldName: string): string {
     throw new Error(`otpauth ${fieldName} is required`)
   }
   rejectControlCharacters(normalized, fieldName)
+  if (normalized.includes(':')) {
+    throw new Error(`otpauth ${fieldName} cannot contain a colon`)
+  }
   return normalized
 }
 

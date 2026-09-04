@@ -52,6 +52,55 @@ describe('OAuth redirect URI analysis', () => {
     expect(result.findings.map((item) => item.code)).toContain('loopback-port-match')
   })
 
+  it('allows dynamic IPv4 and IPv6 ports while retaining the literal path and query', () => {
+    for (const host of ['127.0.0.1', '[::1]']) {
+      const result = analyzeRedirectUri(
+        `http://${host}:51004/callback?tenant=one`,
+        `http://${host}/callback?tenant=one`
+      )
+      expect(result.matchType).toBe('loopback-port')
+      expect(result.safeToSend).toBe(true)
+    }
+  })
+
+  it('does not extend the loopback exception to normalization beyond the port', () => {
+    for (const [requested, registered] of [
+      ['http://127.0.0.1:51004/a/../callback', 'http://127.0.0.1:49152/callback'],
+      ['http://127.0.0.1:51004/%2e/callback', 'http://127.0.0.1:49152/callback'],
+      ['http://127.1:51004/callback', 'http://127.0.0.1:49152/callback'],
+      ['HTTP://127.0.0.1:51004/callback', 'http://127.0.0.1:49152/callback'],
+      ['http://127.0.0.1:51004', 'http://127.0.0.1:49152/'],
+      ['http://127.0.0.1:51004/callback?', 'http://127.0.0.1:49152/callback'],
+      ['http://127.0.0.1:51004/callback', 'http://user@127.0.0.1:49152/callback'],
+    ]) {
+      const result = analyzeRedirectUri(requested, registered)
+      expect(result.matchType).not.toBe('loopback-port')
+      expect(result.safeToSend).toBe(false)
+    }
+  })
+
+  it('rejects empty fragment components and browser-repaired URI text', () => {
+    const emptyFragment = analyzeRedirectUri(
+      'https://app.example/callback#',
+      'https://app.example/callback#'
+    )
+    expect(emptyFragment.safeToSend).toBe(false)
+    expect(emptyFragment.findings.map((item) => item.code)).toContain('fragment-prohibited')
+
+    for (const uri of [
+      'https://app.example/call\tback',
+      'https://app.example/call back',
+      'https://app.example/callback%ZZ',
+      'https://app.example\\callback',
+      'https:app.example/callback',
+      'https:///app.example/callback',
+    ]) {
+      const result = analyzeRedirectUri(uri, uri)
+      expect(result.matchType).toBe('invalid')
+      expect(result.safeToSend).toBe(false)
+    }
+  })
+
   it('blocks insecure, wildcard, and dangerous redirect patterns', () => {
     const insecure = analyzeRedirectUri('http://app.example/callback', 'https://*.example/callback')
     expect(insecure.safeToSend).toBe(false)
