@@ -21,6 +21,21 @@ describe('tool command search', () => {
     expect(provisioningResults).toContain('scim-patch-builder')
   })
 
+  test('matches navigation labels, route paths, and punctuation-separated protocol names', () => {
+    expect(searchToolCommands('auth code').map(({ tool }) => tool.id)).toContain('oauth-auth-code')
+    expect(searchToolCommands('/oauth-playground/client-credentials')[0]?.tool.id).toBe(
+      'oauth-client-credentials'
+    )
+    expect(searchToolCommands('SCIM 2.0').map(({ tool }) => tool.id)).toEqual([
+      'scim-patch-builder',
+      'scim-resource-validator',
+    ])
+    expect(searchToolCommands('client_credentials').map(({ tool }) => tool.id)).toContain(
+      'oauth-client-credentials'
+    )
+    expect(searchToolCommands('oauth oidc').map(({ tool }) => tool.id)).toContain('oidc-explorer')
+  })
+
   test('matches core tools independently of the browser casing locale', () => {
     const originalToLocaleLowerCase = String.prototype.toLocaleLowerCase
 

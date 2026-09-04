@@ -39,7 +39,7 @@ export function PageContainer({ children, maxWidth = '5xl' }: PageContainerProps
   }[maxWidth]
 
   return (
-    <div className="py-4 px-6">
+    <div className="px-4 py-4 sm:px-6">
       <div className={`${maxWidthClass} mx-auto`}>{children}</div>
     </div>
   )

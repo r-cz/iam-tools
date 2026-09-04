@@ -35,6 +35,8 @@ function normalizeSearchText(value: string): string {
     .normalize('NFKD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
+    .replace(/[-_/]+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
@@ -42,6 +44,10 @@ function commandSearchText(command: ToolCommand): string {
   return normalizeSearchText(
     [
       command.tool.title,
+      command.tool.navigationTitle,
+      command.tool.routeTitle,
+      command.tool.id,
+      command.tool.path,
       command.tool.description,
       ...command.tool.tags,
       command.section.title,
@@ -50,20 +56,25 @@ function commandSearchText(command: ToolCommand): string {
   )
 }
 
+// The catalog is static. Normalize it once instead of repeating the work for each keystroke.
+const searchIndex = toolCommands.map((command) => ({
+  command,
+  searchText: commandSearchText(command),
+  title: normalizeSearchText(command.tool.title),
+  tags: command.tool.tags.map(normalizeSearchText),
+  section: normalizeSearchText(command.section.title),
+}))
+
 export function searchToolCommands(query: string): ToolCommand[] {
   const normalizedQuery = normalizeSearchText(query)
   if (!normalizedQuery) return toolCommands
 
   const terms = normalizedQuery.split(/\s+/)
 
-  return toolCommands
-    .flatMap((command) => {
-      const searchText = commandSearchText(command)
+  return searchIndex
+    .flatMap(({ command, searchText, title, tags, section }) => {
       if (!terms.every((term) => searchText.includes(term))) return []
 
-      const title = normalizeSearchText(command.tool.title)
-      const tags = command.tool.tags.map(normalizeSearchText)
-      const section = normalizeSearchText(command.section.title)
       let score = 0
 
       if (title === normalizedQuery) score += 100

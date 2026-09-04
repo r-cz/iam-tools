@@ -78,7 +78,7 @@ function QuickAccessEmpty({
         </EmptyTitle>
         <EmptyDescription>
           {isFavorites
-            ? 'Star tools in the command center to keep them close.'
+            ? 'Star tools in the catalog or command center to keep them close.'
             : 'Open a catalog tool and it will appear here for a quick return.'}
         </EmptyDescription>
       </div>
@@ -174,6 +174,34 @@ export function QuickAccess({ totalToolCount }: { totalToolCount: number }) {
     })
     .slice(0, MAX_QUICK_ACCESS_ITEMS)
 
+  if (favoriteTools.length === 0 && recentToolRecords.length === 0) {
+    return (
+      <Card className="gap-0 py-4">
+        <CardContent className="flex flex-col gap-4 px-5 sm:flex-row sm:items-center">
+          <Star
+            className="hidden size-5 shrink-0 text-muted-foreground sm:block"
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <CardTitle>Make this workbench yours</CardTitle>
+            <CardDescription className="mt-1">
+              Explore {totalToolCount} tools below. Star your favorites; recently used tools will
+              appear here.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-fit shrink-0 gap-1.5"
+            onClick={openCommandCenter}
+          >
+            <Search className="size-4" aria-hidden="true" /> Find a tool
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="gap-4 py-5">
       <CardHeader className="gap-3 px-5 sm:grid-cols-[1fr_auto]">
@@ -194,7 +222,9 @@ export function QuickAccess({ totalToolCount }: { totalToolCount: number }) {
             <p className="font-medium">
               {totalToolCount} local-first tool{totalToolCount === 1 ? '' : 's'}
             </p>
-            <p className="text-xs text-muted-foreground">Sensitive inputs stay in this tab.</p>
+            <p className="max-w-64 text-xs text-muted-foreground">
+              Local inspection, with network requests when you run a provider flow.
+            </p>
           </div>
         </div>
       </CardHeader>
