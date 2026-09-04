@@ -2,23 +2,6 @@ import { describe, expect, test, beforeEach } from 'bun:test'
 import { JwksCache } from '@/lib/cache/jwks-cache'
 import { JSONWebKeySet } from 'jose'
 
-// Mock localStorage for testing
-global.localStorage = {
-  store: {} as Record<string, string>,
-  getItem(key: string) {
-    return this.store[key] || null
-  },
-  setItem(key: string, value: string) {
-    this.store[key] = value
-  },
-  removeItem(key: string) {
-    delete this.store[key]
-  },
-  clear() {
-    this.store = {}
-  },
-} as any
-
 describe('JwksCache', () => {
   let cache: JwksCache
 
@@ -45,7 +28,7 @@ describe('JwksCache', () => {
 
   beforeEach(() => {
     // Clear localStorage before each test
-    localStorage.clear()
+    window.localStorage.clear()
     // Create a fresh cache instance with short TTLs for testing
     cache = new JwksCache({
       memoryTTL: 1000, // 1 second for testing
@@ -59,12 +42,12 @@ describe('JwksCache', () => {
     expect(retrieved).toEqual(mockJwks)
   })
 
-  test('should normalize URLs when storing and retrieving', () => {
+  test('preserves distinct JWKS paths with and without a trailing slash', () => {
     // Store with trailing slash
     cache.set('https://example.com/jwks/', mockJwks)
-    // Retrieve without trailing slash
+    // A trailing slash can select a different HTTP resource.
     const retrieved = cache.get('https://example.com/jwks')
-    expect(retrieved).toEqual(mockJwks)
+    expect(retrieved).toBeNull()
   })
 
   test('should return null for non-existent entries', () => {

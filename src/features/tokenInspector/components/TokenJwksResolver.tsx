@@ -44,13 +44,24 @@ export function TokenJwksResolver({
   const [jwksMode, setJwksMode] = useState<'automatic' | 'manual'>('automatic')
   const [manualJwks, setManualJwks] = useState('')
   const lastFetchedUriRef = useRef<string | null>(null)
+  const requestIdRef = useRef(0)
+
+  useEffect(
+    () => () => {
+      requestIdRef.current += 1
+      lastFetchedUriRef.current = null
+    },
+    []
+  )
 
   // Only instantiate the JWKS hook since we're receiving OIDC config from parent
   const { fetchJwks, isLoading: isJwksLoading } = useJwks(jwksFetcher)
 
   const fetchAndApplyJwks = useCallback(
     async (jwksUri: string, forceRefresh = false) => {
+      const requestId = ++requestIdRef.current
       const resolvedJwks = await fetchJwks(jwksUri, forceRefresh)
+      if (requestId !== requestIdRef.current) return
       if (!resolvedJwks) {
         toast.error(
           <div>
@@ -84,9 +95,12 @@ export function TokenJwksResolver({
   const autoFetchJwksUri = preferredJwksUri ?? oidcConfig?.jwks_uri ?? null
 
   useEffect(() => {
-    if (!autoFetchJwksUri || isJwksLoading || autoFetchJwksUri === lastFetchedUriRef.current) {
+    if (!autoFetchJwksUri || jwksMode !== 'automatic' || isCurrentTokenDemo) {
+      requestIdRef.current += 1
+      lastFetchedUriRef.current = null
       return
     }
+    if (autoFetchJwksUri === lastFetchedUriRef.current) return
 
     if (import.meta?.env?.DEV) {
       console.log(`JWKS URI available, fetching keys from: ${autoFetchJwksUri}`)
@@ -94,7 +108,7 @@ export function TokenJwksResolver({
 
     lastFetchedUriRef.current = autoFetchJwksUri
     void fetchAndApplyJwks(autoFetchJwksUri)
-  }, [autoFetchJwksUri, fetchAndApplyJwks, isJwksLoading])
+  }, [autoFetchJwksUri, fetchAndApplyJwks, jwksMode, isCurrentTokenDemo])
 
   // Function to initiate the automatic fetching process
   const triggerAutomaticFetch = () => {
@@ -159,7 +173,8 @@ export function TokenJwksResolver({
         })
       }
 
-      // Pass the parsed JWKS up
+      // Explicit manual selection supersedes any automatic lookup in flight.
+      requestIdRef.current += 1
       onJwksResolved(parsedJwks)
       toast.success(
         <div>
@@ -194,6 +209,7 @@ export function TokenJwksResolver({
       if (import.meta?.env?.DEV) {
         console.log('Loading DEMO_JWKS manually via button click')
       }
+      requestIdRef.current += 1
       onJwksResolved(DEMO_JWKS as JSONWebKeySet) // Assert type
       setManualJwks(JSON.stringify(DEMO_JWKS, null, 2)) // Pre-fill the manual text area
       setJwksMode('manual') // Switch to the manual tab to show the loaded JWKS

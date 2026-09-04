@@ -1,4 +1,4 @@
-import { jwtVerify, JSONWebKeySet } from 'jose'
+import { compactVerify, createLocalJWKSet, errors, type JSONWebKeySet } from 'jose'
 import { jwksCache } from '@/lib/cache/jwks-cache'
 import { proxyFetch } from '@/lib/proxy-fetch'
 
@@ -7,15 +7,35 @@ interface VerifyResult {
   error?: string
 }
 
-/**
- * Verify a JWT signature with automatic JWKS refresh on key rotation
- * @param token The JWT token to verify
- * @param jwksUri The URI where JWKS can be fetched
- * @param initialJwks The initial JWKS to try (from cache or hook state)
- * @param onJwksRefresh Optional callback when JWKS is refreshed
- * @param fetchJwks Fetch implementation for refreshing JWKS
- * @returns Promise<VerifyResult>
- */
+interface VerificationAttempt {
+  result: VerifyResult
+  refreshable: boolean
+}
+
+async function attemptVerification(
+  token: string,
+  jwks: JSONWebKeySet
+): Promise<VerificationAttempt> {
+  try {
+    // Signature validity is independent of claim validity. The inspector reports
+    // exp/nbf separately, so an expired, correctly signed JWT still has a valid signature.
+    // jose also selects keys by alg, kid, use, key_ops and curve; kid is optional.
+    await compactVerify(token, createLocalJWKSet(jwks))
+    return { result: { valid: true }, refreshable: false }
+  } catch (error) {
+    return {
+      result: {
+        valid: false,
+        error: error instanceof Error ? error.message : 'Invalid signature',
+      },
+      refreshable:
+        error instanceof errors.JWKSNoMatchingKey ||
+        error instanceof errors.JWSSignatureVerificationFailed,
+    }
+  }
+}
+
+/** Verify the JWS signature, refreshing public keys once when rotation could explain a failure. */
 export async function verifySignatureWithRefresh(
   token: string,
   jwksUri: string,
@@ -23,172 +43,44 @@ export async function verifySignatureWithRefresh(
   onJwksRefresh?: (newJwks: JSONWebKeySet) => void,
   fetchJwks: typeof proxyFetch = proxyFetch
 ): Promise<VerifyResult> {
+  const firstAttempt = await attemptVerification(token, initialJwks)
+  if (firstAttempt.result.valid || !firstAttempt.refreshable || !jwksUri) {
+    return firstAttempt.result
+  }
+
+  const cachedJwks = jwksCache.get(jwksUri)
+  if (cachedJwks && cachedJwks !== initialJwks) {
+    const cachedAttempt = await attemptVerification(token, cachedJwks)
+    if (cachedAttempt.result.valid) {
+      onJwksRefresh?.(cachedJwks)
+      return cachedAttempt.result
+    }
+  }
+
   try {
-    if (import.meta?.env?.DEV) {
-      console.log('Starting signature verification')
-    }
-
-    if (!initialJwks?.keys?.length) {
-      return {
-        valid: false,
-        error: 'No keys found in the JWKS data',
-      }
-    }
-
-    // Extract the JWK that matches the token's kid (key ID)
-    const tokenHeader = JSON.parse(atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')))
-
-    if (import.meta?.env?.DEV) {
-      console.log('Token header parsed', {
-        kid: tokenHeader?.kid,
-        alg: tokenHeader?.alg,
-      })
-    }
-
-    // Check if the token has a key ID
-    if (!tokenHeader.kid) {
-      return {
-        valid: false,
-        error: 'Token header does not contain a key ID (kid)',
-      }
-    }
-
-    // First attempt: Try with the provided JWKS
-    const attemptVerification = async (jwks: JSONWebKeySet): Promise<VerifyResult> => {
-      const matchingKey = jwks.keys.find((key: any) => key.kid === tokenHeader.kid)
-
-      if (!matchingKey) {
-        return {
-          valid: false,
-          error: `No key with ID "${tokenHeader.kid}" found in the JWKS`,
-        }
-      }
-
-      try {
-        if (import.meta?.env?.DEV) {
-          console.log('Found matching key for token header', { kid: matchingKey?.kid })
-        }
-        await jwtVerify(token, await importKey(matchingKey, tokenHeader.alg))
-        if (import.meta?.env?.DEV) console.log('Verification successful')
-        return { valid: true }
-      } catch (error: any) {
-        if (import.meta?.env?.DEV) console.error('Verification failed:', error)
-        return {
-          valid: false,
-          error: error.message || 'Invalid signature',
-        }
-      }
-    }
-
-    // Try with initial JWKS
-    const firstAttempt = await attemptVerification(initialJwks)
-
-    // If verification failed due to key not found or invalid signature, try refreshing JWKS
-    if (!firstAttempt.valid && jwksUri) {
-      if (import.meta?.env?.DEV) {
-        console.log('First verification attempt failed, checking for updated JWKS...')
-      }
-
-      try {
-        // First check if we have cached JWKS that might have been updated
-        const cachedJwks = jwksCache.get(jwksUri)
-        if (cachedJwks && cachedJwks !== initialJwks) {
-          if (import.meta?.env?.DEV) {
-            console.log('Found different JWKS in cache, trying with cached version first')
+    // Join a refresh already underway; a token inspection must not launch a
+    // second network request for every consumer awaiting the same rotated key.
+    const freshJwks = await (jwksCache.getPendingRequest(jwksUri) ??
+      jwksCache.getOrLoad(
+        jwksUri,
+        async () => {
+          const response = await fetchJwks(jwksUri)
+          if (!response.ok) {
+            throw new Error(`Failed to fetch JWKS: ${response.status} ${response.statusText}`)
           }
-          const cacheAttempt = await attemptVerification(cachedJwks)
-          if (cacheAttempt.valid) {
-            if (import.meta?.env?.DEV) console.log('Verification successful with cached JWKS')
-            return cacheAttempt
-          }
-        }
-
-        // If cache didn't help, remove from cache and fetch fresh
-        if (import.meta?.env?.DEV) console.log('Cached JWKS did not help, fetching fresh JWKS...')
-        jwksCache.remove(jwksUri)
-
-        // Fetch fresh JWKS
-        const response = await fetchJwks(jwksUri)
-        if (!response.ok) {
-          throw new Error(`Failed to fetch JWKS: ${response.status} ${response.statusText}`)
-        }
-
-        const freshJwks: JSONWebKeySet = await response.json()
-
-        // Validate the fresh JWKS
-        if (!freshJwks || !Array.isArray(freshJwks.keys)) {
-          throw new Error('Invalid JWKS format')
-        }
-
-        // Cache the fresh JWKS
-        jwksCache.set(jwksUri, freshJwks)
-        if (import.meta?.env?.DEV) console.log('JWKS refreshed and cached')
-
-        // Notify caller of the refresh
-        if (onJwksRefresh) {
-          onJwksRefresh(freshJwks)
-        }
-
-        // Try verification again with fresh JWKS
-        const secondAttempt = await attemptVerification(freshJwks)
-
-        if (secondAttempt.valid && import.meta?.env?.DEV) {
-          console.log('Verification successful after JWKS refresh')
-        }
-
-        return secondAttempt
-      } catch (refreshError: any) {
-        if (import.meta?.env?.DEV) console.error('Failed to refresh JWKS:', refreshError)
-        // Return the original error, not the refresh error
-        return {
-          ...firstAttempt,
-          error: `${firstAttempt.error} (JWKS refresh also failed: ${refreshError.message})`,
-        }
-      }
-    }
-
-    return firstAttempt
-  } catch (error: any) {
-    if (import.meta?.env?.DEV) console.error('Token verification error:', error)
+          const value: JSONWebKeySet = await response.json()
+          // Validate before persisting, including malformed individual key entries.
+          createLocalJWKSet(value)
+          return value
+        },
+        { forceRefresh: true }
+      ))
+    onJwksRefresh?.(freshJwks)
+    return (await attemptVerification(token, freshJwks)).result
+  } catch (error) {
     return {
       valid: false,
-      error: error.message || 'Invalid signature',
+      error: `${firstAttempt.result.error} (JWKS refresh also failed: ${error instanceof Error ? error.message : String(error)})`,
     }
   }
-}
-
-// Helper function to import a JWK key
-async function importKey(jwk: any, alg: string): Promise<CryptoKey> {
-  let algorithm
-  if (alg?.includes('RS')) {
-    algorithm = 'RSASSA-PKCS1-v1_5'
-  } else if (alg?.includes('ES')) {
-    algorithm = 'ECDSA'
-  } else if (alg?.includes('PS')) {
-    algorithm = 'RSA-PSS'
-  } else {
-    throw new Error(`Unsupported algorithm: ${alg}`)
-  }
-
-  let hash
-  if (alg?.includes('256')) {
-    hash = 'SHA-256'
-  } else if (alg?.includes('384')) {
-    hash = 'SHA-384'
-  } else if (alg?.includes('512')) {
-    hash = 'SHA-512'
-  } else {
-    throw new Error(`Unsupported hash: ${alg}`)
-  }
-
-  return await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    {
-      name: algorithm,
-      hash: { name: hash },
-    },
-    false,
-    ['verify']
-  )
 }

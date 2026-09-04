@@ -1,223 +1,101 @@
-import { describe, expect, test, beforeEach, mock } from 'bun:test'
+import { beforeEach, describe, expect, test, mock } from 'bun:test'
+import { exportJWK, generateKeyPair, SignJWT, type JSONWebKeySet } from 'jose'
 import { verifySignatureWithRefresh } from '@/lib/jwt/verify-signature-with-refresh'
 import { jwksCache } from '@/lib/cache/jwks-cache'
-import { JSONWebKeySet } from 'jose'
 
-// Mock localStorage for testing
-global.localStorage = {
-  store: {} as Record<string, string>,
-  getItem(key: string) {
-    return this.store[key] || null
-  },
-  setItem(key: string, value: string) {
-    this.store[key] = value
-  },
-  removeItem(key: string) {
-    delete this.store[key]
-  },
-  clear() {
-    this.store = {}
-  },
-} as any
+const uri = 'https://identity.example/jwks'
 
-// Mock response type
-interface MockResponse {
-  ok: boolean
-  status: number
-  statusText: string
-  json?: () => Promise<any>
+async function signedToken(alg = 'ES256', kid: string | undefined = 'current') {
+  const { privateKey, publicKey } = await generateKeyPair(alg)
+  const jwk = { ...(await exportJWK(publicKey)), alg, kid, use: 'sig' }
+  const token = await new SignJWT({ sub: 'user', exp: 0, nbf: 4_000_000_000 })
+    .setProtectedHeader({ alg, ...(kid ? { kid } : {}) })
+    .sign(privateKey)
+  return { token, jwks: { keys: [jwk] } satisfies JSONWebKeySet }
 }
 
-// Create a mockable proxyFetch function
-const mockProxyFetch = mock((): Promise<MockResponse> => {
-  return Promise.resolve({
-    ok: false,
-    status: 404,
-    statusText: 'Not Found',
-  })
-})
-
-// Mock jwtVerify to avoid actual crypto operations in tests
-const mockJwtVerify = mock(async () => {
-  throw new Error('Signature verification failed')
-})
-
-// Mock jose module
-mock.module('jose', () => ({
-  jwtVerify: mockJwtVerify,
-  JSONWebKeySet: {}, // Type definition
-}))
-
 describe('verifySignatureWithRefresh', () => {
-  const mockToken =
-    'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LTEifQ.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwic3ViIjoidGVzdC11c2VyIn0.signature'
-  const mockJwksUri = 'https://example.com/jwks'
+  beforeEach(() => jwksCache.clear())
 
-  const mockJwks: JSONWebKeySet = {
-    keys: [
-      {
-        kty: 'RSA',
-        kid: 'test-key-1',
-        use: 'sig',
-        alg: 'RS256',
-        n: 'mock-n-value',
-        e: 'AQAB',
-      },
-    ],
+  for (const alg of ['RS256', 'PS256', 'ES256', 'ES384', 'ES512', 'EdDSA']) {
+    test(`verifies real ${alg} signatures independently of expired/not-before claims`, async () => {
+      const { token, jwks } = await signedToken(alg)
+      const fetcher = mock(async () => Response.error())
+      expect(await verifySignatureWithRefresh(token, uri, jwks, undefined, fetcher)).toEqual({
+        valid: true,
+      })
+      expect(fetcher).not.toHaveBeenCalled()
+    })
   }
 
-  const mockJwksRotated: JSONWebKeySet = {
-    keys: [
-      {
-        kty: 'RSA',
-        kid: 'test-key-2',
-        use: 'sig',
-        alg: 'RS256',
-        n: 'mock-n-value-2',
-        e: 'AQAB',
-      },
-    ],
-  }
+  test('selects a unique suitable key without requiring the optional kid header', async () => {
+    const { token, jwks } = await signedToken('ES256', '')
+    expect(await verifySignatureWithRefresh(token, '', jwks)).toEqual({ valid: true })
+  })
 
-  beforeEach(() => {
-    // Clear the cache before each test
-    jwksCache.clear()
+  test('rejects a tampered payload with a matching key ID', async () => {
+    const { token, jwks } = await signedToken()
+    const parts = token.split('.')
+    parts[1] = Buffer.from(JSON.stringify({ sub: 'attacker' })).toString('base64url')
+    expect((await verifySignatureWithRefresh(parts.join('.'), '', jwks)).valid).toBe(false)
+  })
 
-    // Reset mocks
-    mockProxyFetch.mockReset()
-    mockJwtVerify.mockReset()
+  test('honors key use and algorithm instead of choosing the first matching kid', async () => {
+    const { token, jwks } = await signedToken()
+    const encryptionKey = { ...jwks.keys[0], use: 'enc' }
+    expect(
+      await verifySignatureWithRefresh(token, '', { keys: [encryptionKey, ...jwks.keys] })
+    ).toEqual({ valid: true })
+    expect((await verifySignatureWithRefresh(token, '', { keys: [encryptionKey] })).valid).toBe(
+      false
+    )
+  })
 
-    // Default mock implementations
-    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
-      return Promise.resolve({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      })
+  test('refreshes an empty or rotated keyset and caches the verified replacement', async () => {
+    const { token, jwks } = await signedToken()
+    const fetcher = mock(async () => Response.json(jwks))
+    const refreshed = mock(() => {})
+    expect(await verifySignatureWithRefresh(token, uri, { keys: [] }, refreshed, fetcher)).toEqual({
+      valid: true,
     })
-
-    mockJwtVerify.mockImplementation(async () => {
-      throw new Error('Signature verification failed')
-    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(refreshed).toHaveBeenCalledWith(jwks)
+    expect(jwksCache.get(uri)).toEqual(jwks)
   })
 
-  test('should return error when no keys found in JWKS', async () => {
-    const emptyJwks: JSONWebKeySet = { keys: [] }
-
-    const result = await verifySignatureWithRefresh(mockToken, mockJwksUri, emptyJwks)
-
-    expect(result.valid).toBe(false)
-    expect(result.error).toBe('No keys found in the JWKS data')
+  test('does not refresh malformed tokens or unsupported algorithms', async () => {
+    const { jwks } = await signedToken()
+    const fetcher = mock(async () => Response.error())
+    expect(
+      (await verifySignatureWithRefresh('not-a-jwt', uri, jwks, undefined, fetcher)).valid
+    ).toBe(false)
+    const unsigned = `${Buffer.from('{"alg":"none"}').toString('base64url')}.e30.`
+    expect((await verifySignatureWithRefresh(unsigned, uri, jwks, undefined, fetcher)).valid).toBe(
+      false
+    )
+    expect(fetcher).not.toHaveBeenCalled()
   })
 
-  test('should return error when token has no kid', async () => {
-    const tokenWithoutKid = 'eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature'
-
-    const result = await verifySignatureWithRefresh(tokenWithoutKid, mockJwksUri, mockJwks)
-
-    expect(result.valid).toBe(false)
-    expect(result.error).toBe('Token header does not contain a key ID (kid)')
-  })
-
-  test('should return error when key not found in JWKS', async () => {
-    const tokenWithWrongKid =
-      'eyJhbGciOiJSUzI1NiIsImtpZCI6Indyb25nLWtleSJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature'
-
+  test('preserves the verification failure and explains network refresh failures', async () => {
+    const { token } = await signedToken()
     const result = await verifySignatureWithRefresh(
-      tokenWithWrongKid,
-      mockJwksUri,
-      mockJwks,
+      token,
+      uri,
+      { keys: [] },
       undefined,
-      mockProxyFetch as any
+      async () => new Response(null, { status: 503 })
     )
-
     expect(result.valid).toBe(false)
-    expect(result.error).toContain('No key with ID "wrong-key" found in the JWKS')
+    expect(result.error).toContain('JWKS refresh also failed: Failed to fetch JWKS: 503')
   })
 
-  test('should handle cache refresh on verification failure', async () => {
-    const tokenNewKey =
-      'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LTIifQ.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature'
-    let refreshCalled = false
-
-    // Mock the proxyFetch to return the rotated JWKS
-    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: () => Promise.resolve(mockJwksRotated),
-      })
-    })
-
-    // Verify with old JWKS that doesn't have the new key
-    const result = await verifySignatureWithRefresh(
-      tokenNewKey,
-      mockJwksUri,
-      mockJwks,
-      (newJwks: JSONWebKeySet) => {
-        refreshCalled = true
-        expect(newJwks).toEqual(mockJwksRotated)
-      },
-      mockProxyFetch as any
+  test('rejects malformed refreshed key entries before caching them', async () => {
+    const { token } = await signedToken()
+    const result = await verifySignatureWithRefresh(token, uri, { keys: [] }, undefined, async () =>
+      Response.json({ keys: [null] })
     )
-
-    // The verification will still fail due to invalid test keys,
-    // but the important part is that refresh was attempted
-    expect(result.valid).toBe(false)
-    expect(refreshCalled).toBe(true)
-    // The error could be about key modulus or signature verification
-    expect(result.error).toBeDefined()
-  })
-
-  test('should handle network error during refresh', async () => {
-    const tokenNewKey =
-      'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LTMifQ.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature'
-
-    // Mock proxyFetch to fail
-    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
-      return Promise.resolve({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-      })
-    })
-
-    const result = await verifySignatureWithRefresh(
-      tokenNewKey,
-      mockJwksUri,
-      mockJwks,
-      undefined,
-      mockProxyFetch as any
-    )
-
     expect(result.valid).toBe(false)
     expect(result.error).toContain('JWKS refresh also failed')
-  })
-
-  test('should handle invalid JWKS format during refresh', async () => {
-    const tokenNewKey =
-      'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5LTQifQ.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0.signature'
-
-    // Mock proxyFetch to return invalid JWKS
-    mockProxyFetch.mockImplementation((): Promise<MockResponse> => {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: () => Promise.resolve({ invalid: 'jwks' }),
-      })
-    })
-
-    const result = await verifySignatureWithRefresh(
-      tokenNewKey,
-      mockJwksUri,
-      mockJwks,
-      undefined,
-      mockProxyFetch as any
-    )
-
-    expect(result.valid).toBe(false)
-    expect(result.error).toContain('JWKS refresh also failed')
+    expect(jwksCache.get(uri)).toBeNull()
   })
 })

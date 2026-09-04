@@ -1,3 +1,4 @@
+import { isNumericDate } from '@/lib/jwt/numeric-date'
 import { useEffect, useState } from 'react'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
@@ -52,9 +53,9 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
   }, [])
 
   // Extract relevant timestamps
-  const issuedAt = payload.iat ? payload.iat * 1000 : null
-  const expiration = payload.exp ? payload.exp * 1000 : null
-  const authTime = payload.auth_time ? payload.auth_time * 1000 : null
+  const issuedAt = isNumericDate(payload.iat) ? payload.iat * 1000 : null
+  const expiration = isNumericDate(payload.exp) ? payload.exp * 1000 : null
+  const authTime = isNumericDate(payload.auth_time) ? payload.auth_time * 1000 : null
   // Not before timestamp (not used currently but could be in future extensions)
   // const notBefore = payload.nbf ? payload.nbf * 1000 : null;
 
@@ -62,12 +63,12 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
   const now = currentTime * 1000
 
   // If we don't have both iat and exp, we can't create a useful timeline
-  if (!issuedAt || !expiration) {
+  if (issuedAt === null || expiration === null) {
     return (
       <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700">
-        <AlertTitle>Missing timestamps</AlertTitle>
+        <AlertTitle>Missing or invalid timestamps</AlertTitle>
         <AlertDescription>
-          Cannot display token timeline. Missing required timestamps (iat and/or exp).
+          Cannot display token timeline. Both iat and exp must be valid NumericDate values.
         </AlertDescription>
       </Alert>
     )
@@ -75,6 +76,15 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
 
   // Calculate the total token lifetime
   const totalLifetime = expiration - issuedAt
+
+  if (totalLifetime <= 0) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Invalid token lifetime</AlertTitle>
+        <AlertDescription>Expiration (exp) must be later than issuance (iat).</AlertDescription>
+      </Alert>
+    )
+  }
 
   // Calculate elapsed time
   const elapsed = Math.max(0, now - issuedAt)
@@ -89,7 +99,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
         <div className="relative">
           <Progress
             value={percentElapsed}
-            className={now > expiration ? '[&>[role=progressbar]]:bg-destructive' : ''}
+            className={now >= expiration ? '[&>[role=progressbar]]:bg-destructive' : ''}
           />
 
           {/* Start label - stack on mobile, side-by-side on desktop */}
@@ -100,7 +110,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
 
           {/* End label - stack on mobile, side-by-side on desktop */}
           <div className="absolute right-0 top-[-3.5rem] md:top-[-2rem] text-xs font-mono text-right md:transform-none max-w-[150px] md:max-w-none break-words md:whitespace-nowrap">
-            <div className="font-semibold">{now > expiration ? 'Expired:' : 'Expires:'}</div>
+            <div className="font-semibold">{now >= expiration ? 'Expired:' : 'Expires:'}</div>
             <div>{formatTimelineDate(expiration)}</div>
           </div>
         </div>
@@ -123,8 +133,8 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
           <div className="p-3">
             <h4 className="text-sm font-medium">Remaining Lifetime</h4>
-            <p className={`text-2xl font-bold ${now > expiration ? 'text-destructive' : ''}`}>
-              {now > expiration ? 'Expired' : formatTimeDiff(now, expiration)}
+            <p className={`text-2xl font-bold ${now >= expiration ? 'text-destructive' : ''}`}>
+              {now >= expiration ? 'Expired' : formatTimeDiff(now, expiration)}
             </p>
             <p
               className="text-xs text-muted-foreground truncate"
@@ -135,7 +145,7 @@ export function TokenTimeline({ payload }: TokenTimelineProps) {
           </div>
         </div>
 
-        {authTime && (
+        {authTime !== null && (
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div className="p-3">
               <h4 className="text-sm font-medium">Authentication Time</h4>

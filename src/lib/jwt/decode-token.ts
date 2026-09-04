@@ -19,7 +19,8 @@ export function base64UrlDecode(str: string): string {
   // Add padding if necessary
   const padding = '='.repeat((4 - (base64.length % 4)) % 4)
 
-  return atob(base64 + padding)
+  const bytes = Uint8Array.from(atob(base64 + padding), (character) => character.charCodeAt(0))
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
 }
 
 /**
@@ -49,6 +50,18 @@ export function decodeJWT(token: string): DecodedJWT | null {
     // Decode payload
     const decodedPayload = base64UrlDecode(encodedPayload)
     const payload = JSON.parse(decodedPayload)
+
+    // A JWT carries JSON objects, not arbitrary JSON values. Reject these here so
+    // every consumer can safely inspect claims without crashing or guessing types.
+    if (
+      !header ||
+      typeof header !== 'object' ||
+      Array.isArray(header) ||
+      !payload ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload)
+    )
+      return null
 
     return {
       header,
@@ -98,7 +111,7 @@ export function isJwtExpired(token: string): boolean {
   }
 
   const now = Math.floor(Date.now() / 1000)
-  return payload.exp < now
+  return payload.exp <= now
 }
 
 /**
@@ -112,5 +125,6 @@ export function getJwtExpiration(token: string): Date | null {
     return null
   }
 
-  return new Date(payload.exp * 1000)
+  const expiration = new Date(payload.exp * 1000)
+  return Number.isNaN(expiration.getTime()) ? null : expiration
 }

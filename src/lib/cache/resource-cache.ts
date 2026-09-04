@@ -7,6 +7,7 @@ interface CacheEntry<T> {
   data: T
   timestamp: number
   ttl: number
+  lastAccess?: number
 }
 
 export interface CacheOptions {
@@ -28,12 +29,15 @@ export class ResourceCache<T> {
   private memoryCache: Map<string, CacheEntry<T>> = new Map()
   private pendingRequests: Map<string, Promise<T>> = new Map()
   private inMemoryStorage: Record<string, CacheEntry<T>> = {}
+  private storageFailed = false
   private options: Required<CacheOptions>
 
   constructor(options: CacheOptions) {
     this.options = {
       ...options,
-      maxEntries: options.maxEntries ?? DEFAULT_MAX_ENTRIES,
+      maxEntries: Number.isFinite(options.maxEntries)
+        ? Math.max(1, Math.floor(options.maxEntries!))
+        : DEFAULT_MAX_ENTRIES,
     }
     this.loadFromStorage()
   }
@@ -48,19 +52,17 @@ export class ResourceCache<T> {
     // Check memory cache first
     const memoryEntry = this.memoryCache.get(normalizedKey)
     if (memoryEntry && this.isValid(memoryEntry)) {
+      memoryEntry.lastAccess = Date.now()
       return memoryEntry.data
     }
+    this.memoryCache.delete(normalizedKey)
 
     // Check localStorage cache
     const storageCache = this.getStorageCache()
     const storageEntry = storageCache[normalizedKey]
     if (storageEntry && this.isValid(storageEntry)) {
       // Promote to memory cache with shorter TTL
-      this.memoryCache.set(normalizedKey, {
-        ...storageEntry,
-        ttl: this.options.memoryTTL,
-        timestamp: Date.now(),
-      })
+      this.promoteToMemory(normalizedKey, storageEntry)
       return storageEntry.data
     }
 
@@ -72,14 +74,17 @@ export class ResourceCache<T> {
    * Saves to both memory and localStorage
    */
   set(key: string, data: T): void {
+    this.pruneMemory()
     const normalizedKey = this.normalizeUrl(key)
     const now = Date.now()
+    this.pendingRequests.delete(normalizedKey)
 
     // Store in memory cache
     this.memoryCache.set(normalizedKey, {
       data,
       timestamp: now,
-      ttl: this.options.memoryTTL,
+      ttl: Math.min(this.options.memoryTTL, this.options.storageTTL),
+      lastAccess: now,
     })
 
     // Store in localStorage
@@ -88,10 +93,12 @@ export class ResourceCache<T> {
       data,
       timestamp: now,
       ttl: this.options.storageTTL,
+      lastAccess: now,
     }
 
     // Enforce max entries limit using LRU eviction
     this.enforceMaxEntries(storageCache)
+    this.enforceMemoryLimit()
     this.saveToStorage(storageCache)
   }
 
@@ -102,7 +109,8 @@ export class ResourceCache<T> {
   remove(key: string): void {
     const normalizedKey = this.normalizeUrl(key)
 
-    // Remove from memory cache
+    // Invalidate pending loaders too, so an old result cannot repopulate removed data.
+    this.pendingRequests.delete(normalizedKey)
     this.memoryCache.delete(normalizedKey)
 
     // Remove from storage cache
@@ -116,10 +124,13 @@ export class ResourceCache<T> {
    */
   clear(): void {
     this.memoryCache.clear()
-    if (this.hasStorage()) {
-      window.localStorage.removeItem(this.options.storageKey)
-    } else {
-      this.inMemoryStorage = {}
+    this.pendingRequests.clear()
+    this.inMemoryStorage = {}
+    try {
+      if (this.hasStorage()) window.localStorage.removeItem(this.options.storageKey)
+    } catch {
+      // Storage may be disabled or inaccessible; the session cache is still cleared.
+      this.storageFailed = true
     }
   }
 
@@ -132,6 +143,7 @@ export class ResourceCache<T> {
     oldestEntry: number | null
     newestEntry: number | null
   } {
+    this.pruneMemory()
     const storageCache = this.getStorageCache()
     const allEntries = [...Array.from(this.memoryCache.values()), ...Object.values(storageCache)]
 
@@ -200,12 +212,6 @@ export class ResourceCache<T> {
   private normalizeUrl(url: string): string {
     try {
       const parsed = new URL(url)
-      // Remove trailing slash from pathname if present
-      let normalizedPath = parsed.pathname
-      if (normalizedPath.endsWith('/') && normalizedPath.length > 1) {
-        normalizedPath = normalizedPath.slice(0, -1)
-      }
-      parsed.pathname = normalizedPath
       parsed.hash = ''
       return parsed.toString()
     } catch {
@@ -214,47 +220,97 @@ export class ResourceCache<T> {
     }
   }
 
-  private isValid(entry: CacheEntry<T>): boolean {
+  private isValid(entry: unknown): entry is CacheEntry<T> {
+    if (!entry || typeof entry !== 'object') return false
+    const value = entry as Partial<CacheEntry<T>>
+    return (
+      'data' in value &&
+      typeof value.timestamp === 'number' &&
+      Number.isFinite(value.timestamp) &&
+      typeof value.ttl === 'number' &&
+      Number.isFinite(value.ttl) &&
+      value.ttl > 0 &&
+      Date.now() >= value.timestamp &&
+      Date.now() - value.timestamp < value.ttl
+    )
+  }
+
+  private promoteToMemory(key: string, entry: CacheEntry<T>): void {
     const now = Date.now()
-    return now - entry.timestamp < entry.ttl
+    this.memoryCache.set(key, {
+      ...entry,
+      timestamp: now,
+      ttl: Math.min(this.options.memoryTTL, entry.timestamp + entry.ttl - now),
+      lastAccess: now,
+    })
+    this.enforceMemoryLimit()
+  }
+
+  private enforceMemoryLimit(): void {
+    while (this.memoryCache.size > this.options.maxEntries) {
+      const oldest = [...this.memoryCache.entries()].sort(
+        (a, b) => (a[1].lastAccess ?? a[1].timestamp) - (b[1].lastAccess ?? b[1].timestamp)
+      )[0]
+      this.memoryCache.delete(oldest[0])
+    }
+  }
+
+  private pruneMemory(): void {
+    for (const [key, entry] of this.memoryCache) {
+      if (!this.isValid(entry)) this.memoryCache.delete(key)
+    }
   }
 
   private getStorageCache(): Record<string, CacheEntry<T>> {
     if (this.hasStorage()) {
+      let stored: string | null = null
       try {
-        const stored = window.localStorage.getItem(this.options.storageKey)
-        if (!stored) return {}
+        stored = window.localStorage.getItem(this.options.storageKey)
+      } catch {
+        // Only an actual storage I/O failure disables persistence for this session.
+        this.storageFailed = true
+      }
 
-        const parsed = JSON.parse(stored) as Partial<StoredCache<T>>
-        if (parsed.version !== CACHE_STORAGE_VERSION || !parsed.entries) return {}
-        // Filter out invalid entries
-        const valid: Record<string, CacheEntry<T>> = {}
+      if (!this.storageFailed) {
+        if (!stored) return Object.create(null)
+        let parsed: Partial<StoredCache<T>>
+        try {
+          parsed = JSON.parse(stored) as Partial<StoredCache<T>>
+        } catch {
+          // Malformed data can be replaced by the next successful cache write.
+          return Object.create(null)
+        }
+        if (
+          parsed?.version !== CACHE_STORAGE_VERSION ||
+          !parsed.entries ||
+          typeof parsed.entries !== 'object' ||
+          Array.isArray(parsed.entries)
+        )
+          return Object.create(null)
+
+        const valid: Record<string, CacheEntry<T>> = Object.create(null)
         for (const [key, entry] of Object.entries(parsed.entries)) {
-          if (this.isValid(entry as CacheEntry<T>)) {
-            valid[key] = entry as CacheEntry<T>
-          }
+          if (this.isValid(entry)) valid[key] = entry
         }
         return valid
-      } catch {
-        return {}
       }
     }
 
-    return { ...this.inMemoryStorage }
+    return Object.fromEntries(
+      Object.entries(this.inMemoryStorage).filter(([, entry]) => this.isValid(entry))
+    )
   }
 
   private saveToStorage(cache: Record<string, CacheEntry<T>>): void {
+    this.inMemoryStorage = { ...cache }
     if (this.hasStorage()) {
       try {
         const stored: StoredCache<T> = { version: CACHE_STORAGE_VERSION, entries: cache }
         window.localStorage.setItem(this.options.storageKey, JSON.stringify(stored))
-      } catch (e) {
-        console.warn(`Failed to save ${this.options.storageKey} to localStorage:`, e)
+      } catch {
+        this.storageFailed = true
       }
-      return
     }
-
-    this.inMemoryStorage = { ...cache }
   }
 
   private loadFromStorage(): void {
@@ -262,11 +318,7 @@ export class ResourceCache<T> {
     // Load valid entries into memory cache with updated TTL
     for (const [key, entry] of Object.entries(storageCache)) {
       if (this.isValid(entry)) {
-        this.memoryCache.set(key, {
-          ...entry,
-          ttl: this.options.memoryTTL,
-          timestamp: Date.now(),
-        })
+        this.promoteToMemory(key, entry)
       }
     }
 
@@ -276,20 +328,31 @@ export class ResourceCache<T> {
   }
 
   private hasStorage(): boolean {
-    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+    try {
+      return (
+        !this.storageFailed &&
+        typeof window !== 'undefined' &&
+        typeof window.localStorage !== 'undefined'
+      )
+    } catch {
+      return false
+    }
   }
 
   private enforceMaxEntries(cache: Record<string, CacheEntry<T>>): void {
     const entries = Object.entries(cache)
     if (entries.length <= this.options.maxEntries) return
 
-    // Sort by timestamp (oldest first) for LRU eviction
-    entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
+    // Prefer recent memory reads without writing localStorage on every cache hit.
+    const accessedAt = ([key, entry]: [string, CacheEntry<T>]) =>
+      this.memoryCache.get(key)?.lastAccess ?? entry.lastAccess ?? entry.timestamp
+    entries.sort((a, b) => accessedAt(a) - accessedAt(b))
 
     // Remove oldest entries to stay within limit
     const toRemove = entries.length - this.options.maxEntries
     for (let i = 0; i < toRemove; i++) {
       delete cache[entries[i][0]]
+      this.memoryCache.delete(entries[i][0])
     }
   }
 }

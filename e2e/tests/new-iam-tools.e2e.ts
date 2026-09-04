@@ -15,7 +15,7 @@ test.describe('New local-first IAM tools', () => {
     await page.getByTestId('token-comparison-right').fill('e30.e30.signature')
 
     await expect(
-      page.getByText('The JWT payload must be a JSON object.', { exact: true })
+      page.getByText('This value is not a decodable compact JWT.', { exact: true })
     ).toBeVisible()
     await expect(page.getByTestId('token-comparison-root')).toBeVisible()
     await expect(page.getByText('Something went wrong.', { exact: true })).toHaveCount(0)

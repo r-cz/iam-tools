@@ -1,3 +1,4 @@
+import { readTokenResponse } from '../utils/token-response'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -182,20 +183,7 @@ export function TokenExchange({
         body: payload,
       })
 
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error_description || data.error)
-      }
-
-      const tokenData: TokenResponse = {
-        access_token: data.access_token,
-        token_type: data.token_type,
-        expires_in: data.expires_in,
-        refresh_token: data.refresh_token,
-        id_token: data.id_token,
-        scope: data.scope,
-      }
+      const tokenData = await readTokenResponse(response)
 
       setTokenResponse(tokenData)
       setRefreshToken(tokenData.refresh_token ?? '')
@@ -245,20 +233,7 @@ export function TokenExchange({
         body: payload,
       })
 
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error_description || data.error)
-      }
-
-      const tokenData: TokenResponse = {
-        access_token: data.access_token,
-        token_type: data.token_type,
-        expires_in: data.expires_in,
-        refresh_token: data.refresh_token,
-        id_token: data.id_token,
-        scope: data.scope,
-      }
+      const tokenData = await readTokenResponse(response)
 
       setRefreshResponse(tokenData)
       if (tokenData.refresh_token) {

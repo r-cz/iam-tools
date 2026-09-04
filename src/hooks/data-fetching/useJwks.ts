@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { proxyFetch } from '@/lib/proxy-fetch'
 import { jwksCache } from '@/lib/cache/jwks-cache'
-import { JSONWebKeySet } from 'jose'
+import { createLocalJWKSet, type JSONWebKeySet } from 'jose'
 
 type ResourceFetchFunction = (url: string, options?: RequestInit) => Promise<Response>
 
@@ -54,6 +54,7 @@ export function useJwks(fetchResource: ResourceFetchFunction = proxyFetch): UseJ
             if (!value || !Array.isArray(value.keys)) {
               throw new Error('Invalid JWKS format: Missing "keys" array.')
             }
+            createLocalJWKSet(value)
             return value
           },
           { forceRefresh }
