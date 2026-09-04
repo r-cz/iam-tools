@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 
 /**
@@ -7,18 +7,8 @@ import { useLocation } from 'react-router-dom'
  */
 export function useUrlParams<T extends Record<string, string>>(): T {
   const location = useLocation()
-  const [params, setParams] = useState<T>({} as T)
-
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.search)
-    const paramsObject: Record<string, string> = {}
-
-    searchParams.forEach((value, key) => {
-      paramsObject[key] = value
-    })
-
-    setParams(paramsObject as T)
-  }, [location.search])
-
-  return params
+  return useMemo(
+    () => Object.fromEntries(new URLSearchParams(location.search)) as T,
+    [location.search]
+  )
 }

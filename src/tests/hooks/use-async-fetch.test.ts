@@ -1,8 +1,77 @@
 import { describe, expect, it, beforeEach, afterEach, mock } from 'bun:test'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useAsyncFetch, useAsyncApiFetch } from '@/hooks/use-async-fetch'
+import { createElement, StrictMode, type ReactNode } from 'react'
 
 describe('useAsyncFetch', () => {
+  it('publishes results after the StrictMode setup-cleanup-setup cycle', async () => {
+    const { result } = renderHook(() => useAsyncFetch(async () => 'strict result'), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(StrictMode, null, children),
+    })
+    await act(async () => {
+      await result.current.execute()
+    })
+    expect(result.current.data).toBe('strict result')
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('does not invalidate an in-flight request when a later execution is skipped', async () => {
+    let resolve!: (value: string) => void
+    const { result } = renderHook(() =>
+      useAsyncFetch(
+        () =>
+          new Promise<string>((complete) => {
+            resolve = complete
+          }),
+        { shouldExecute: (allowed) => allowed === true }
+      )
+    )
+    let pending!: Promise<string | null>
+    act(() => {
+      pending = result.current.execute(true)
+    })
+    await act(async () => {
+      expect(await result.current.execute(false)).toBeNull()
+      resolve('still current')
+      await pending
+    })
+    expect(result.current.data).toBe('still current')
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('prevents reset or unmount from publishing a pending result', async () => {
+    const resolvers: Array<(value: string) => void> = []
+    const onSuccess = mock(() => {})
+    const cache = new Map<string, string>()
+    const { result, unmount } = renderHook(() =>
+      useAsyncFetch(() => new Promise<string>((resolve) => resolvers.push(resolve)), {
+        onSuccess,
+        cache,
+        getCacheKey: () => 'result',
+      })
+    )
+    let pending!: Promise<string | null>
+    act(() => {
+      pending = result.current.execute()
+    })
+    act(() => {
+      result.current.reset()
+    })
+    await act(async () => {
+      resolvers[0]('stale')
+      expect(await pending).toBeNull()
+    })
+    expect(result.current.data).toBeNull()
+    act(() => {
+      pending = result.current.execute()
+    })
+    unmount()
+    resolvers[1]('unmounted')
+    expect(await pending).toBeNull()
+    expect(onSuccess).not.toHaveBeenCalled()
+    expect(cache.size).toBe(0)
+  })
+
   describe('basic functionality', () => {
     it('should initialize with default state', () => {
       const asyncFn = async () => 'result'

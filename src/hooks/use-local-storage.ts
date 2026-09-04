@@ -49,7 +49,8 @@ export function useLocalStorage<T>(
 
   React.useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key !== key) return
+      if (event.key !== null && event.key !== key) return
+      if (event.storageArea && event.storageArea !== window.localStorage) return
       try {
         const nextValue = parseStoredValue(event.newValue, initialValue, sanitize)
         valueRef.current = nextValue

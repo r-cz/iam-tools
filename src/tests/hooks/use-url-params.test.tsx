@@ -20,6 +20,28 @@ describe('useUrlParams', () => {
     expect(result.current).toEqual({})
   })
 
+  it('makes callback params available on the first render without a second update', () => {
+    const renders: string[] = []
+    renderHook(
+      () => {
+        renders.push(useUrlParams().code)
+      },
+      {
+        wrapper: createWrapper(['/callback?code=ready']),
+      }
+    )
+    expect(renders).toEqual(['ready'])
+  })
+
+  it('retains parameter names that collide with Object.prototype', () => {
+    const { result } = renderHook(() => useUrlParams(), {
+      wrapper: createWrapper(['/path?__proto__=value&constructor=other']),
+    })
+    expect(Object.hasOwn(result.current, '__proto__')).toBe(true)
+    expect(result.current.__proto__).toBe('value')
+    expect(result.current.constructor).toBe('other')
+  })
+
   it('should return single search param', () => {
     const { result } = renderHook(() => useUrlParams(), {
       wrapper: createWrapper(['/path?foo=bar']),

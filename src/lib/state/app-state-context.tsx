@@ -10,6 +10,12 @@ import {
 } from './types'
 import { STORAGE_KEYS } from './constants'
 import {
+  sanitizeTokenHistory,
+  sanitizeIssuerHistory,
+  sanitizeEnvironmentProfiles,
+  sanitizeUserSettings,
+} from './sanitize'
+import {
   addTokenToHistory,
   addIssuerToHistory,
   updateTokenInHistory,
@@ -101,22 +107,26 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   // Use individual storage keys for better performance and separation of concerns
   const [tokenHistory, setTokenHistory] = useLocalStorage<TokenHistoryItem[]>(
     STORAGE_KEYS.TOKEN_HISTORY,
-    initialAppState.tokenHistory
+    initialAppState.tokenHistory,
+    sanitizeTokenHistory
   )
 
   const [issuerHistory, setIssuerHistory] = useLocalStorage<IssuerHistoryItem[]>(
     STORAGE_KEYS.ISSUER_HISTORY,
-    initialAppState.issuerHistory
+    initialAppState.issuerHistory,
+    sanitizeIssuerHistory
   )
 
   const [environmentProfiles, setEnvironmentProfiles] = useLocalStorage<EnvironmentProfile[]>(
     STORAGE_KEYS.ENVIRONMENT_PROFILES,
-    initialAppState.environmentProfiles
+    initialAppState.environmentProfiles,
+    sanitizeEnvironmentProfiles
   )
 
   const [settings, setSettings] = useLocalStorage<UserSettings>(
     STORAGE_KEYS.USER_SETTINGS,
-    initialAppState.settings
+    initialAppState.settings,
+    sanitizeUserSettings
   )
 
   // Token history methods

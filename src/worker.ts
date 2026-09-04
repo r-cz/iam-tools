@@ -23,6 +23,7 @@ type RateLimitBucket = { count: number; resetAt: number }
 type RateLimitConfig = { max: number; windowMs: number }
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>()
+const MAX_RATE_LIMIT_BUCKETS = 10_000
 const CORS_PROXY_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 60_000 }
 const CORS_PROXY_MAX_REDIRECTS = 3
 const CORS_PROXY_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
@@ -46,6 +47,7 @@ const CORS_PROXY_ALLOWED_RESPONSE_HEADERS = new Set([
 ])
 const DEMO_RATE_LIMIT: RateLimitConfig = { max: 120, windowMs: 60_000 }
 const OIDC_PREFLIGHT_PROBE_RATE_LIMIT: RateLimitConfig = { max: 90, windowMs: 60_000 }
+const UPSTREAM_TIMEOUT_MS = 10_000
 const SIGNED_ENVELOPE_VERSION = 'v2'
 const DEMO_JWT_KID = DEMO_JWKS.keys[0]?.kid
 const hmacKeyCache = new Map<string, Promise<CryptoKey>>()
@@ -56,9 +58,10 @@ export default {
     const url = new URL(request.url)
     const { pathname } = url
     const normalizedPath = pathname.replace(/\/+$/, '')
+    const isApiRequest = normalizedPath === '/api' || normalizedPath.startsWith('/api/')
 
     // CORS preflight for API
-    if (request.method === 'OPTIONS' && normalizedPath.startsWith('/api')) {
+    if (request.method === 'OPTIONS' && isApiRequest) {
       const corsBlock = enforceCorsAllowed(request, env)
       if (corsBlock) return corsBlock
       return new Response(null, {
@@ -68,7 +71,7 @@ export default {
     }
 
     // API routes
-    if (normalizedPath.startsWith('/api')) {
+    if (isApiRequest) {
       const corsBlock = enforceCorsAllowed(request, env)
       if (corsBlock) return corsBlock
 
@@ -118,6 +121,13 @@ export default {
       if (normalizedPath === '/api/revoke') {
         return handleTokenRevocation(request, env)
       }
+
+      return json(
+        { error: 'not_found', error_description: 'Unknown API endpoint' },
+        { status: 404 },
+        request,
+        env
+      )
     }
 
     // Default: serve static assets with SPA fallback, add security headers
@@ -236,22 +246,12 @@ function getClientId(request: Request): string {
 }
 
 function isLocalHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1'
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
 }
 
 function isLocalRequest(request: Request): boolean {
-  const url = new URL(request.url)
-  if (isLocalHost(url.hostname)) return true
-
-  const origin = request.headers.get('Origin')
-  if (!origin) return false
-
-  try {
-    const originHost = new URL(origin).hostname
-    return isLocalHost(originHost)
-  } catch {
-    return false
-  }
+  // A caller-controlled Origin header cannot turn a deployed endpoint into a local server.
+  return isLocalHost(new URL(request.url).hostname)
 }
 
 function enforceRateLimit(
@@ -267,7 +267,17 @@ function enforceRateLimit(
   const now = Date.now()
   const current = rateLimitBuckets.get(key)
 
-  if (!current || now > current.resetAt) {
+  if (!current || now >= current.resetAt) {
+    if (rateLimitBuckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+      for (const [bucketKey, value] of rateLimitBuckets) {
+        if (now >= value.resetAt) rateLimitBuckets.delete(bucketKey)
+      }
+      // Keep per-isolate memory bounded even with many distinct clients in one window.
+      if (rateLimitBuckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+        const oldestKey = rateLimitBuckets.keys().next().value
+        if (oldestKey !== undefined) rateLimitBuckets.delete(oldestKey)
+      }
+    }
     rateLimitBuckets.set(key, { count: 1, resetAt: now + config.windowMs })
     return null
   }
@@ -498,7 +508,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
     }
 
     const now = Math.floor(Date.now() / 1000)
-    if (authCode.exp && authCode.exp < now) {
+    if (authCode.exp <= now) {
       return oauthError('invalid_grant', 'Authorization code has expired', request, env)
     }
 
@@ -561,7 +571,7 @@ async function handleToken(request: Request, env: Env): Promise<Response> {
     }
 
     const now = Math.floor(Date.now() / 1000)
-    if (refreshPayload.exp && refreshPayload.exp < now) {
+    if (refreshPayload.exp <= now) {
       return oauthError('invalid_grant', 'refresh_token has expired', request, env)
     }
 
@@ -1008,10 +1018,20 @@ async function getDemoJwtVerifyKey(): Promise<CryptoKey> {
 }
 
 function isTokenActive(payload: Record<string, unknown>): boolean {
-  const exp = typeof payload.exp === 'number' ? payload.exp : undefined
-  if (!exp) return true
   const now = Math.floor(Date.now() / 1000)
-  return exp > now
+  if (
+    payload.exp !== undefined &&
+    (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp) || payload.exp <= now)
+  ) {
+    return false
+  }
+  if (
+    payload.nbf !== undefined &&
+    (typeof payload.nbf !== 'number' || !Number.isFinite(payload.nbf) || payload.nbf > now)
+  ) {
+    return false
+  }
+  return true
 }
 
 const RESERVED_CLAIMS = new Set([
@@ -1337,6 +1357,15 @@ async function handleOidcPreflightProbe(request: Request, env: Env): Promise<Res
     return json({ ok: false, error: 'Invalid JSON payload' }, { status: 400 }, request, env)
   }
 
+  if (!isRecord(payload)) {
+    return json(
+      { ok: false, error: 'Probe payload must be a JSON object' },
+      { status: 400 },
+      request,
+      env
+    )
+  }
+
   const targetUrl = typeof payload.url === 'string' ? payload.url.trim() : ''
   const methodCandidate = typeof payload.method === 'string' ? payload.method.toUpperCase() : ''
   const method = OIDC_PREFLIGHT_ALLOWED_METHODS.has(methodCandidate as OidcPreflightProbeMethod)
@@ -1362,11 +1391,16 @@ async function handleOidcPreflightProbe(request: Request, env: Env): Promise<Res
   }
 
   const body = typeof payload.body === 'string' ? payload.body : undefined
-  if (body && body.length > 1024) {
+  if (body && new TextEncoder().encode(body).byteLength > 1024) {
     return json({ ok: false, error: 'Probe body is too large' }, { status: 400 }, request, env)
   }
 
-  const headers = sanitizeOidcProbeHeaders(payload.headers)
+  let headers: Headers
+  try {
+    headers = sanitizeOidcProbeHeaders(payload.headers)
+  } catch {
+    return json({ ok: false, error: 'Invalid probe headers' }, { status: 400 }, request, env)
+  }
   if (method === 'POST' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/x-www-form-urlencoded')
   }
@@ -1376,10 +1410,12 @@ async function handleOidcPreflightProbe(request: Request, env: Env): Promise<Res
     headers,
     body: method === 'POST' ? (body ?? '') : undefined,
     redirect: 'manual',
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   })
 
   try {
     const upstreamResponse = await fetch(upstreamRequest)
+    await upstreamResponse.body?.cancel()
     return json(
       {
         ok: true,
@@ -1475,12 +1511,14 @@ async function handleCorsProxy(request: Request, env: Env): Promise<Response> {
         method: request.method,
         headers: proxyRequestHeaders,
         redirect: 'manual',
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       })
 
       resp = await fetch(forward)
       if (!CORS_PROXY_REDIRECT_STATUSES.has(resp.status)) {
         break
       }
+      await resp.body?.cancel()
 
       const location = resp.headers.get('Location')
       if (!location) {
@@ -1597,7 +1635,7 @@ function withSecurityHeaders(response: Response): Response {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self' data:",
-      "connect-src 'self' https:",
+      "connect-src 'self' https: http://localhost:* http://127.0.0.1:*",
       "object-src 'none'",
       "base-uri 'self'",
       "frame-ancestors 'none'",
