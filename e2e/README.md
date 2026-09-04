@@ -36,6 +36,21 @@ Run tests on all browsers:
 bun run e2e:all
 ```
 
+Run the production PWA regressions in Chromium:
+
+```bash
+bunx playwright test --config=e2e/production.config.ts
+```
+
+This separate suite builds the production assets and serves them through local Wrangler on
+`http://127.0.0.1:8791`. It checks document security headers, browser CSP/CORS access to the local
+provider, API navigation after service-worker activation, and a previously unvisited LDAP tool
+working offline. It starts its own server and never reuses an existing one.
+
+Set `E2E_PRODUCTION_PORT` to use another port. Wrangler state is isolated by port under
+`/tmp/iam-tools-e2e-production-state-<port>`. Failure screenshots and traces default to
+`/tmp/iam-tools-e2e-production-results`; pass `--output=<directory>` to retain them elsewhere.
+
 Run tests in UI mode (interactive):
 
 ```bash

@@ -3,6 +3,86 @@ import { parseLdif } from '@/features/ldap/utils/parse-ldif'
 
 describe('LDAP LDIF Parser', () => {
   describe('parseLdif', () => {
+    it('accepts version headers and comment-only blocks without inventing records', () => {
+      const result = parseLdif(
+        `# Exported directory\n\nversion: 1\n\n# People\n\ndn: cn=example\ncn: Example\n\n# End`
+      )
+
+      expect(result.errors).toEqual([])
+      expect(result.records.map((record) => record.sourceOrdinal)).toEqual([1])
+      expect(parseLdif('# Only a comment\n\n# Another').records).toEqual([])
+      expect(parseLdif('# Only a comment').errors).toEqual([])
+      expect(parseLdif('version: 2\n\ndn: cn=example').errors).toContain(
+        'Unsupported LDIF version; expected version: 1'
+      )
+    })
+
+    it('preserves an empty root DSE distinguished name', () => {
+      const result = parseLdif('dn:\nsupportedLDAPVersion: 3')
+      expect(result.errors).toEqual([])
+      expect(result.records[0]?.dn).toBe('')
+    })
+
+    it('stores attributes that overlap Object prototype names safely', () => {
+      const result = parseLdif(
+        'dn: cn=example\nconstructor: first\nconstructor: second\n__proto__: value'
+      )
+      expect(result.errors).toEqual([])
+      const record = result.records[0]
+      if (record.kind !== 'content') throw new Error('expected content record')
+      expect(record.attributes.constructor.values).toEqual(['first', 'second'])
+      expect(record.attributes.__proto__.values).toEqual(['value'])
+      expect(Object.getPrototypeOf(record.attributes)).toBeNull()
+    })
+
+    it('reports malformed modify values and continues with later operations and records', () => {
+      const result = parseLdif(`dn: cn=example
+changetype: modify
+replace: description
+description:: !!!
+-
+replace: mail
+mail: user@example.com
+-
+
+dn: cn=second
+cn: Second`)
+      expect(result.errors).toHaveLength(1)
+      expect(result.errors[0]).toContain('Invalid base64 value')
+      expect(result.records).toHaveLength(2)
+      const record = result.records[0]
+      if (record.kind !== 'modify') throw new Error('expected modify record')
+      expect(record.modifications[1]?.values).toEqual(['user@example.com'])
+    })
+
+    it('reports malformed modify declarations without throwing', () => {
+      const result = parseLdif('dn: cn=example\nchangetype: modify\nreplace:: !!!\n-')
+      expect(result.errors.some((error) => error.includes('Invalid base64 value'))).toBe(true)
+      expect(result.records[0]?.kind).toBe('modify')
+    })
+
+    it('matches attribute options in modify targets case-insensitively', () => {
+      const result = parseLdif(`dn: cn=example
+changetype: modify
+replace: cn;lang-en
+CN;LANG-EN: English Name
+-`)
+      expect(result.errors).toEqual([])
+      const record = result.records[0]
+      if (record.kind !== 'modify') throw new Error('expected modify record')
+      expect(record.modifications[0]).toEqual(
+        expect.objectContaining({
+          attribute: 'cn',
+          options: ['lang-en'],
+          values: ['English Name'],
+        })
+      )
+      expect(
+        parseLdif('dn: cn=example\nchangetype: modify\nreplace: cn;lang-en\ncn;lang-fr: French\n-')
+          .errors[0]
+      ).toContain('does not match')
+    })
+
     it('should parse a simple LDIF entry', () => {
       const ldif = `dn: uid=jdoe,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson

@@ -533,3 +533,83 @@ describe('Token Validation', () => {
     })
   })
 })
+
+describe('NumericDate validation', () => {
+  for (const claim of ['exp', 'iat', 'nbf', 'auth_time']) {
+    for (const value of ['1700000000', false, {}, null, Number.NaN, Infinity, 1e100]) {
+      it(`reports malformed ${claim} (${String(value)}) without a false valid result`, () => {
+        const results = validateToken({ alg: 'RS256' }, { [claim]: value }, 'unknown')
+        expect(
+          results.some(
+            (result) => result.claim === claim && !result.valid && result.severity === 'error'
+          )
+        ).toBe(true)
+        expect(results.some((result) => result.claim === claim && result.valid)).toBe(false)
+      })
+    }
+  }
+
+  it('treats zero as a present but expired NumericDate', () => {
+    const results = validateToken({ alg: 'RS256' }, { exp: 0, iat: 0, nbf: 0 }, 'id_token')
+    expect(
+      results.some((result) => result.claim === 'exp' && result.message === 'Token has expired')
+    ).toBe(true)
+    expect(
+      results.some(
+        (result) => ['exp', 'iat'].includes(result.claim) && result.message.includes('missing')
+      )
+    ).toBe(false)
+  })
+})
+
+describe('Registered identity claim types', () => {
+  const now = Math.floor(Date.now() / 1000)
+  const validPayload = {
+    iss: 'https://issuer.example',
+    sub: 'user',
+    aud: 'client',
+    exp: now + 60,
+    iat: 0,
+    nonce: 'nonce',
+  }
+
+  for (const claim of ['iss', 'sub', 'aud']) {
+    for (const value of [false, 0, {}, null, '', []]) {
+      it(`rejects malformed ${claim}: ${JSON.stringify(value)}`, () => {
+        const results = validateToken(
+          { alg: 'RS256', typ: 'JWT' },
+          { ...validPayload, [claim]: value },
+          'id_token'
+        )
+        expect(
+          results.some(
+            (result) => result.claim === claim && result.severity === 'error' && !result.valid
+          )
+        ).toBe(true)
+      })
+    }
+  }
+
+  for (const aud of [[''], ['client', 1], [null]]) {
+    it(`rejects malformed audience members: ${JSON.stringify(aud)}`, () => {
+      const results = validateToken({ alg: 'RS256' }, { ...validPayload, aud }, 'id_token')
+      expect(results.some((result) => result.claim === 'aud' && result.severity === 'error')).toBe(
+        true
+      )
+    })
+  }
+
+  it('accepts string audiences and nonempty string arrays while preserving epoch issuance', () => {
+    for (const aud of ['client', ['client', 'other-client']]) {
+      const results = validateToken(
+        { alg: 'RS256', typ: 'JWT' },
+        { ...validPayload, aud },
+        'id_token'
+      )
+      expect(results.some((result) => result.severity === 'error')).toBe(false)
+      expect(
+        results.some((result) => result.claim === 'iat' && result.message.includes('missing'))
+      ).toBe(false)
+    }
+  })
+})

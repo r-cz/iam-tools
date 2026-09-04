@@ -75,7 +75,7 @@ function normalizeStringSet(value: unknown, splitWhitespace: boolean): string[] 
     ? value
     : typeof value === 'string'
       ? splitWhitespace
-        ? value.split(/\s+/)
+        ? value.split(/\s+/).filter(Boolean)
         : [value]
       : null
 
@@ -83,7 +83,9 @@ function normalizeStringSet(value: unknown, splitWhitespace: boolean): string[] 
     return null
   }
 
-  return [...new Set(values.map((entry) => entry.trim()).filter(Boolean))].sort()
+  // Array members and audience/role/group strings are identifiers. Whitespace
+  // inside an identifier is significant and must not disappear from the diff.
+  return [...new Set(values)].sort()
 }
 
 function compareSetLikeClaim(
@@ -130,7 +132,11 @@ function compareRecords(
   const differences: ClaimDifference[] = []
 
   for (const key of keys) {
-    const path = prefix ? `${prefix}.${key}` : key
+    const path = /^[A-Za-z_$][A-Za-z0-9_$-]*$/.test(key)
+      ? prefix
+        ? `${prefix}.${key}`
+        : key
+      : `${prefix}[${JSON.stringify(key)}]`
     const hasLeft = Object.prototype.hasOwnProperty.call(left, key)
     const hasRight = Object.prototype.hasOwnProperty.call(right, key)
 

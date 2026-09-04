@@ -1,3 +1,4 @@
+import { isNumericDate } from '@/lib/jwt/numeric-date'
 import { ValidationResult, TokenType } from './types'
 import { getClaimDescription } from '../data/claim-descriptions'
 
@@ -174,7 +175,7 @@ function validateIdToken(payload: any, results: ValidationResult[]) {
   const requiredClaims = ['iss', 'sub', 'aud', 'exp', 'iat']
 
   for (const claim of requiredClaims) {
-    if (!payload[claim]) {
+    if (payload[claim] === undefined || payload[claim] === null || payload[claim] === '') {
       results.push({
         claim,
         valid: false,
@@ -209,7 +210,7 @@ function validateIdToken(payload: any, results: ValidationResult[]) {
   }
 
   // auth_time - required if max_age was requested
-  if (!payload.auth_time) {
+  if (payload.auth_time === undefined) {
     results.push({
       claim: 'auth_time',
       valid: false,
@@ -225,7 +226,7 @@ function validateAccessToken(payload: any, results: ValidationResult[]) {
   const requiredClaims = ['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti']
 
   for (const claim of requiredClaims) {
-    if (!payload[claim]) {
+    if (payload[claim] === undefined || payload[claim] === null || payload[claim] === '') {
       let severity: 'error' | 'warning' = 'error'
       let details = ''
 
@@ -310,8 +311,48 @@ function checkAuthorizationClaims(payload: any, results: ValidationResult[]) {
 }
 
 function validateCommonClaims(payload: any, results: ValidationResult[]) {
+  for (const claim of ['exp', 'iat', 'nbf', 'auth_time']) {
+    if (payload[claim] !== undefined && !isNumericDate(payload[claim])) {
+      results.push({
+        claim,
+        valid: false,
+        message: `${claim} must be a finite NumericDate (seconds since the Unix epoch)`,
+        severity: 'error',
+      })
+    }
+  }
+
+  for (const claim of ['iss', 'sub']) {
+    if (
+      payload[claim] !== undefined &&
+      (typeof payload[claim] !== 'string' || !payload[claim].trim())
+    ) {
+      results.push({
+        claim,
+        valid: false,
+        message: `${claim} must be a non-empty string`,
+        severity: 'error',
+      })
+    }
+  }
+
+  if (payload.aud !== undefined) {
+    const isAudience = (value: unknown) => typeof value === 'string' && value.trim().length > 0
+    const validAudience =
+      isAudience(payload.aud) ||
+      (Array.isArray(payload.aud) && payload.aud.length > 0 && payload.aud.every(isAudience))
+    if (!validAudience) {
+      results.push({
+        claim: 'aud',
+        valid: false,
+        message: 'aud must be a non-empty string or a non-empty array of strings',
+        severity: 'error',
+      })
+    }
+  }
+
   // Issuer should be a valid URL
-  if (payload.iss) {
+  if (typeof payload.iss === 'string' && payload.iss.trim()) {
     try {
       new URL(payload.iss)
       results.push({
@@ -331,9 +372,9 @@ function validateCommonClaims(payload: any, results: ValidationResult[]) {
   }
 
   // Check expiration
-  if (payload.exp) {
+  if (isNumericDate(payload.exp)) {
     const now = Math.floor(Date.now() / 1000)
-    if (payload.exp < now) {
+    if (payload.exp <= now) {
       results.push({
         claim: 'exp',
         valid: false,
@@ -354,7 +395,7 @@ function validateCommonClaims(payload: any, results: ValidationResult[]) {
   }
 
   // Check issuance time
-  if (payload.iat) {
+  if (isNumericDate(payload.iat)) {
     const now = Math.floor(Date.now() / 1000)
     const issueAge = now - payload.iat
     results.push({
@@ -379,7 +420,7 @@ function validateCommonClaims(payload: any, results: ValidationResult[]) {
   }
 
   // Check for not-before time
-  if (payload.nbf) {
+  if (isNumericDate(payload.nbf)) {
     const now = Math.floor(Date.now() / 1000)
     if (payload.nbf > now) {
       results.push({

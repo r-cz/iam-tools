@@ -1,3 +1,4 @@
+import { OAuthTokenResponseError, readTokenResponse } from '../utils/token-response'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom' // Import useNavigate
 import { Card, CardContent } from '@/components/ui/card'
@@ -149,14 +150,15 @@ export function ClientCredentialsFlow() {
         body: params.toString(),
       })
 
-      const data = await res.json()
+      const data = await readTokenResponse(res)
       setResult(data)
     } catch (err: any) {
       setResult({
-        error: 'network_error',
-        error_description: isDemoMode
-          ? 'The demo Worker is unavailable. Start the local proxy or retry the deployed Worker.'
-          : err.message || 'Network error',
+        error: err instanceof OAuthTokenResponseError ? err.code : 'network_error',
+        error_description:
+          isDemoMode && !(err instanceof OAuthTokenResponseError)
+            ? 'The demo Worker is unavailable. Start the local proxy or retry the deployed Worker.'
+            : err.message || 'Network error',
       })
     } finally {
       setLoading(false)

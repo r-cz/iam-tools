@@ -381,3 +381,84 @@ function createJsonResponse<T>(payload: T, status = 200, statusText = 'OK'): Res
 async function waitForAsyncEffects() {
   await new Promise((resolve) => setTimeout(resolve, 20))
 }
+
+describe('JWKS lookup request ordering', () => {
+  test('never applies old issuer keys after a newer issuer was selected', async () => {
+    const pending = new Map<string, (response: Response) => void>()
+    const jwksFetcher: OidcFetchFunction = (url) =>
+      new Promise((resolve) => {
+        pending.set(url, resolve)
+      })
+    const applied: string[] = []
+    const onJwksResolved = (jwks: typeof sampleJwksResponse) => {
+      applied.push(jwks.keys[0].kid)
+    }
+    const first = 'https://first.example/jwks'
+    const second = 'https://second.example/jwks'
+    const props = { setIssuerUrl: () => {}, onJwksResolved, jwksFetcher }
+    const { rerender } = render(
+      <TokenJwksResolver {...props} issuerUrl="https://first.example" preferredJwksUri={first} />
+    )
+    rerender(
+      <TokenJwksResolver {...props} issuerUrl="https://second.example" preferredJwksUri={second} />
+    )
+    expect(pending.has(second)).toBe(true)
+    await act(async () => {
+      pending.get(second)!(Response.json({ keys: [{ ...sampleJwksResponse.keys[0], kid: 'new' }] }))
+    })
+    await act(async () => {
+      pending.get(first)!(Response.json({ keys: [{ ...sampleJwksResponse.keys[0], kid: 'old' }] }))
+    })
+    expect(applied).toEqual(['new'])
+  })
+
+  test('does not apply a pending lookup after issuer metadata was cleared', async () => {
+    let resolve!: (response: Response) => void
+    const jwksFetcher: OidcFetchFunction = () =>
+      new Promise((done) => {
+        resolve = done
+      })
+    const applied: unknown[] = []
+    const props = {
+      setIssuerUrl: () => {},
+      onJwksResolved: (jwks: unknown) => {
+        applied.push(jwks)
+      },
+      jwksFetcher,
+    }
+    const { rerender } = render(
+      <TokenJwksResolver
+        {...props}
+        issuerUrl="https://first.example"
+        preferredJwksUri="https://first.example/jwks"
+      />
+    )
+    rerender(<TokenJwksResolver {...props} issuerUrl="" />)
+    await act(async () => {
+      resolve(Response.json(sampleJwksResponse))
+    })
+    expect(applied).toEqual([])
+  })
+})
+
+test('resolves keys under StrictMode effect replay', async () => {
+  const applied: unknown[] = []
+  const jwksFetcher: OidcFetchFunction = async () => Response.json(sampleJwksResponse)
+  const onJwksResolved = (jwks: unknown) => {
+    applied.push(jwks)
+  }
+  await act(async () => {
+    render(
+      <React.StrictMode>
+        <TokenJwksResolver
+          issuerUrl="https://strict.example"
+          preferredJwksUri="https://strict.example/jwks"
+          jwksFetcher={jwksFetcher}
+          setIssuerUrl={() => {}}
+          onJwksResolved={onJwksResolved}
+        />
+      </React.StrictMode>
+    )
+  })
+  expect(applied).toEqual([sampleJwksResponse])
+})

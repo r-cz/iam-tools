@@ -37,6 +37,13 @@ const REVERSE_DOMAIN_PRIVATE_USE_SCHEME =
   /^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/
 
 function parseAbsoluteUri(value: string): URL | null {
+  // URL accepts browser conveniences (stripped controls, backslashes, and
+  // missing slashes) that are invalid in a registered OAuth URI.
+  if (/[\s\\]/u.test(value) || /\p{Cc}/u.test(value) || /%(?![0-9a-f]{2})/i.test(value)) {
+    return null
+  }
+  if (!/^[A-Za-z][A-Za-z0-9+.-]*:/.test(value)) return null
+  if (/^https?:/i.test(value) && !/^https?:\/\/[^/]/i.test(value)) return null
   try {
     const parsed = new URL(value)
     return parsed.protocol && value.includes(':') ? parsed : null
@@ -62,20 +69,29 @@ function isReverseDomainPrivateUseScheme(protocol: string): boolean {
   return REVERSE_DOMAIN_PRIVATE_USE_SCHEME.test(protocol.slice(0, -1))
 }
 
-function matchesLoopbackPortException(requested: URL, registered: URL): boolean {
-  if (!isHttpLoopback(requested) || !isHttpLoopback(registered)) return false
+function withoutExplicitPort(uri: string): string | null {
+  const parts = uri.match(/^([^:/?#]+:\/\/(?:\[[^\]]+\]|[^:/?#@]+))(?::[0-9]+)?([/?#].*)?$/)
+  return parts ? `${parts[1]}${parts[2] ?? ''}` : null
+}
 
+function matchesLoopbackPortException(
+  requested: URL,
+  registered: URL,
+  requestedRaw: string,
+  registeredRaw: string
+): boolean {
+  if (!isHttpLoopback(requested) || !isHttpLoopback(registered)) return false
+  if (requested.username || requested.password || registered.username || registered.password) {
+    return false
+  }
+  const requestedWithoutPort = withoutExplicitPort(requestedRaw)
   return (
-    requested.protocol === registered.protocol &&
-    requested.hostname.toLowerCase() === registered.hostname.toLowerCase() &&
-    requested.pathname === registered.pathname &&
-    requested.search === registered.search &&
-    requested.hash === registered.hash
+    requestedWithoutPort !== null && requestedWithoutPort === withoutExplicitPort(registeredRaw)
   )
 }
 
 function normalizedUri(url: URL): string {
-  return `${url.protocol.toLowerCase()}//${url.host.toLowerCase()}${url.pathname}${url.search}${url.hash}`
+  return url.href
 }
 
 function evaluateRegistration(
@@ -94,7 +110,7 @@ function evaluateRegistration(
   if (requestedRaw === registeredRaw) {
     return { uri: registeredRaw, matchType: 'exact', detail: 'Exact string match.' }
   }
-  if (matchesLoopbackPortException(requested, registered)) {
+  if (matchesLoopbackPortException(requested, registered, requestedRaw, registeredRaw)) {
     return {
       uri: registeredRaw,
       matchType: 'loopback-port',
@@ -171,7 +187,7 @@ export function analyzeRedirectUri(
     registrations.find((item) => item.matchType === 'normalized-only')
   const matchType = preferredMatch?.matchType ?? 'none'
 
-  if (requested.hash) {
+  if (requestedRaw.includes('#')) {
     findings.push({
       level: 'error',
       code: 'fragment-prohibited',

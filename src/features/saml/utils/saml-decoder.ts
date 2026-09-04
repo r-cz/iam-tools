@@ -1,4 +1,9 @@
-import { findDirectXmlDsigSignature, findSamlAssertionElements } from './signature-targets'
+import {
+  findDirectXmlDsigSignature,
+  findSamlAssertionElements,
+  SAML_ASSERTION_NAMESPACE,
+  SAML_PROTOCOL_NAMESPACE,
+} from './signature-targets'
 
 export interface DecodedSamlResponse {
   raw: string
@@ -65,12 +70,21 @@ export function decodeSamlResponse(base64Input: string): DecodedSamlResponse {
   // Remove any whitespace
   const cleanInput = base64Input.replace(/\s/g, '')
 
-  let decodedXml: string
+  let bytes: Uint8Array
   try {
-    // Decode from base64
-    decodedXml = atob(cleanInput)
+    bytes = Uint8Array.from(atob(cleanInput), (character) => character.charCodeAt(0))
   } catch {
     throw new Error('Invalid base64 encoding')
+  }
+
+  let decodedXml: string
+  try {
+    decodedXml = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    throw new Error('SAML Response is not valid UTF-8')
+  }
+  if (/<!DOCTYPE|<!ENTITY/i.test(decodedXml)) {
+    throw new Error('DOCTYPE and ENTITY declarations are not allowed')
   }
 
   // Parse XML
@@ -86,7 +100,8 @@ export function decodeSamlResponse(base64Input: string): DecodedSamlResponse {
   const responseElement = xmlDoc.documentElement
   if (
     !responseElement ||
-    (responseElement.localName !== 'Response' && !responseElement.nodeName.endsWith(':Response'))
+    responseElement.localName !== 'Response' ||
+    responseElement.namespaceURI !== SAML_PROTOCOL_NAMESPACE
   ) {
     throw new Error('Not a valid SAML Response')
   }
@@ -125,7 +140,8 @@ function extractIssuer(element: Element): string {
 }
 
 function extractStatus(element: Element): string {
-  const statusCodeElement = findElement(element, 'StatusCode')
+  const status = findElement(element, 'Status', SAML_PROTOCOL_NAMESPACE)
+  const statusCodeElement = status && findElement(status, 'StatusCode', SAML_PROTOCOL_NAMESPACE)
   const statusValue = statusCodeElement?.getAttribute('Value') || ''
 
   // Extract the status type from the URN
@@ -134,7 +150,9 @@ function extractStatus(element: Element): string {
 }
 
 function extractStatusMessage(element: Element): string | undefined {
-  const statusMessageElement = findElement(element, 'StatusMessage')
+  const status = findElement(element, 'Status', SAML_PROTOCOL_NAMESPACE)
+  const statusMessageElement =
+    status && findElement(status, 'StatusMessage', SAML_PROTOCOL_NAMESPACE)
   return statusMessageElement?.textContent?.trim()
 }
 
@@ -191,7 +209,9 @@ function extractSubject(subjectElement: Element): SamlAssertion['subject'] {
   const confirmationElements = findElements(subjectElement, 'SubjectConfirmation')
   if (confirmationElements.length > 0) {
     subject.confirmations = confirmationElements.map((conf) => {
-      const confirmation: any = {
+      const confirmation: NonNullable<
+        NonNullable<SamlAssertion['subject']>['confirmations']
+      >[number] = {
         method: conf.getAttribute('Method') || '',
       }
 
@@ -216,7 +236,9 @@ function extractConditions(conditionsElement: Element): SamlAssertion['condition
   }
 
   // Extract audiences
-  const audienceElements = findElements(conditionsElement, 'Audience')
+  const audienceElements = findElements(conditionsElement, 'AudienceRestriction').flatMap(
+    (restriction) => findElements(restriction, 'Audience')
+  )
   if (audienceElements.length > 0) {
     conditions.audiences = audienceElements.map((aud) => aud.textContent?.trim() || '')
   }
@@ -231,7 +253,8 @@ function extractAuthnStatement(authnStatementElement: Element): SamlAssertion['a
   }
 
   // Extract authentication context
-  const authnContextClassRef = findElement(authnStatementElement, 'AuthnContextClassRef')
+  const authnContext = findElement(authnStatementElement, 'AuthnContext')
+  const authnContextClassRef = authnContext && findElement(authnContext, 'AuthnContextClassRef')
   if (authnContextClassRef) {
     authnStatement.authnContext = authnContextClassRef.textContent?.trim()
   }
@@ -240,10 +263,9 @@ function extractAuthnStatement(authnStatementElement: Element): SamlAssertion['a
 }
 
 function extractAttributes(assertionElement: Element): SamlAssertion['attributes'] {
-  const attributeStatementElement = findElement(assertionElement, 'AttributeStatement')
-  if (!attributeStatementElement) return []
-
-  const attributeElements = findElements(attributeStatementElement, 'Attribute')
+  const attributeElements = findElements(assertionElement, 'AttributeStatement').flatMap(
+    (statement) => findElements(statement, 'Attribute')
+  )
   return attributeElements.map((attr) => {
     const valueElements = findElements(attr, 'AttributeValue')
     return {
@@ -254,22 +276,23 @@ function extractAttributes(assertionElement: Element): SamlAssertion['attributes
   })
 }
 
-// Helper functions to handle XML namespaces
-function findElement(parent: Element, localName: string, directChild = false): Element | null {
-  const elements = directChild
-    ? Array.from(parent.children)
-    : Array.from(parent.getElementsByTagName('*'))
-
-  return (
-    elements.find((el) => el.localName === localName || el.nodeName.endsWith(`:${localName}`)) ||
-    null
-  )
+// Read only the owner's direct SAML children. Extensions and nested assertions
+// must not supply fields belonging to the surrounding response or assertion.
+function findElement(
+  parent: Element,
+  localName: string,
+  namespace = SAML_ASSERTION_NAMESPACE
+): Element | null {
+  return findElements(parent, localName, namespace)[0] ?? null
 }
 
-function findElements(parent: Element, localName: string): Element[] {
-  const allElements = Array.from(parent.getElementsByTagName('*'))
-  return allElements.filter(
-    (el) => el.localName === localName || el.nodeName.endsWith(`:${localName}`)
+function findElements(
+  parent: Element,
+  localName: string,
+  namespace = SAML_ASSERTION_NAMESPACE
+): Element[] {
+  return Array.from(parent.children).filter(
+    (element) => element.namespaceURI === namespace && element.localName === localName
   )
 }
 

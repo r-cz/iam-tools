@@ -107,6 +107,21 @@ describe('CommandCenter', () => {
     expect(screen.queryByRole('grid', { name: 'Tools' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Browse all tools' }))
     expect(screen.getByRole('grid', { name: 'Tools' })).not.toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('combobox'))
+  })
+
+  test('does not open or favorite a result while confirming IME composition', () => {
+    renderCommandCenter()
+    fireEvent.click(screen.getByRole('button', { name: 'Search tools' }))
+    const input = screen.getByRole('combobox')
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true, isComposing: true })
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 })
+    expect(screen.getByTestId('command-center')).not.toBeNull()
+    expect(screen.getByTestId('location').textContent).toBe('/')
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.FAVORITE_TOOL_IDS) ?? '[]')).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Close command center' }))
+    expect(screen.queryByTestId('command-center')).toBeNull()
   })
 
   test('toggles favorites from a result star and with Shift+Enter', () => {

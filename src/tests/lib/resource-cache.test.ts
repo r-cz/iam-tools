@@ -177,3 +177,146 @@ describe('ResourceCache', () => {
     expect(cache.getPendingRequest('https://example.com/data')).toBeNull()
   })
 })
+
+describe('ResourceCache invalidation and limits', () => {
+  beforeEach(() => {
+    now = BASE_TIME
+    Date.now = () => now
+    window.localStorage.clear()
+  })
+  afterEach(() => {
+    Date.now = originalDateNow
+  })
+
+  const createCache = (storageKey: string, maxEntries = 2) =>
+    new ResourceCache<string>({
+      storageKey,
+      memoryTTL: 1_000,
+      storageTTL: 2_000,
+      maxEntries,
+    })
+
+  test('evicts from memory too and honors recent reads without extending TTL', () => {
+    const cache = createCache('lru-memory')
+    cache.set('a', 'A')
+    advanceTime(10)
+    cache.set('b', 'B')
+    advanceTime(10)
+    cache.get('a')
+    advanceTime(10)
+    cache.set('c', 'C')
+    expect(cache.get('b')).toBeNull()
+    expect(cache.get('a')).toBe('A')
+    expect(cache.getStats().memoryEntries).toBe(2)
+  })
+
+  test('storage promotion and cache reconstruction cannot extend the original expiration', () => {
+    const cache = createCache('absolute-expiry')
+    cache.set('key', 'value')
+    advanceTime(1_999)
+    expect(cache.get('key')).toBe('value')
+    const reloaded = createCache('absolute-expiry')
+    expect(reloaded.get('key')).toBe('value')
+    advanceTime(1)
+    expect(cache.get('key')).toBeNull()
+    expect(reloaded.get('key')).toBeNull()
+  })
+
+  for (const invalidate of ['clear', 'remove', 'set'] as const) {
+    test(`${invalidate} prevents a pending request from restoring invalidated content`, async () => {
+      const cache = createCache(`pending-${invalidate}`)
+      let resolve!: (value: string) => void
+      const pending = cache.getOrLoad(
+        'key',
+        () =>
+          new Promise<string>((done) => {
+            resolve = done
+          })
+      )
+      if (invalidate === 'clear') cache.clear()
+      if (invalidate === 'remove') cache.remove('key')
+      if (invalidate === 'set') cache.set('key', 'manual')
+      resolve('stale')
+      expect(await pending).toBe('stale')
+      expect(cache.get('key')).toBe(invalidate === 'set' ? 'manual' : null)
+      expect(cache.getPendingRequest('key')).toBeNull()
+    })
+  }
+
+  test('discards malformed persisted records without hiding valid neighbors', () => {
+    window.localStorage.setItem(
+      'malformed-cache',
+      JSON.stringify({
+        version: 1,
+        entries: {
+          broken: null,
+          future: { data: 'wrong', timestamp: now + 10_000, ttl: 60_000 },
+          good: { data: 'good', timestamp: now, ttl: 2_000 },
+        },
+      })
+    )
+    const cache = createCache('malformed-cache')
+    expect(cache.get('broken')).toBeNull()
+    expect(cache.get('future')).toBeNull()
+    expect(cache.get('good')).toBe('good')
+  })
+
+  test('bounds the memory cache while hydrating oversized persisted data', () => {
+    window.localStorage.setItem(
+      'oversized-cache',
+      JSON.stringify({
+        version: 1,
+        entries: Object.fromEntries(
+          Array.from({ length: 10 }, (_, index) => [
+            String(index),
+            {
+              data: String(index),
+              timestamp: now,
+              ttl: 2_000,
+            },
+          ])
+        ),
+      })
+    )
+    expect(createCache('oversized-cache').getStats().memoryEntries).toBe(2)
+  })
+})
+
+describe('ResourceCache restricted browser storage', () => {
+  test('continues using session storage after localStorage access or writes are denied', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')
+    try {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get: () => {
+          throw new DOMException('Storage denied', 'SecurityError')
+        },
+      })
+      const cache = new ResourceCache<string>({
+        storageKey: 'restricted',
+        memoryTTL: 1_000,
+        storageTTL: 2_000,
+      })
+      cache.set('key', 'value')
+      expect(cache.get('key')).toBe('value')
+      cache.clear()
+      expect(cache.get('key')).toBeNull()
+    } finally {
+      if (descriptor) Object.defineProperty(window, 'localStorage', descriptor)
+      else Reflect.deleteProperty(window, 'localStorage')
+    }
+  })
+})
+
+test('ResourceCache repairs malformed JSON without disabling future persistence', () => {
+  const storageKey = 'recover-malformed-json'
+  const options = { storageKey, memoryTTL: 1_000, storageTTL: 2_000 }
+  window.localStorage.setItem(storageKey, '{invalid JSON')
+  const cache = new ResourceCache<string>(options)
+  expect(cache.get('key')).toBeNull()
+  cache.set('key', 'recovered')
+  const stored = JSON.parse(window.localStorage.getItem(storageKey)!)
+  expect(stored.version).toBe(1)
+  expect(stored.entries.key.data).toBe('recovered')
+  expect(new ResourceCache<string>(options).get('key')).toBe('recovered')
+})

@@ -4,6 +4,10 @@ A collection of specialized tools for Identity and Access Management (IAM) devel
 
 Most analysis tools run locally in the browser. Raw token history is disabled by default and can be enabled explicitly from Settings; avoid using production credentials in any debugging tool.
 
+Use the home catalog to search by tool, protocol, or workflow, filter by category, and star
+favorites. The command center (Cmd/Ctrl+K) also searches individual OAuth workflows. Favorites
+and recently used tools are saved locally for quick access.
+
 ## Technologies
 
 - **Frontend**: Vite + React + TypeScript
@@ -124,6 +128,9 @@ bun run e2e
 
 # Run the smaller Chromium smoke set
 bun run e2e:smoke
+
+# Verify production headers, service worker API routing, and offline tools
+bun run e2e:production
 
 # Run E2E tests on all browsers
 bun run e2e:all
@@ -252,6 +259,10 @@ Analyze and debug JWT tokens with detailed information about:
 - Signature validation using JWKS
 - Token expiration timelines
 - Standard claim validation
+
+Signature verification supports RSA, RSA-PSS, ECDSA, and EdDSA keys. Cryptographic signature
+validity is shown separately from claim validity, so an expired token can still have a valid
+signature. Example tokens are verified using their demo public keys.
 
 See [Token Inspector Documentation](docs/feature-guides/token-inspector.md) for detailed usage instructions.
 

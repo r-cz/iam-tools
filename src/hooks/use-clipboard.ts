@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 interface UseClipboardOptions {
   /** Duration in ms to show copied status (default: 2000ms) */
@@ -9,6 +9,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   const copyWithTextArea = () => {
     if (typeof document === 'undefined') return false
 
+    const previousFocus = document.activeElement
     const textArea = document.createElement('textarea')
     textArea.value = text
     textArea.setAttribute('readonly', '')
@@ -22,8 +23,11 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 
     try {
       return document.execCommand?.('copy') ?? false
+    } catch {
+      return false
     } finally {
       document.body.removeChild(textArea)
+      if (previousFocus instanceof HTMLElement) previousFocus.focus({ preventScroll: true })
     }
   }
 
@@ -46,20 +50,30 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
  */
 export function useClipboard({ successDuration = 2000 }: UseClipboardOptions = {}) {
   const [copied, setCopied] = useState(false)
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      if (resetTimer.current !== null) clearTimeout(resetTimer.current)
+    }
+  }, [])
 
   const copy = useCallback(
     async (text: string) => {
       const success = await copyTextToClipboard(text)
 
-      if (!success) {
-        return false
-      }
+      if (!success || !mounted.current) return success
 
       setCopied(true)
 
       // Reset copied state after specified duration
-      setTimeout(() => {
+      if (resetTimer.current !== null) clearTimeout(resetTimer.current)
+      resetTimer.current = setTimeout(() => {
         setCopied(false)
+        resetTimer.current = null
       }, successDuration)
 
       return true

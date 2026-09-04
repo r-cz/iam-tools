@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ArrowDown, ArrowUp, CornerDownLeft, Search, Star, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowUp, CornerDownLeft, Search, Star, X, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
@@ -180,6 +180,7 @@ function CommandCenterDialog({
   const { favoriteToolIds, recentTools, isFavorite, toggleFavorite } = useToolPreferences()
   const [query, setQuery] = React.useState('')
   const [selectedToolId, setSelectedToolId] = React.useState<string | null>(null)
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   const groups = React.useMemo(
     () =>
@@ -237,6 +238,8 @@ function CommandCenterDialog({
   }
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
+
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       selectIndex(activeIndex >= visibleCommands.length - 1 ? 0 : activeIndex + 1)
@@ -288,6 +291,7 @@ function CommandCenterDialog({
               <Search width={18} height={18} />
             </InputGroupAddon>
             <InputGroupInput
+              ref={searchInputRef}
               autoFocus
               role="combobox"
               aria-label="Search tools and workflows"
@@ -306,14 +310,23 @@ function CommandCenterDialog({
               }}
               onKeyDown={handleSearchKeyDown}
             />
-            <InputGroupAddon
-              align="inline-end"
-              className="border-l-0 bg-transparent pl-0"
-              aria-hidden="true"
-            >
-              <Kbd size="sm" className="normal-case tracking-normal">
+            <InputGroupAddon align="inline-end" className="border-l-0 bg-transparent pl-0">
+              <Kbd
+                size="sm"
+                className="hidden normal-case tracking-normal sm:inline-flex"
+                aria-hidden="true"
+              >
                 Esc
               </Kbd>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label="Close command center"
+                onClick={() => onOpenChange(false)}
+              >
+                <X width={16} height={16} aria-hidden="true" />
+              </Button>
             </InputGroupAddon>
           </InputGroup>
         </div>
@@ -344,6 +357,7 @@ function CommandCenterDialog({
                   onClick={() => {
                     setQuery('')
                     setSelectedToolId(null)
+                    searchInputRef.current?.focus()
                   }}
                 >
                   Browse all tools

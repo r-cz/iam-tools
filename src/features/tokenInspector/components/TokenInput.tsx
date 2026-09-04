@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import EditorImport from 'react-simple-code-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { InfoIcon, TestTubeDiagonal, RotateCcw, Search } from 'lucide-react'
@@ -60,8 +60,26 @@ export function TokenInput({
   const [isLoadingExample, setIsLoadingExample] = useState(false)
   const [isExampleToken, setIsExampleToken] = useState(false)
   const isInitialToken = Boolean(initialToken && token === initialToken)
+  const exampleRequestIdRef = useRef(0)
+  const currentTokenRef = useRef(token)
+
+  useEffect(() => {
+    currentTokenRef.current = token
+  }, [token])
+  useEffect(
+    () => () => {
+      exampleRequestIdRef.current += 1
+    },
+    []
+  )
+
+  const cancelExampleGeneration = () => {
+    exampleRequestIdRef.current += 1
+    setIsLoadingExample(false)
+  }
 
   const handleSelectTokenFromHistory = (selectedToken: string) => {
+    cancelExampleGeneration()
     setToken(selectedToken)
     setIsExampleToken(false)
     if (onSelectTokenFromHistory) {
@@ -70,23 +88,19 @@ export function TokenInput({
   }
 
   const handleReset = () => {
+    cancelExampleGeneration()
     setIsExampleToken(false)
     onReset()
   }
 
   const loadExampleToken = async () => {
+    const requestId = ++exampleRequestIdRef.current
     setIsLoadingExample(true)
     try {
       // Generate a fresh token with current timestamps
       const freshToken = await generateFreshToken()
 
-      // Log token details
-      if (import.meta?.env?.DEV) {
-        const payload = JSON.parse(
-          atob(freshToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-        )
-        console.log('Generated example token with issuer:', payload.iss)
-      }
+      if (requestId !== exampleRequestIdRef.current || currentTokenRef.current !== token) return
 
       setToken(freshToken)
       setIsExampleToken(true)
@@ -105,6 +119,7 @@ export function TokenInput({
         duration: 3000,
       })
     } catch (error) {
+      if (requestId !== exampleRequestIdRef.current || currentTokenRef.current !== token) return
       if (import.meta?.env?.DEV) {
         console.error('Error generating example token:', error)
       }
@@ -113,7 +128,7 @@ export function TokenInput({
         duration: 5000,
       })
     } finally {
-      setIsLoadingExample(false)
+      if (requestId === exampleRequestIdRef.current) setIsLoadingExample(false)
     }
   }
 
@@ -184,6 +199,7 @@ export function TokenInput({
           <Editor
             value={token}
             onValueChange={(code) => {
+              cancelExampleGeneration()
               setToken(code)
               setIsExampleToken(false)
             }}
@@ -231,8 +247,8 @@ export function TokenInput({
         <Alert className="my-2 py-2 bg-blue-500/10 border-blue-500/20 text-blue-700">
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
-            This is an example token using this site's demo endpoints. The key format is verified
-            against our JWKS.
+            This example token was signed with the built-in demo key. Inspect it to verify its
+            signature and claims.
           </AlertDescription>
         </Alert>
       )}

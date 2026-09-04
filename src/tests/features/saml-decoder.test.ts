@@ -3,6 +3,71 @@ import { decodeSamlResponse } from '@/features/saml/utils/saml-decoder'
 
 describe('SAML Response Decoder', () => {
   describe('decodeSamlResponse', () => {
+    it('decodes UTF-8 names, messages, and attribute values without corruption', () => {
+      const xml = `<p:Response xmlns:p="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:a="urn:oasis:names:tc:SAML:2.0:assertion">
+        <a:Issuer>https://idp.example/日本</a:Issuer>
+        <p:Status><p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/><p:StatusMessage>Bienvenue, Zoë</p:StatusMessage></p:Status>
+        <a:Assertion><a:Subject><a:NameID>josé@example.com</a:NameID></a:Subject>
+          <a:AttributeStatement><a:Attribute Name="displayName"><a:AttributeValue>李明 🔐</a:AttributeValue></a:Attribute></a:AttributeStatement>
+        </a:Assertion>
+      </p:Response>`
+      const base64 = btoa(
+        Array.from(new TextEncoder().encode(xml), (byte) => String.fromCharCode(byte)).join('')
+      )
+      const result = decodeSamlResponse(base64)
+      expect(result.xml).toBe(xml)
+      expect(result.issuer).toBe('https://idp.example/日本')
+      expect(result.statusMessage).toBe('Bienvenue, Zoë')
+      expect(result.assertions[0].subject?.nameId).toBe('josé@example.com')
+      expect(result.assertions[0].attributes[0].values).toEqual(['李明 🔐'])
+    })
+
+    it('rejects malformed UTF-8 and non-SAML response roots', () => {
+      expect(() => decodeSamlResponse(btoa('\xff'))).toThrow('UTF-8')
+      expect(() => decodeSamlResponse(btoa('<Response xmlns="urn:unrelated"/>'))).toThrow(
+        'Not a valid SAML Response'
+      )
+      expect(() => decodeSamlResponse(btoa('<Response/>'))).toThrow('Not a valid SAML Response')
+      expect(() => decodeSamlResponse(btoa('<!DOCTYPE Response><Response/>'))).toThrow('DOCTYPE')
+    })
+
+    it('keeps response and assertion fields within their namespace and owner', () => {
+      const result = decodeSamlResponse(
+        btoa(`<p:Response xmlns:p="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:a="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:x="urn:unrelated">
+        <x:Issuer>wrong namespace</x:Issuer>
+        <p:Extensions><a:Issuer>extension issuer</a:Issuer><p:Status><p:StatusCode Value="wrong"/></p:Status><a:Assertion ID="extension"/></p:Extensions>
+        <p:Status><p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></p:Status>
+        <a:Assertion ID="outer"><a:Issuer>assertion issuer</a:Issuer>
+          <a:Advice><a:Assertion ID="nested"><a:Subject><a:NameID>nested subject</a:NameID></a:Subject></a:Assertion></a:Advice>
+          <x:Subject><a:NameID>wrong subject</a:NameID></x:Subject>
+          <a:AttributeStatement><x:Attribute Name="wrong"/><a:Attribute Name="first"><a:AttributeValue>one</a:AttributeValue></a:Attribute></a:AttributeStatement>
+          <a:AttributeStatement><a:Attribute Name="second"><a:AttributeValue>two</a:AttributeValue></a:Attribute></a:AttributeStatement>
+        </a:Assertion>
+      </p:Response>`)
+      )
+      expect(result.issuer).toBe('')
+      expect(result.status).toBe('Success')
+      expect(result.assertions.map((assertion) => assertion.id)).toEqual(['outer'])
+      expect(result.assertions[0].issuer).toBe('assertion issuer')
+      expect(result.assertions[0].subject).toBeUndefined()
+      expect(result.assertions[0].attributes.map((attribute) => attribute.name)).toEqual([
+        'first',
+        'second',
+      ])
+    })
+
+    it('reads audience restrictions and authentication context through their SAML containers', () => {
+      const result = decodeSamlResponse(
+        btoa(`<p:Response xmlns:p="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:a="urn:oasis:names:tc:SAML:2.0:assertion">
+        <a:Assertion><a:Conditions><a:AudienceRestriction><a:Audience>https://sp.example</a:Audience></a:AudienceRestriction></a:Conditions>
+          <a:AuthnStatement AuthnInstant="2026-01-01T00:00:00Z"><a:AuthnContext><a:AuthnContextClassRef>urn:example:password</a:AuthnContextClassRef></a:AuthnContext></a:AuthnStatement>
+        </a:Assertion>
+      </p:Response>`)
+      )
+      expect(result.assertions[0].conditions?.audiences).toEqual(['https://sp.example'])
+      expect(result.assertions[0].authnStatement?.authnContext).toBe('urn:example:password')
+    })
+
     it('should decode a valid base64-encoded SAML response', () => {
       const validSamlResponse = btoa(`<?xml version="1.0" encoding="UTF-8"?>
 <samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"

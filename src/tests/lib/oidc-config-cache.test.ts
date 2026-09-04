@@ -2,23 +2,6 @@ import { describe, expect, test, beforeEach } from 'bun:test'
 import { OidcConfigCache } from '@/lib/cache/oidc-config-cache'
 import { OidcConfiguration } from '@/features/oidcExplorer/utils/types'
 
-// Mock localStorage for testing
-global.localStorage = {
-  store: {} as Record<string, string>,
-  getItem(key: string) {
-    return this.store[key] || null
-  },
-  setItem(key: string, value: string) {
-    this.store[key] = value
-  },
-  removeItem(key: string) {
-    delete this.store[key]
-  },
-  clear() {
-    this.store = {}
-  },
-} as any
-
 describe('OidcConfigCache', () => {
   let cache: OidcConfigCache
 
@@ -33,7 +16,7 @@ describe('OidcConfigCache', () => {
 
   beforeEach(() => {
     // Clear localStorage before each test
-    localStorage.clear()
+    window.localStorage.clear()
     // Create a fresh cache instance
     cache = new OidcConfigCache({
       memoryTTL: 1000, // 1 second for testing

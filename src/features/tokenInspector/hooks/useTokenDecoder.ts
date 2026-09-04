@@ -85,38 +85,22 @@ export function useTokenDecoder(): UseTokenDecoderReturn {
 
         if (jwks) {
           try {
-            // For demo tokens, accept matching kid as valid
-            if (isLikelyDemo) {
-              const matchingKey = jwks.keys.find((key) => key.kid === header.kid)
-              if (matchingKey) {
-                signatureValid = true
-              } else {
-                throw new Error(`No key with ID "${header.kid}" found in the loaded JWKS`)
-              }
-            } else {
-              // For non-demo tokens, perform actual crypto verification
-              let jwksUri = ''
-
-              // Check if we have OIDC config for this issuer
-              if (
-                oidcConfig?.jwks_uri &&
-                (oidcConfig.issuer === currentIssuer ||
-                  oidcConfig.issuer === payload.iss ||
-                  Boolean(issuerOverride))
-              ) {
-                jwksUri = oidcConfig.jwks_uri || ''
-              } else if (currentIssuer) {
-                // Fallback: construct the JWKS URI
-                jwksUri = `${currentIssuer}/.well-known/jwks`
-              }
-
-              const result = await verifySignatureWithRefresh(token, jwksUri, jwks, () => {
-                // Refresh callback handled by parent
-              })
-
-              signatureValid = result.valid
-              signatureError = result.error
+            let jwksUri = ''
+            if (
+              !isLikelyDemo &&
+              oidcConfig?.jwks_uri &&
+              (oidcConfig.issuer === currentIssuer ||
+                oidcConfig.issuer === payload.iss ||
+                Boolean(issuerOverride))
+            ) {
+              jwksUri = oidcConfig.jwks_uri
             }
+
+            // Demo markers are untrusted claims too. Every token must prove its
+            // signature using the supplied public keys; a matching kid is not proof.
+            const result = await verifySignatureWithRefresh(token, jwksUri, jwks)
+            signatureValid = result.valid
+            signatureError = result.error
           } catch (e: any) {
             signatureError = e.message
             signatureValid = false

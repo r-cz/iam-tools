@@ -42,11 +42,11 @@ export function useAsyncFetch<T>(
 
   const execute = useCallback(
     async (...args: unknown[]): Promise<T | null> => {
-      const invocation = ++invocationRef.current
       // Check if we should execute
-      if (shouldExecute && !shouldExecute(...args)) {
+      if (!isMountedRef.current || (shouldExecute && !shouldExecute(...args))) {
         return null
       }
+      const invocation = ++invocationRef.current
 
       // Check cache if available
       if (cache && getCacheKey) {
@@ -110,8 +110,10 @@ export function useAsyncFetch<T>(
 
   // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true
     return () => {
       isMountedRef.current = false
+      invocationRef.current++
     }
   }, [])
 

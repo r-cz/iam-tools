@@ -16,7 +16,7 @@ describe('JWT Decode Utilities', () => {
   ): string {
     const encodeBase64Url = (obj: Record<string, unknown>) => {
       const json = JSON.stringify(obj)
-      const base64 = btoa(json)
+      const base64 = Buffer.from(json, 'utf8').toString('base64')
       return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
     }
 
@@ -269,8 +269,8 @@ describe('JWT Decode Utilities', () => {
 
       const result = isJwtExpired(token)
 
-      // Implementation uses exp < now, so equal time is NOT expired
-      expect(result).toBe(false)
+      // RFC 7519 requires the current time to be before exp.
+      expect(result).toBe(true)
     })
   })
 
@@ -364,5 +364,33 @@ describe('JWT Decode Utilities', () => {
       expect(decoded?.payload.scope).toBe('openid profile email')
       expect(expiration).not.toBeNull()
     })
+  })
+})
+
+describe('JWT decoding input boundaries', () => {
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value), 'utf8').toString('base64url')
+
+  it('preserves international names and nested UTF-8 claims', () => {
+    const payload = { name: 'José 李 🎉', profile: { city: 'Zürich' } }
+    expect(
+      decodeJWT(`${encode({ alg: 'RS256', kid: 'clé' })}.${encode(payload)}.sig`)?.payload
+    ).toEqual(payload)
+  })
+
+  for (const value of [null, [], 'text', 42, true]) {
+    it(`rejects non-object JSON claims and headers: ${JSON.stringify(value)}`, () => {
+      expect(decodeJWT(`${encode({})}.${encode(value)}.sig`)).toBeNull()
+      expect(decodeJWT(`${encode(value)}.${encode({})}.sig`)).toBeNull()
+    })
+  }
+
+  it('rejects malformed UTF-8 instead of replacing claim content', () => {
+    const payload = Buffer.from([123, 34, 120, 34, 58, 34, 255, 34, 125]).toString('base64url')
+    expect(decodeJWT(`${encode({})}.${payload}.sig`)).toBeNull()
+  })
+
+  it('returns no usable Date for out-of-range expiration values', () => {
+    expect(getJwtExpiration(`${encode({})}.${encode({ exp: 1e100 })}.sig`)).toBeNull()
   })
 })

@@ -32,6 +32,8 @@ export default defineConfig({
       workbox: {
         // Explicitly tell Workbox to serve index.html for SPA navigation requests
         navigateFallback: '/index.html',
+        // Authorization redirects must reach the Worker even after PWA installation.
+        navigateFallbackDenylist: [/^\/api(?:[/?]|$)/],
 
         // Optional: You might enable this later if needed, but start without it to ensure basics work.
         // navigationPreload: true,

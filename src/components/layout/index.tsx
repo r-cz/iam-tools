@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/breadcrumb'
 import { routeTitles, toolByPath } from '@/config/tool-catalog'
 import { ToolPreferencesProvider, useToolPreferences } from '@/lib/state'
+import { PageLoading } from '@/components/common/PageLoading'
 
 function LayoutContent() {
   const location = useLocation()
@@ -101,8 +102,10 @@ function LayoutContent() {
           </div>
         </header>
         {/* Main content area with id for skip link */}
-        <main id="main-content">
-          <Outlet />
+        <main id="main-content" tabIndex={-1} className="min-w-0 outline-none">
+          <React.Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </React.Suspense>
         </main>
       </SidebarInset>
     </SidebarProvider>

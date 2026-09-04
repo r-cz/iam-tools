@@ -45,7 +45,9 @@ export function TokenSignature({
   const signaturePart = parts.length === 3 ? parts[2] : ''
 
   // Find if a key matching the token's kid exists in the currently loaded JWKS
-  const matchingKey = jwks?.keys.find((key) => key.kid === header?.kid)
+  const algorithm = typeof header?.alg === 'string' ? header.alg : ''
+  const keyId = typeof header?.kid === 'string' ? header.kid : ''
+  const matchingKey = jwks?.keys.find((key) => key.kid === keyId)
 
   return (
     <div className="space-y-4">
@@ -121,16 +123,16 @@ export function TokenSignature({
           <div className="pt-3 first:pt-0">
             <h4 className="text-sm font-medium mb-1">Algorithm (alg):</h4>
             <p className="text-sm font-mono">
-              {header?.alg || <span className="italic text-muted-foreground">Not specified</span>}
+              {algorithm || <span className="italic text-muted-foreground">Not specified</span>}
             </p>
           </div>
 
           <div className="pt-3 first:pt-0">
             <h4 className="text-sm font-medium mb-1">Key ID (kid):</h4>
             <p className="text-sm font-mono break-all">
-              {header?.kid || <span className="italic text-muted-foreground">Not specified</span>}
+              {keyId || <span className="italic text-muted-foreground">Not specified</span>}
             </p>
-            {!header?.kid && (
+            {!keyId && (
               <p className="text-xs text-muted-foreground mt-1">
                 The 'kid' helps identify the correct key in the JWKS.
               </p>
@@ -172,21 +174,21 @@ export function TokenSignature({
 
             <div className="border-t pt-3">
               <h4 className="text-sm font-medium mb-1">
-                Status for Token's Key ID ({header?.kid || 'N/A'}):
+                Status for Token's Key ID ({keyId || 'N/A'}):
               </h4>
-              {header?.kid ? (
+              {keyId ? (
                 matchingKey ? (
                   <Alert className="bg-green-500/10 border-green-500/20 text-green-700">
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      A key with matching ID "{header.kid}" was found in the loaded JWKS.
+                      A key with matching ID "{keyId}" was found in the loaded JWKS.
                     </AlertDescription>
                   </Alert>
                 ) : (
                   <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      No key with matching ID "{header.kid}" found in the loaded JWKS. Signature
+                      No key with matching ID "{keyId}" found in the loaded JWKS. Signature
                       validation will fail.
                     </AlertDescription>
                   </Alert>

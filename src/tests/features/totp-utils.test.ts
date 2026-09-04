@@ -123,6 +123,19 @@ describe('otpauth URI utilities', () => {
     expect(() => buildOtpauthUri({ accountName: 'alice', secret, digits: 11 })).toThrow('digits')
     expect(() => buildOtpauthUri({ accountName: 'alice', secret, period: 0 })).toThrow('period')
   })
+
+  it('rejects ambiguous labels that cannot round-trip through issuer separators', () => {
+    expect(() => buildOtpauthUri({ accountName: 'team:alice', secret })).toThrow('colon')
+    expect(() => buildOtpauthUri({ accountName: 'alice', issuer: 'Company:Team', secret })).toThrow(
+      'colon'
+    )
+    expect(() => parseOtpauthUri(`otpauth://totp/Company:team%3Aalice?secret=${secret}`)).toThrow(
+      'colon'
+    )
+    expect(() => parseOtpauthUri(`otpauth://totp/ali%00ce?secret=${secret}`)).toThrow(
+      'control characters'
+    )
+  })
 })
 
 describe('RFC 6238 TOTP', () => {
@@ -266,6 +279,16 @@ describe('TOTP verification', () => {
         driftWindow: 2,
       })
     ).rejects.toThrow('must match')
+  })
+
+  it('skips drift steps before the Unix epoch while checking future and unmatched codes', async () => {
+    const futureCode = await generateTotp(secret, { timestamp: 30, digits: 8 })
+    await expect(
+      verifyTotp(futureCode, secret, { timestamp: 0, digits: 8, window: 2 })
+    ).resolves.toEqual({ valid: true, delta: 1 })
+    await expect(
+      verifyTotp('00000000', secret, { timestamp: 0, digits: 8, window: 2 })
+    ).resolves.toEqual({ valid: false, delta: null })
   })
 })
 

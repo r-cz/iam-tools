@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test, spyOn } from 'bun:test'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { copyTextToClipboard, useClipboard } from '@/hooks/use-clipboard'
 
@@ -73,6 +73,47 @@ describe('copyTextToClipboard', () => {
 })
 
 describe('useClipboard', () => {
+  test('restarts the success timer on each copy and cancels it on unmount', async () => {
+    setClipboard(async () => {})
+    const { result, unmount } = renderHook(() => useClipboard({ successDuration: 1000 }))
+    const callbacks = new Map<number, () => void>()
+    let nextTimer = 0
+    const timeout = spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void) => {
+      const timer = ++nextTimer
+      callbacks.set(timer, callback)
+      return timer
+    }) as typeof setTimeout)
+    const clear = spyOn(globalThis, 'clearTimeout').mockImplementation((timer) => {
+      callbacks.delete(Number(timer))
+    })
+    try {
+      await act(async () => {
+        await result.current.copy('first')
+      })
+      expect(callbacks.size).toBe(1)
+      const firstTimer = nextTimer
+      await act(async () => {
+        await result.current.copy('second')
+      })
+      expect(callbacks.has(firstTimer)).toBe(false)
+      expect(callbacks.size).toBe(1)
+      expect(result.current.copied).toBe(true)
+      act(() => {
+        callbacks.get(nextTimer)?.()
+      })
+      expect(result.current.copied).toBe(false)
+      callbacks.clear()
+      await act(async () => {
+        await result.current.copy('third')
+      })
+      unmount()
+      expect(callbacks.size).toBe(0)
+    } finally {
+      timeout.mockRestore()
+      clear.mockRestore()
+    }
+  })
+
   test('sets copied only after a successful fallback copy', async () => {
     setClipboard(async () => {
       throw new DOMException('Write permission denied', 'NotAllowedError')

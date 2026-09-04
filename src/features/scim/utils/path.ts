@@ -1,10 +1,41 @@
 const ATTRIBUTE_NAME_PATTERN = /^(?:[A-Za-z][A-Za-z0-9_-]*|\$ref)$/
 const SCHEMA_URI_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:[^\s]+$/
-const FILTER_VALUE_PATTERN = '(?:"(?:[^"\\\\]|\\\\.)*"|true|false|null|-?\\d+(?:\\.\\d+)?)'
 const FILTER_PATTERN = new RegExp(
-  `^(?:[A-Za-z][A-Za-z0-9_-]*|\\$ref)(?:\\.(?:[A-Za-z][A-Za-z0-9_-]*|\\$ref))?\\s+(?:pr|(?:eq|ne|co|sw|ew|gt|ge|lt|le)\\s+${FILTER_VALUE_PATTERN})$`,
+  '^(?:[A-Za-z][A-Za-z0-9_-]*|\\$ref)(?:\\.(?:[A-Za-z][A-Za-z0-9_-]*|\\$ref))?\\s+(pr|eq|ne|co|sw|ew|gt|ge|lt|le)(?:\\s+(.+))?$',
   'i'
 )
+
+function isValidValueFilter(filter: string): boolean {
+  const match = FILTER_PATTERN.exec(filter)
+  if (!match) return false
+  if (match[1].toLowerCase() === 'pr') return match[2] === undefined
+  if (match[2] === undefined) return false
+  try {
+    // SCIM comparison values use JSON strings, numbers, booleans, and null.
+    // JSON.parse validates escapes, control characters, and number syntax.
+    const value: unknown = JSON.parse(match[2])
+    return value === null || ['string', 'number', 'boolean'].includes(typeof value)
+  } catch {
+    return false
+  }
+}
+
+function findFilterEnd(path: string, start: number): number {
+  let quoted = false
+  for (let index = start + 1; index < path.length; index += 1) {
+    const character = path[index]
+    if (quoted && character === '\\') {
+      index += 1
+    } else if (character === '"') {
+      quoted = !quoted
+    } else if (!quoted && character === '[') {
+      return -1
+    } else if (!quoted && character === ']') {
+      return index
+    }
+  }
+  return -1
+}
 
 function isAttributePath(value: string): boolean {
   let attributePath = value
@@ -37,18 +68,13 @@ export function isValidScimPath(input: string): boolean {
   if (!path) return false
 
   const openBracket = path.indexOf('[')
-  const closeBracket = path.lastIndexOf(']')
+  const closeBracket = openBracket === -1 ? path.indexOf(']') : findFilterEnd(path, openBracket)
 
   if (openBracket === -1 && closeBracket === -1) {
     return isAttributePath(path)
   }
 
-  if (
-    openBracket <= 0 ||
-    closeBracket <= openBracket + 1 ||
-    path.indexOf('[', openBracket + 1) !== -1 ||
-    path.indexOf(']', closeBracket + 1) !== -1
-  ) {
+  if (openBracket <= 0 || closeBracket <= openBracket + 1) {
     return false
   }
 
@@ -56,7 +82,7 @@ export function isValidScimPath(input: string): boolean {
   const filter = path.slice(openBracket + 1, closeBracket).trim()
   const suffix = path.slice(closeBracket + 1)
 
-  if (!isAttributePath(valuePath) || !FILTER_PATTERN.test(filter)) {
+  if (!isAttributePath(valuePath) || !isValidValueFilter(filter)) {
     return false
   }
 
