@@ -56,14 +56,6 @@ jobs:
       - name: Run coverage tests
         run: bun test:coverage
 
-      - name: Upload test coverage
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 30
-
   e2e_smoke:
     runs-on: ubuntu-latest
     needs: quality
@@ -91,13 +83,15 @@ jobs:
         run: bun run e2e:production --output=test-results/production
         timeout-minutes: 5
 
-      - name: Upload e2e test results
-        if: always()
+      - name: Upload smoke E2E failure diagnostics
+        if: failure()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
-          name: e2e-smoke-test-results
+          name: e2e-smoke-failure-diagnostics
           path: test-results/
-          retention-days: 30
+          if-no-files-found: ignore
+          retention-days: 1
 
   e2e_full:
     runs-on: ubuntu-latest
@@ -122,10 +116,12 @@ jobs:
         run: bun run e2e:full
         timeout-minutes: 12
 
-      - name: Upload e2e test results
-        if: always()
+      - name: Upload full E2E failure diagnostics
+        if: failure()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
-          name: e2e-full-test-results
+          name: e2e-full-failure-diagnostics
           path: test-results/
-          retention-days: 30
+          if-no-files-found: ignore
+          retention-days: 1
