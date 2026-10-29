@@ -7,6 +7,12 @@ on:
 env:
   PREVIEW_NAME: iam-tools-pr-${{ github.event.pull_request.number }}
 
+# Deploy and delete share one group per PR, so a close always waits for (or
+# cancels) an in-flight deploy instead of racing it and leaving the Worker behind.
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   deploy-preview:
     # Skip preview deploys when secrets are unavailable.
@@ -14,25 +20,38 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    concurrency:
-      group: preview-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
+      pull-requests: read
     steps:
+      # A re-run of an old deploy job would recreate the preview after the PR closed.
+      - name: Skip if PR is no longer open
+        id: pr-state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          state=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json state --jq .state)
+          echo "open=$([ "$state" = "OPEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: steps.pr-state.outputs.open == 'true'
         uses: actions/checkout@v7
 
       - name: Setup Bun
+        if: steps.pr-state.outputs.open == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Install dependencies
+        if: steps.pr-state.outputs.open == 'true'
         run: bun install --frozen-lockfile
 
       - name: Build frontend
+        if: steps.pr-state.outputs.open == 'true'
         run: bun run build
 
       - name: Deploy preview Worker
+        if: steps.pr-state.outputs.open == 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

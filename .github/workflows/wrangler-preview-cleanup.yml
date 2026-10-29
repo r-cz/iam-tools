@@ -1,0 +1,47 @@
+name: Workers Preview Cleanup
+
+# Manual sweep for preview Workers left behind by closed PRs.
+# Only touches Workers named exactly iam-tools-pr-<number>; never the main Worker.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List what would be deleted without deleting anything'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete previews for closed PRs
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts"
+
+          names=$(curl -fsS -H "Authorization: Bearer ${CF_API_TOKEN}" "$api" \
+            | jq -r '.result[].id | select(test("^iam-tools-pr-[0-9]+$"))')
+
+          for name in $names; do
+            pr="${name#iam-tools-pr-}"
+            state=$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json state --jq .state 2>/dev/null || echo UNKNOWN)
+            if [ "$state" = "OPEN" ] || [ "$state" = "UNKNOWN" ]; then
+              echo "keep   $name (PR #$pr is $state)"
+              continue
+            fi
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete $name (PR #$pr is $state)"
+            else
+              curl -fsS -X DELETE -H "Authorization: Bearer ${CF_API_TOKEN}" "$api/$name" > /dev/null
+              echo "deleted $name (PR #$pr is $state)"
+            fi
+          done
