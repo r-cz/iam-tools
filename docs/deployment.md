@@ -57,7 +57,10 @@ This repo deploys preview Workers per pull request via GitHub Actions:
 
 - Workflow: `.github/workflows/wrangler-preview.yml`
 - Worker name pattern: `iam-tools-pr-<PR_NUMBER>`
-- Deployed on PR open/update; deleted on PR close (best-effort)
+- Deployed on PR open/update; deleted on PR close
+- Deploy and delete share one concurrency group per PR, so closing a PR cancels or waits for an in-flight deploy before deleting the preview
+- Re-running an old deploy job after the PR has closed is a no-op
+- To sweep previews left behind by closed PRs, run the "Workers Preview Cleanup" workflow manually (`.github/workflows/wrangler-preview-cleanup.yml`); it defaults to a dry run and only touches Workers named `iam-tools-pr-<number>`
 - Previews are skipped for forked pull requests (no repository secrets available on forks)
 
 ### API URLs
